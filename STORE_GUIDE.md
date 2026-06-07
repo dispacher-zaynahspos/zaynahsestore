@@ -1,6 +1,15 @@
 # 🏪 Zaynahs E-Store — COMPLETE BUILD GUIDE
 > Cursor Agent yeh file padh ke poora store khud banaye. Koi manual step nahi.
 
+## 🔑 GITHUB & CREDENTIALS
+
+GitHub Repo: https://github.com/dbmailmail4-cmyk/zaynahsestore
+GitHub Token: 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
+Clone Command: git clone https://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@github.com/dbmailmail4-cmyk/zaynahsestore.git
+
+Supabase Dashboard: https://supabase.com/dashboard/project/jqwqgiqfvjdxaohzvjuv
+DB Password: q5nX13UF36gKR3DV
+
 ---
 
 ## 📋 MASTER TODO (Agent tracks progress here)
