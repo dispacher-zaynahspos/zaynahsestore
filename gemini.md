@@ -3,7 +3,7 @@
 
 ## 🔗 Quick Links
 - [SCHEMA_CHANGE_LOG.md](file:///Users/shoaib/Desktop/Zaynahs%20e-store/SCHEMA_CHANGE_LOG.md)
-- [STORE_GUIDE.md](file:///Users/shoaib/Desktop/Zaynahs%20e-store/STORE_GUIDE.md)
+- [STORE_GUIDE.md](file:///Users/shoaib/Desktop/Zaynahs%20e-store/STORE_GUIDE.md) (Contains GitHub & Supabase Credentials)
 
 ---
 
