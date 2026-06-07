@@ -10,17 +10,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import sharp from 'sharp';
 import { createClient } from '@supabase/supabase-js';
 
-// Service role client for server-side storage uploads
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { autoRefreshToken: false, persistSession: false } }
-);
-
 const MAX_KB = 50;
 const MAX_DIM = 1200;
 
 export async function POST(request: NextRequest) {
+  // Initialize inside handler so env vars are read at runtime, not at build time
+  const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
+    process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder',
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
+
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
@@ -35,10 +35,7 @@ export async function POST(request: NextRequest) {
     const inputBuffer = Buffer.from(arrayBuffer);
 
     // Process with Sharp — supports HEIC/HEIF natively via libvips
-    let sharpInstance = sharp(inputBuffer, {
-      // Allow HEIC and AVIF inputs
-      failOnError: false,
-    });
+    let sharpInstance = sharp(inputBuffer, { failOnError: false });
 
     // Get metadata for dimension checks
     const meta = await sharpInstance.metadata();
@@ -126,10 +123,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
-// Allow large file uploads (up to 20MB for HEIC originals)
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
