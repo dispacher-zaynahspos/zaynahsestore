@@ -446,3 +446,25 @@ Changes:
   - `supabase/schema/SUPER_MASTER_SCHEMA.sql` (modified)
 - **What changed:**
   1. Added 13 new database configuration columns to `store_settings` to allow full customization of the floating social buttons (WhatsApp, Instagram, TikTok, Snapchat, Twitter). Toggles, positions (left/right), vertical and horizontal offsets for mobile and desktop, size scale factors, and WhatsApp greeting message preset.
+
+### [2026-06-08 06:20] - Add Header Sticky Customization & Shop Filter/Menu Touch Fixes
+- **Files Updated / Created:**
+  - `supabase/migrations/20260608006000_add_header_sticky_to_settings.sql` (created)
+  - `supabase/schema/SUPER_MASTER_SCHEMA.sql` (modified)
+  - `lib/types.ts` (modified)
+  - `lib/services/settings.ts` (modified)
+  - `components/admin/SettingsForm.tsx` (modified)
+  - `components/common/Navbar.tsx` (modified)
+  - `components/store/ProductCard.tsx` (modified)
+  - `components/store/ProductDetail.tsx` (modified)
+  - `components/store/ShopPage.tsx` (modified)
+  - `app/layout.tsx` (modified)
+  - `gemini.md` (modified)
+- **What changed:**
+  1. **Sticky Header Settings** — Added `header_sticky` column to `store_settings` and corresponding Admin settings form toggle. Updated services, mappers, and types. Modified `Navbar.tsx` to dynamically toggle between sticky and relative header based on the user preference.
+  2. **Mobile Touch Hover** — Implemented touch event simulation on storefront product cards to trigger image hover (swapping to secondary image or zooming) cleanly on mobile screens.
+  3. **Product Gallery Navigation** — Fixed detail page gallery navigation arrows visibility by making them always visible on mobile, since hover triggers are unavailable.
+  4. **Description Tabs Collapse** — Implemented an expand/collapse (Read More/Read Less) toggle on product detail description contents with bottom gradients.
+  5. **Drawer Theme Switcher** — Moved the light/dark mode switch into the mobile drawer header next to the close button and configured `ThemeProvider` to default to `light` theme.
+  6. **Shop Page Filter Scroller** — Configured the shop page mobile filter sheet and categories list layout to support touch-first, top-down scrolling with `overscroll-contain touch-pan-y` and expanded nested scrollbars to prevent gesture hijacking.
+

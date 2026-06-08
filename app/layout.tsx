@@ -73,7 +73,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-gray-50 dark:bg-[#0f0f1b] text-gray-900 dark:text-gray-100 overflow-x-hidden">
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
+          defaultTheme="light"
           enableSystem={true}
           disableTransitionOnChange
         >

@@ -361,7 +361,7 @@ export default function ShopPage({
       {/* Category List Accordion */}
       <div className="space-y-3">
         <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider block">Products Category</span>
-        <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
+        <div className="space-y-1.5 md:max-h-60 md:overflow-y-auto pr-1">
           <button
             onClick={() => handleCategorySelect(undefined)}
             className={`w-full text-left py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-between ${
@@ -787,7 +787,7 @@ export default function ShopPage({
             </div>
 
             {/* Scrollable content — top to bottom */}
-            <div className="flex-1 overflow-y-auto px-5 py-4">
+            <div className="flex-1 overflow-y-auto overscroll-contain touch-pan-y px-5 py-4">
               {renderFiltersContent()}
             </div>
 

@@ -65,6 +65,7 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
   const [selectedModifiers, setSelectedModifiers] = useState<ProductModifier[]>([]);
   const [quantity, setQuantity] = useState(1);
   const [activeDetailTab, setActiveDetailTab] = useState<'description' | 'faq' | 'returns'>('description');
+  const [isDescExpanded, setIsDescExpanded] = useState(false);
 
   const handleVariantChange = useCallback((v: ProductVariant) => {
     setSelectedVariant(v);
@@ -209,7 +210,7 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
                 onMouseEnter={() => setIsZoomed(false)}
                 onMouseMove={(e) => e.stopPropagation()}
                 onClick={(e) => { e.stopPropagation(); setActiveImageIndex(idx => (idx - 1 + images.length) % images.length); }}
-                className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-9 h-9 flex items-center justify-center rounded-full bg-white/90 dark:bg-black/60 shadow-md text-gray-800 dark:text-white opacity-0 group-hover:opacity-100 hover:bg-white dark:hover:bg-black transition-all cursor-pointer"
+                className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-9 h-9 flex items-center justify-center rounded-full bg-white/90 dark:bg-black/60 shadow-md text-gray-800 dark:text-white opacity-100 md:opacity-0 md:group-hover:opacity-100 hover:bg-white dark:hover:bg-black transition-all cursor-pointer"
                 aria-label="Previous image"
               >
                 <ChevronLeft className="w-5 h-5" />
@@ -222,7 +223,7 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
                 onMouseEnter={() => setIsZoomed(false)}
                 onMouseMove={(e) => e.stopPropagation()}
                 onClick={(e) => { e.stopPropagation(); setActiveImageIndex(idx => (idx + 1) % images.length); }}
-                className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-9 h-9 flex items-center justify-center rounded-full bg-white/90 dark:bg-black/60 shadow-md text-gray-800 dark:text-white opacity-0 group-hover:opacity-100 hover:bg-white dark:hover:bg-black transition-all cursor-pointer"
+                className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-9 h-9 flex items-center justify-center rounded-full bg-white/90 dark:bg-black/60 shadow-md text-gray-800 dark:text-white opacity-100 md:opacity-0 md:group-hover:opacity-100 hover:bg-white dark:hover:bg-black transition-all cursor-pointer"
                 aria-label="Next image"
               >
                 <ChevronRight className="w-5 h-5" />
@@ -573,11 +574,30 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
             {/* Tab Contents */}
             <div className="py-6 text-sm text-gray-650 dark:text-gray-300 leading-relaxed font-medium animate-fade-in prose dark:prose-invert max-w-none">
               {activeDetailTab === 'description' && product.description && (
-                isHtml(product.description) ? (
-                  <div dangerouslySetInnerHTML={{ __html: product.description }} />
-                ) : (
-                  <div className="whitespace-pre-wrap">{product.description}</div>
-                )
+                <div>
+                  <div className={`relative transition-all duration-300 overflow-hidden ${
+                    !isDescExpanded ? 'max-h-48' : 'max-h-none'
+                  }`}>
+                    {isHtml(product.description) ? (
+                      <div dangerouslySetInnerHTML={{ __html: product.description }} />
+                    ) : (
+                      <div className="whitespace-pre-wrap">{product.description}</div>
+                    )}
+                    {/* Gradient overlay for fading out when collapsed */}
+                    {!isDescExpanded && product.description.length > 300 && (
+                      <div className="absolute bottom-0 inset-x-0 h-12 bg-gradient-to-t from-white dark:from-[#16162a] to-transparent pointer-events-none" />
+                    )}
+                  </div>
+                  {product.description.length > 300 && (
+                    <button
+                      type="button"
+                      onClick={() => setIsDescExpanded(!isDescExpanded)}
+                      className="mt-3 text-xs font-bold text-[#e94560] hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      {isDescExpanded ? 'Read Less' : 'Read More'}
+                    </button>
+                  )}
+                </div>
               )}
 
               {activeDetailTab === 'faq' && settings.faqContent && (

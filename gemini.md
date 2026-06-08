@@ -342,6 +342,9 @@ Always visible on mobile when cart has items:
 - Cart sheet: swipe down to close
 - Category filter: horizontal scroll, no wrap
 
+## RULE M4 — TOUCH-FIRST SCROLLABLE OVERLAYS
+All overlays, popups, filters, and mobile drawer menus that open on mobile must have touch-first scrolling starting from the top down. These components must use `overscroll-contain`, `touch-pan-y` enabled, and be structured to scroll naturally from the top without nested scroll containers that hijack touch gestures.
+
 ---
 
 # 🔧 FEATURE IMPLEMENTATION WORKFLOW

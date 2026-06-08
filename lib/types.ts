@@ -138,6 +138,7 @@ export interface StoreSettings {
   titleLineLimit?: '1' | '2' | 'none';
   
   // Header options
+  headerSticky?: boolean;
   headerShowTopBar?: boolean;
   headerTopBarPhone?: string;
   headerTopBarEmail?: string;

@@ -22,6 +22,7 @@ export default function ProductCard({ product, currencySymbol = 'Rs.', settings 
 
   const [hoveredImage, setHoveredImage] = useState<string | null>(null);
   const [selectedSwatchImage, setSelectedSwatchImage] = useState<string | null>(null);
+  const [touchActive, setTouchActive] = useState(false);
   const [isInWishlist, setIsInWishlist] = useState(false);
   const [quickViewOpen, setQuickViewOpen] = useState(false);
 
@@ -124,7 +125,13 @@ export default function ProductCard({ product, currencySymbol = 'Rs.', settings 
 
   return (
     <>
-    <Link href={`/product/${product.slug}`} className="group flex flex-col overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#16162a] shadow-sm hover:shadow-md transition-all duration-300">
+    <Link 
+      href={`/product/${product.slug}`} 
+      onTouchStart={() => setTouchActive(true)}
+      onTouchEnd={() => setTouchActive(false)}
+      onTouchCancel={() => setTouchActive(false)}
+      className="group flex flex-col overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#16162a] shadow-sm hover:shadow-md transition-all duration-300"
+    >
       {/* Product Image */}
       <div className={`relative ${aspectClass} w-full overflow-hidden bg-gray-50`}>
         {/* Show swatch-selected image > hover image > initial image */}
@@ -146,9 +153,9 @@ export default function ProductCard({ product, currencySymbol = 'Rs.', settings 
               fill
               sizes="(max-width: 768px) 50vw, 25vw"
               className={`object-cover transition-all duration-500 ${
-                settings?.imageHoverStyle === 'zoom' ? 'group-hover:scale-105' : ''
+                settings?.imageHoverStyle === 'zoom' ? (touchActive ? 'scale-105' : 'group-hover:scale-105') : ''
               } ${
-                secondImage ? 'opacity-100 group-hover:opacity-0' : ''
+                secondImage ? (touchActive ? 'opacity-0' : 'opacity-100 group-hover:opacity-0') : ''
               }`}
               priority={false}
               unoptimized={true}
@@ -159,7 +166,9 @@ export default function ProductCard({ product, currencySymbol = 'Rs.', settings 
                 alt={`${product.name} alternate`}
                 fill
                 sizes="(max-width: 768px) 50vw, 25vw"
-                className="object-cover absolute inset-0 transition-opacity duration-500 opacity-0 group-hover:opacity-100"
+                className={`object-cover absolute inset-0 transition-opacity duration-500 ${
+                  touchActive ? 'opacity-100' : 'opacity-0'
+                } group-hover:opacity-100`}
                 priority={false}
                 unoptimized={true}
               />

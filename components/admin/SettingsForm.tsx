@@ -121,6 +121,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
   const [footerBottomText, setFooterBottomText] = useState(initialSettings.footerBottomText || 'All rights reserved.');
 
   // Header settings states
+  const [headerSticky, setHeaderSticky] = useState(initialSettings.headerSticky ?? true);
   const [headerShowTopBar, setHeaderShowTopBar] = useState(initialSettings.headerShowTopBar ?? true);
   const [headerTopBarPhone, setHeaderTopBarPhone] = useState(initialSettings.headerTopBarPhone ?? '0328-4114551');
   const [headerTopBarEmail, setHeaderTopBarEmail] = useState(initialSettings.headerTopBarEmail ?? 'Totvoguepk@gmail.com');
@@ -446,6 +447,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
         archiveSwatchSize,
         productSwatchSize,
         archiveSwatchAlign,
+        headerSticky,
         headerShowTopBar,
         headerTopBarPhone,
         headerTopBarEmail,
@@ -2263,6 +2265,20 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
         <div className="border-b border-gray-100 dark:border-gray-800 pb-3">
           <h3 className="text-base font-bold text-gray-900 dark:text-white">Header Layout & Appearance Customizer</h3>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Customize your storefront header's mobile and desktop structures, top bar info, newsletter, and color styling.</p>
+        </div>
+
+        {/* Sticky Behavior Option */}
+        <div className="space-y-4 border-b border-gray-100 dark:border-gray-800 pb-4">
+          <h4 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider text-gray-400">Sticky Behavior</h4>
+          <label className="flex items-center gap-3 cursor-pointer select-none text-gray-750 dark:text-gray-200">
+            <input
+              type="checkbox"
+              checked={headerSticky}
+              onChange={(e) => setHeaderSticky(e.target.checked)}
+              className="rounded border-gray-300 dark:border-gray-700 text-[#e94560] focus:ring-[#e94560] h-4 w-4"
+            />
+            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Enable Sticky Header (Desktop & Mobile)</span>
+          </label>
         </div>
 
         {/* Part 1: Top Bar & Announcement */}

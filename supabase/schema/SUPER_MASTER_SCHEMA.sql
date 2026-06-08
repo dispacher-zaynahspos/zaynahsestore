@@ -199,6 +199,7 @@ CREATE TABLE IF NOT EXISTS store_settings (
   archive_swatch_align TEXT DEFAULT 'left',
   
   -- Header configuration settings
+  header_sticky BOOLEAN DEFAULT true,
   header_show_top_bar BOOLEAN DEFAULT true,
   header_top_bar_phone TEXT DEFAULT '0328-4114551',
   header_top_bar_email TEXT DEFAULT 'Totvoguepk@gmail.com',

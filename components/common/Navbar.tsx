@@ -35,6 +35,7 @@ export default function Navbar({
   const logoWidth = settings?.logoWidth ?? propLogoWidth;
 
   // Header options defaults
+  const headerSticky = settings?.headerSticky ?? true;
   const showTopBar = settings?.headerShowTopBar ?? true;
   const topBarPhone = settings?.headerTopBarPhone ?? '0328-4114551';
   const topBarEmail = settings?.headerTopBarEmail ?? 'Totvoguepk@gmail.com';
@@ -517,7 +518,7 @@ export default function Navbar({
 
       {/* Main Header */}
       <header 
-        className="sticky top-0 z-40 w-full border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-[#0f0f1b]/85 backdrop-blur-md transition-colors duration-200"
+        className={`${headerSticky ? 'sticky top-0' : 'relative'} z-40 w-full border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-[#0f0f1b]/85 backdrop-blur-md transition-colors duration-200`}
         style={{ 
           backgroundColor: headerBg !== '#ffffff' ? headerBg : undefined, 
           borderColor: headerBorderColor !== '#e5e7eb' ? headerBorderColor : undefined,
@@ -568,14 +569,17 @@ export default function Navbar({
               {/* Drawer Header */}
               <div className="flex items-center justify-between mb-6">
                 <span className="font-black text-gray-900 dark:text-white uppercase tracking-wider">Menu</span>
-                <button
-                  type="button"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors cursor-pointer"
-                  title="Close Menu"
-                >
-                  <X className="h-5 w-5" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <ThemeToggle />
+                  <button
+                    type="button"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors cursor-pointer flex h-10 w-10 items-center justify-center rounded-xl hover:bg-gray-100 dark:hover:bg-white/5"
+                    title="Close Menu"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
               </div>
 
 

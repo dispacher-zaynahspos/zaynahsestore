@@ -61,6 +61,7 @@ interface SettingsRow {
   archive_swatch_size?: string | null;
   product_swatch_size?: string | null;
   archive_swatch_align?: string | null;
+  header_sticky?: boolean | null;
   header_show_top_bar?: boolean | null;
   header_top_bar_phone?: string | null;
   header_top_bar_email?: string | null;
@@ -175,6 +176,7 @@ const mapSettings = (row: SettingsRow): StoreSettings => ({
   archiveSwatchSize: (row.archive_swatch_size as any) ?? 'md',
   productSwatchSize: (row.product_swatch_size as any) ?? 'md',
   archiveSwatchAlign: (row.archive_swatch_align as any) ?? 'left',
+  headerSticky: row.header_sticky ?? true,
   headerShowTopBar: row.header_show_top_bar ?? true,
   headerTopBarPhone: row.header_top_bar_phone ?? '0328-4114551',
   headerTopBarEmail: row.header_top_bar_email ?? 'Totvoguepk@gmail.com',
@@ -327,6 +329,7 @@ export const updateSettings = async (settings: Partial<StoreSettings>): Promise<
     if (settings.archiveSwatchSize !== undefined) updatePayload.archive_swatch_size = settings.archiveSwatchSize;
     if (settings.productSwatchSize !== undefined) updatePayload.product_swatch_size = settings.productSwatchSize;
     if (settings.archiveSwatchAlign !== undefined) updatePayload.archive_swatch_align = settings.archiveSwatchAlign;
+    if (settings.headerSticky !== undefined) updatePayload.header_sticky = settings.headerSticky;
     if (settings.headerShowTopBar !== undefined) updatePayload.header_show_top_bar = settings.headerShowTopBar;
     if (settings.headerTopBarPhone !== undefined) updatePayload.header_top_bar_phone = settings.headerTopBarPhone;
     if (settings.headerTopBarEmail !== undefined) updatePayload.header_top_bar_email = settings.headerTopBarEmail;
