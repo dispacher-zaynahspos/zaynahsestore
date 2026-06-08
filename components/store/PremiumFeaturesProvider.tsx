@@ -9,6 +9,7 @@ import { X, Gift, Shield, CheckCircle2, Tag, Play } from '@/components/common/Ic
 import { toast } from 'sonner';
 import Image from 'next/image';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 interface PremiumFeaturesProviderProps {
   settings: StoreSettings;
@@ -18,6 +19,8 @@ export default function PremiumFeaturesProvider({ settings }: PremiumFeaturesPro
   // Products list for Recent Buyers Ticker
   const [products, setProducts] = useState<Product[]>([]);
   const [realOrders, setRealOrders] = useState<Order[]>([]);
+  const pathname = usePathname();
+  const isCheckout = pathname === '/cart' || pathname === '/checkout';
   
   // Exit Intent state
   const [showExitIntent, setShowExitIntent] = useState(false);
@@ -120,6 +123,10 @@ export default function PremiumFeaturesProvider({ settings }: PremiumFeaturesPro
   // Recent Purchases Ticker Loop
   useEffect(() => {
     if (settings.recent_buyers_enabled === false || products.length === 0) return;
+    if (isCheckout && settings.recent_buyers_show_on_checkout === false) {
+      setShowTicker(false);
+      return;
+    }
 
     const runTicker = () => {
       let selectedProduct: Product | null = null;
@@ -228,7 +235,7 @@ export default function PremiumFeaturesProvider({ settings }: PremiumFeaturesPro
       clearTimeout(initialDelay);
       clearInterval(interval);
     };
-  }, [products, realOrders, settings.recent_buyers_enabled, settings.recent_buyers_source, settings.recent_buyers_names, settings.recent_buyers_cities, settings.recent_buyers_product_pool, settings.recent_buyers_custom_products, settings.recent_buyers_initial_delay, settings.recent_buyers_interval, settings.recent_buyers_display_duration]);
+  }, [products, realOrders, settings.recent_buyers_enabled, settings.recent_buyers_show_on_checkout, isCheckout, settings.recent_buyers_source, settings.recent_buyers_names, settings.recent_buyers_cities, settings.recent_buyers_product_pool, settings.recent_buyers_custom_products, settings.recent_buyers_initial_delay, settings.recent_buyers_interval, settings.recent_buyers_display_duration]);
 
   // Draw the spin wheel canvas
   useEffect(() => {
@@ -635,7 +642,7 @@ export default function PremiumFeaturesProvider({ settings }: PremiumFeaturesPro
       )}
 
       {/* 3. VERIFIED RECENT BUYERS TICKER */}
-      {showTicker && settings.recent_buyers_enabled !== false && tickerProduct && tickerBuyer && (
+      {showTicker && settings.recent_buyers_enabled !== false && (!isCheckout || settings.recent_buyers_show_on_checkout) && tickerProduct && tickerBuyer && (
         <div className="fixed bottom-24 left-4 z-50 flex items-center max-w-[280px] sm:max-w-xs p-3 bg-white dark:bg-[#16162a] border border-gray-100 dark:border-gray-800/80 rounded-2xl shadow-xl transition-all duration-500 animate-slide-up">
           <Link href={`/product/${tickerProduct.slug}`} className="flex items-center gap-3 w-full">
             {tickerProduct.images?.[0]?.url && (

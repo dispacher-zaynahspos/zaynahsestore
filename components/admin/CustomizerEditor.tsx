@@ -13,6 +13,7 @@ import {
 } from '@/lib/services/sections';
 import { uploadProductImage } from '@/lib/services/storage';
 import { toast } from 'sonner';
+import MediaSelectorModal from './MediaSelectorModal';
 import StoreFront from '@/components/store/StoreFront';
 
 interface CustomizerEditorProps {
@@ -151,28 +152,37 @@ export default function CustomizerEditor({
     });
   };
 
-  // Upload image handler
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, fieldPath: 'settings' | 'content_data', fieldKey: string) => {
-    const file = e.target.files?.[0];
-    if (!file || !activeSection) return;
+  // Media Selector State
+  const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
+  const [mediaUploadTarget, setMediaUploadTarget] = useState<{
+    sectionId: string;
+    fieldPath: 'settings' | 'content_data';
+    fieldKey: string;
+    isGridItem?: boolean;
+    gridIndex?: number;
+  } | null>(null);
 
-    setIsUploading(true);
-    try {
-      const url = await uploadProductImage(file, activeSection.id);
-      
+  const handleMediaSelected = (urls: string[]) => {
+    if (urls.length === 0 || !mediaUploadTarget) return;
+    const url = urls[0];
+    const { sectionId, fieldPath, fieldKey, isGridItem, gridIndex } = mediaUploadTarget;
+
+    const section = sections.find(s => s.id === sectionId);
+    if (!section) return;
+
+    if (isGridItem && gridIndex !== undefined) {
+      const items = section.content_data?.items || [];
+      const updatedItems = [...items];
+      updatedItems[gridIndex] = { ...updatedItems[gridIndex], [fieldKey]: url };
+      handleUpdateSection(sectionId, { content_data: { items: updatedItems } });
+    } else {
       const updates: Partial<HomepageSection> = {};
       if (fieldPath === 'settings') {
-        updates.settings = { [fieldKey]: url };
+        updates.settings = { ...section.settings, [fieldKey]: url };
       } else {
-        updates.content_data = { [fieldKey]: url };
+        updates.content_data = { ...section.content_data, [fieldKey]: url };
       }
-      
-      handleUpdateSection(activeSection.id, updates);
-      toast.success('Image uploaded successfully');
-    } catch (err) {
-      toast.error('Failed to upload image');
-    } finally {
-      setIsUploading(false);
+      handleUpdateSection(sectionId, updates);
     }
   };
 
@@ -241,7 +251,8 @@ export default function CustomizerEditor({
                 { type: 'promo_banner', label: 'Promo Banner' },
                 { type: 'trust_badges', label: 'Trust Badges' },
                 { type: 'recent_reviews', label: 'Reviews Feed' },
-                { type: 'brands_logos', label: 'Brands Slider' }
+                { type: 'brands_logos', label: 'Brands Slider' },
+                { type: 'social_feed', label: 'Social Feed' }
               ].map(item => (
                 <button
                   key={item.type}
@@ -354,108 +365,545 @@ export default function CustomizerEditor({
               {/* Specific inputs for hero_banner */}
               {activeSection.section_type === 'hero_banner' && (
                 <div className="space-y-4">
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-                      Subtitle Text
-                    </label>
-                    <input
-                      type="text"
-                      value={activeSection.content_data?.subtitle || ''}
-                      onChange={e => handleUpdateSection(activeSection.id, { content_data: { subtitle: e.target.value } })}
-                      placeholder="e.g. Special discounts up to 50%"
-                      className="w-full px-3 py-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-                      Button Text
-                    </label>
-                    <input
-                      type="text"
-                      value={activeSection.content_data?.button_text || ''}
-                      onChange={e => handleUpdateSection(activeSection.id, { content_data: { button_text: e.target.value } })}
-                      placeholder="Shop Now"
-                      className="w-full px-3 py-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-                      Button Link
-                    </label>
-                    <input
-                      type="text"
-                      value={activeSection.content_data?.button_link || ''}
-                      onChange={e => handleUpdateSection(activeSection.id, { content_data: { button_link: e.target.value } })}
-                      placeholder="/shop"
-                      className="w-full px-3 py-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-                      Banner Image
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={activeSection.content_data?.image_url || ''}
-                        onChange={e => handleUpdateSection(activeSection.id, { content_data: { image_url: e.target.value } })}
-                        placeholder="Image URL"
-                        className="flex-1 px-3 py-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
-                      />
-                      <label className="px-3 py-2 bg-gray-100 dark:bg-white/10 hover:bg-gray-200 hover:dark:bg-white/15 text-xs font-bold text-gray-700 dark:text-gray-300 rounded-xl transition-all cursor-pointer relative">
-                        {isUploading ? '...' : 'Upload'}
+                  {/* Banner Images (Desktop & Mobile) */}
+                  <div className="space-y-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-gray-800/80">
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#e94560] block mb-1">Images</span>
+                    
+                    {/* Desktop Image */}
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
+                        Desktop Banner Image *
+                      </label>
+                      <div className="flex gap-2">
                         <input
-                          type="file"
-                          accept="image/*"
-                          onChange={e => handleImageUpload(e, 'content_data', 'image_url')}
-                          className="hidden"
-                          disabled={isUploading}
+                          type="text"
+                          value={activeSection.content_data?.image_url || ''}
+                          onChange={e => handleUpdateSection(activeSection.id, { content_data: { image_url: e.target.value } })}
+                          placeholder="Desktop Image URL"
+                          className="flex-1 px-3 py-2 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
                         />
-                      </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMediaUploadTarget({ sectionId: activeSection.id, fieldPath: 'content_data', fieldKey: 'image_url' });
+                            setIsMediaModalOpen(true);
+                          }}
+                          className="px-3 py-2 bg-gray-100 dark:bg-white/10 hover:bg-gray-200 hover:dark:bg-white/15 text-xs font-bold text-gray-700 dark:text-gray-300 rounded-xl transition-all cursor-pointer whitespace-nowrap"
+                        >
+                          Select
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
+
+                    {/* Mobile Image */}
                     <div className="space-y-1.5">
                       <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-                        Height Desktop
+                        Mobile Banner Image (Optional)
                       </label>
-                      <input
-                        type="text"
-                        value={activeSection.settings?.height_desktop || '450px'}
-                        onChange={e => handleUpdateSection(activeSection.id, { settings: { height_desktop: e.target.value } })}
-                        className="w-full px-3 py-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-                        Height Mobile
-                      </label>
-                      <input
-                        type="text"
-                        value={activeSection.settings?.height_mobile || '220px'}
-                        onChange={e => handleUpdateSection(activeSection.id, { settings: { height_mobile: e.target.value } })}
-                        className="w-full px-3 py-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
-                      />
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={activeSection.content_data?.mobile_image_url || ''}
+                          onChange={e => handleUpdateSection(activeSection.id, { content_data: { mobile_image_url: e.target.value } })}
+                          placeholder="Mobile Image URL (falls back to desktop)"
+                          className="flex-1 px-3 py-2 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMediaUploadTarget({ sectionId: activeSection.id, fieldPath: 'content_data', fieldKey: 'mobile_image_url' });
+                            setIsMediaModalOpen(true);
+                          }}
+                          className="px-3 py-2 bg-gray-100 dark:bg-white/10 hover:bg-gray-200 hover:dark:bg-white/15 text-xs font-bold text-gray-700 dark:text-gray-300 rounded-xl transition-all cursor-pointer whitespace-nowrap"
+                        >
+                          Select
+                        </button>
+                      </div>
                     </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <div className="flex justify-between">
-                      <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-                        Overlay Opacity
-                      </label>
-                      <span className="text-xs font-bold text-[#e94560]">
-                        {activeSection.settings?.overlay_opacity ?? 0.3}
+
+                  {/* Banner Heights & Widths */}
+                  <div className="space-y-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-gray-800/80">
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#e94560] block mb-1">Dimensions</span>
+                    
+                    {/* Heights */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
+                          Height (Desktop)
+                        </label>
+                        <input
+                          type="text"
+                          value={activeSection.settings?.height_desktop || '450px'}
+                          onChange={e => handleUpdateSection(activeSection.id, { settings: { height_desktop: e.target.value } })}
+                          placeholder="e.g. 450px or 60vh"
+                          className="w-full px-3 py-2 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
+                          Height (Mobile)
+                        </label>
+                        <input
+                          type="text"
+                          value={activeSection.settings?.height_mobile || '250px'}
+                          onChange={e => handleUpdateSection(activeSection.id, { settings: { height_mobile: e.target.value } })}
+                          placeholder="e.g. 250px or 40vh"
+                          className="w-full px-3 py-2 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Widths */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
+                          Content Width (Desktop)
+                        </label>
+                        <input
+                          type="text"
+                          value={activeSection.settings?.content_width_desktop || '576px'}
+                          onChange={e => handleUpdateSection(activeSection.id, { settings: { content_width_desktop: e.target.value } })}
+                          placeholder="e.g. 576px or 50%"
+                          className="w-full px-3 py-2 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
+                          Content Width (Mobile)
+                        </label>
+                        <input
+                          type="text"
+                          value={activeSection.settings?.content_width_mobile || '100%'}
+                          onChange={e => handleUpdateSection(activeSection.id, { settings: { content_width_mobile: e.target.value } })}
+                          placeholder="e.g. 100% or 320px"
+                          className="w-full px-3 py-2 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Positioning & Alignments */}
+                  <div className="space-y-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-gray-800/80">
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#e94560] block mb-1">Layout & Alignments</span>
+                    
+                    {/* Desktop Content Box Position */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
+                          Desktop Pos (Horizontal)
+                        </label>
+                        <select
+                          value={activeSection.settings?.content_position_desktop_x || activeSection.settings?.content_position_desktop || 'center'}
+                          onChange={e => handleUpdateSection(activeSection.id, { 
+                            settings: { 
+                              content_position_desktop_x: e.target.value,
+                              content_position_desktop: e.target.value // Legacy sync
+                            } 
+                          })}
+                          className="w-full px-3 py-2 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-950 dark:text-white"
+                        >
+                          <option value="left">Left</option>
+                          <option value="center">Center</option>
+                          <option value="right">Right</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
+                          Desktop Pos (Vertical)
+                        </label>
+                        <select
+                          value={activeSection.settings?.content_position_desktop_y || 'middle'}
+                          onChange={e => handleUpdateSection(activeSection.id, { settings: { content_position_desktop_y: e.target.value } })}
+                          className="w-full px-3 py-2 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-950 dark:text-white"
+                        >
+                          <option value="top">Top</option>
+                          <option value="middle">Middle</option>
+                          <option value="bottom">Bottom</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Mobile Content Box Position */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
+                          Mobile Pos (Horizontal)
+                        </label>
+                        <select
+                          value={activeSection.settings?.content_position_mobile_x || 'center'}
+                          onChange={e => handleUpdateSection(activeSection.id, { settings: { content_position_mobile_x: e.target.value } })}
+                          className="w-full px-3 py-2 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-955 dark:text-white"
+                        >
+                          <option value="left">Left</option>
+                          <option value="center">Center</option>
+                          <option value="right">Right</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
+                          Mobile Pos (Vertical)
+                        </label>
+                        <select
+                          value={activeSection.settings?.content_position_mobile_y || 'middle'}
+                          onChange={e => handleUpdateSection(activeSection.id, { settings: { content_position_mobile_y: e.target.value } })}
+                          className="w-full px-3 py-2 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-955 dark:text-white"
+                        >
+                          <option value="top">Top</option>
+                          <option value="middle">Middle</option>
+                          <option value="bottom">Bottom</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Text alignment options */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
+                          Text Align (Desktop)
+                        </label>
+                        <select
+                          value={activeSection.settings?.text_align_desktop || 'center'}
+                          onChange={e => handleUpdateSection(activeSection.id, { settings: { text_align_desktop: e.target.value } })}
+                          className="w-full px-3 py-2 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-950 dark:text-white"
+                        >
+                          <option value="left">Left</option>
+                          <option value="center">Center</option>
+                          <option value="right">Right</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
+                          Text Align (Mobile)
+                        </label>
+                        <select
+                          value={activeSection.settings?.text_align_mobile || 'center'}
+                          onChange={e => handleUpdateSection(activeSection.id, { settings: { text_align_mobile: e.target.value } })}
+                          className="w-full px-3 py-2 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-955 dark:text-white"
+                        >
+                          <option value="left">Left</option>
+                          <option value="center">Center</option>
+                          <option value="right">Right</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Show Backdrop Container */}
+                    <label className="flex items-center gap-2.5 cursor-pointer py-1">
+                      <input
+                        type="checkbox"
+                        checked={activeSection.settings?.show_backdrop_container ?? false}
+                        onChange={e => handleUpdateSection(activeSection.id, { settings: { show_backdrop_container: e.target.checked } })}
+                        className="rounded border-gray-300 dark:border-gray-700 text-[#e94560] focus:ring-[#e94560] h-4 w-4"
+                      />
+                      <span className="text-xs font-semibold text-gray-750 dark:text-gray-300">
+                        Show Backdrop Box on Desktop (Glassmorphism)
                       </span>
+                    </label>
+                  </div>
+
+                  {/* Image Scaling and Focal Crop Offset Shifts (Focal Points) */}
+                  <div className="space-y-3.5 p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-gray-800/80">
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#e94560] block mb-1">Image Scaling & Position Shift</span>
+                    
+                    {/* Desktop Scaling & Focal Shifts */}
+                    <div className="space-y-2 pb-2 border-b border-gray-200/50 dark:border-gray-800/50">
+                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-wide">Desktop Viewport</span>
+                      
+                      {/* Desktop Scale */}
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-[11px] font-bold text-gray-500">
+                          <span>Scale (Zoom)</span>
+                          <span className="text-[#e94560]">{activeSection.settings?.image_scale_desktop ?? 100}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="100"
+                          max="200"
+                          step="5"
+                          value={activeSection.settings?.image_scale_desktop ?? 100}
+                          onChange={e => handleUpdateSection(activeSection.id, { settings: { image_scale_desktop: parseInt(e.target.value) } })}
+                          className="w-full accent-[#e94560]"
+                        />
+                      </div>
+
+                      {/* Desktop Shift X (Left / Right) */}
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-[11px] font-bold text-gray-500">
+                          <span>Left / Right Shift (X Offset)</span>
+                          <span className="text-[#e94560]">{activeSection.settings?.image_focal_x_desktop ?? 50}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          step="5"
+                          value={activeSection.settings?.image_focal_x_desktop ?? 50}
+                          onChange={e => handleUpdateSection(activeSection.id, { settings: { image_focal_x_desktop: parseInt(e.target.value) } })}
+                          className="w-full accent-[#e94560]"
+                        />
+                      </div>
+
+                      {/* Desktop Shift Y (Up / Down) */}
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-[11px] font-bold text-gray-500">
+                          <span>Up / Down Shift (Y Offset)</span>
+                          <span className="text-[#e94560]">{activeSection.settings?.image_focal_y_desktop ?? 50}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          step="5"
+                          value={activeSection.settings?.image_focal_y_desktop ?? 50}
+                          onChange={e => handleUpdateSection(activeSection.id, { settings: { image_focal_y_desktop: parseInt(e.target.value) } })}
+                          className="w-full accent-[#e94560]"
+                        />
+                      </div>
                     </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.05"
-                      value={activeSection.settings?.overlay_opacity ?? 0.3}
-                      onChange={e => handleUpdateSection(activeSection.id, { settings: { overlay_opacity: parseFloat(e.target.value) } })}
-                      className="w-full accent-[#e94560]"
-                    />
+
+                    {/* Mobile Scaling & Focal Shifts */}
+                    <div className="space-y-2 pt-1">
+                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-wide">Mobile Viewport</span>
+                      
+                      {/* Mobile Scale */}
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-[11px] font-bold text-gray-500">
+                          <span>Scale (Zoom)</span>
+                          <span className="text-[#e94560]">{activeSection.settings?.image_scale_mobile ?? 100}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="100"
+                          max="200"
+                          step="5"
+                          value={activeSection.settings?.image_scale_mobile ?? 100}
+                          onChange={e => handleUpdateSection(activeSection.id, { settings: { image_scale_mobile: parseInt(e.target.value) } })}
+                          className="w-full accent-[#e94560]"
+                        />
+                      </div>
+
+                      {/* Mobile Shift X (Left / Right) */}
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-[11px] font-bold text-gray-500">
+                          <span>Left / Right Shift (X Offset)</span>
+                          <span className="text-[#e94560]">{activeSection.settings?.image_focal_x_mobile ?? 50}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          step="5"
+                          value={activeSection.settings?.image_focal_x_mobile ?? 50}
+                          onChange={e => handleUpdateSection(activeSection.id, { settings: { image_focal_x_mobile: parseInt(e.target.value) } })}
+                          className="w-full accent-[#e94560]"
+                        />
+                      </div>
+
+                      {/* Mobile Shift Y (Up / Down) */}
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-[11px] font-bold text-gray-500">
+                          <span>Up / Down Shift (Y Offset)</span>
+                          <span className="text-[#e94560]">{activeSection.settings?.image_focal_y_mobile ?? 50}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          step="5"
+                          value={activeSection.settings?.image_focal_y_mobile ?? 50}
+                          onChange={e => handleUpdateSection(activeSection.id, { settings: { image_focal_y_mobile: parseInt(e.target.value) } })}
+                          className="w-full accent-[#e94560]"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Overlays & Opacity */}
+                  <div className="space-y-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-gray-800/80">
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#e94560] block mb-1">Visual Styling & Colors</span>
+                    
+                    {/* Overlay Color */}
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
+                        Overlay Overlay Color
+                      </label>
+                      <div className="flex gap-2 items-center">
+                        <input
+                          type="color"
+                          value={activeSection.settings?.overlay_color || '#000000'}
+                          onChange={e => handleUpdateSection(activeSection.id, { settings: { overlay_color: e.target.value } })}
+                          className="h-8 w-12 rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent cursor-pointer p-0.5"
+                        />
+                        <input
+                          type="text"
+                          value={activeSection.settings?.overlay_color || '#000000'}
+                          onChange={e => handleUpdateSection(activeSection.id, { settings: { overlay_color: e.target.value } })}
+                          placeholder="#000000"
+                          className="flex-1 px-3 py-1.5 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Overlay Opacity */}
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between">
+                        <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
+                          Overlay Opacity
+                        </label>
+                        <span className="text-xs font-bold text-[#e94560]">
+                          {Math.round((activeSection.settings?.overlay_opacity ?? 0.3) * 100)}%
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.05"
+                        value={activeSection.settings?.overlay_opacity ?? 0.3}
+                        onChange={e => handleUpdateSection(activeSection.id, { settings: { overlay_opacity: parseFloat(e.target.value) } })}
+                        className="w-full accent-[#e94560]"
+                      />
+                    </div>
+
+                    {/* Heading, Tagline and Subtitle text color overrides */}
+                    <div className="grid grid-cols-2 gap-3 pt-1">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-gray-500">Heading Color</label>
+                        <input
+                          type="text"
+                          value={activeSection.settings?.heading_color || '#ffffff'}
+                          onChange={e => handleUpdateSection(activeSection.id, { settings: { heading_color: e.target.value } })}
+                          placeholder="#ffffff"
+                          className="w-full px-2.5 py-1.5 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-lg text-[11px] font-semibold text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-gray-500">Subtitle Color</label>
+                        <input
+                          type="text"
+                          value={activeSection.settings?.subtitle_color || '#e0e0e0'}
+                          onChange={e => handleUpdateSection(activeSection.id, { settings: { subtitle_color: e.target.value } })}
+                          placeholder="#e0e0e0"
+                          className="w-full px-2.5 py-1.5 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-lg text-[11px] font-semibold text-gray-900 dark:text-white"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Texts Customizer */}
+                  <div className="space-y-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-gray-800/80">
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#e94560] block mb-1">Text Customizer</span>
+                    
+                    {/* Tagline / Small text */}
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
+                        Tagline / Supertitle Text
+                      </label>
+                      <input
+                        type="text"
+                        value={activeSection.content_data?.tagline || ''}
+                        onChange={e => handleUpdateSection(activeSection.id, { content_data: { tagline: e.target.value } })}
+                        placeholder="e.g. SUMMER ARRIVALS"
+                        className="w-full px-3 py-2 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
+                      />
+                    </div>
+
+                    {/* Subtitle */}
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
+                        Subtitle Text
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={activeSection.content_data?.subtitle || ''}
+                        onChange={e => handleUpdateSection(activeSection.id, { content_data: { subtitle: e.target.value } })}
+                        placeholder="e.g. Special discounts up to 50% on all luxury clothing"
+                        className="w-full px-3 py-2 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white resize-none"
+                      />
+                    </div>
+
+                    {/* Desktop Heading Size */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
+                          Heading Size (Desktop)
+                        </label>
+                        <select
+                          value={activeSection.settings?.heading_size_desktop || '5xl'}
+                          onChange={e => handleUpdateSection(activeSection.id, { settings: { heading_size_desktop: e.target.value } })}
+                          className="w-full px-3 py-2 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
+                        >
+                          <option value="2xl">Small (2xl)</option>
+                          <option value="3xl">Medium (3xl)</option>
+                          <option value="4xl">Large (4xl)</option>
+                          <option value="5xl">X-Large (5xl)</option>
+                          <option value="6xl">XX-Large (6xl)</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
+                          Heading Size (Mobile)
+                        </label>
+                        <select
+                          value={activeSection.settings?.heading_size_mobile || '2xl'}
+                          onChange={e => handleUpdateSection(activeSection.id, { settings: { heading_size_mobile: e.target.value } })}
+                          className="w-full px-3 py-2 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
+                        >
+                          <option value="lg">Small (lg)</option>
+                          <option value="xl">Medium (xl)</option>
+                          <option value="2xl">Large (2xl)</option>
+                          <option value="3xl">X-Large (3xl)</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons Customizer (Shopify Multi-CTA Support) */}
+                  <div className="space-y-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-gray-800/80">
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#e94560] block mb-1">Call to Action Buttons</span>
+                    
+                    {/* Primary Button */}
+                    <div className="space-y-2 border-b border-gray-200/50 dark:border-gray-800/50 pb-3">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Primary Button</span>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          value={activeSection.content_data?.button_text || ''}
+                          onChange={e => handleUpdateSection(activeSection.id, { content_data: { button_text: e.target.value } })}
+                          placeholder="Label (Shop Now)"
+                          className="px-2.5 py-1.5 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-lg text-xs font-semibold focus:outline-none text-gray-900 dark:text-white"
+                        />
+                        <input
+                          type="text"
+                          value={activeSection.content_data?.button_link || ''}
+                          onChange={e => handleUpdateSection(activeSection.id, { content_data: { button_link: e.target.value } })}
+                          placeholder="Link (/shop)"
+                          className="px-2.5 py-1.5 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-lg text-xs font-semibold focus:outline-none text-gray-900 dark:text-white"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Secondary Button */}
+                    <div className="space-y-2 pt-1">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Secondary Button (Optional)</span>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          value={activeSection.content_data?.button_secondary_text || ''}
+                          onChange={e => handleUpdateSection(activeSection.id, { content_data: { button_secondary_text: e.target.value } })}
+                          placeholder="Label (e.g. Learn More)"
+                          className="px-2.5 py-1.5 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-lg text-xs font-semibold focus:outline-none text-gray-900 dark:text-white"
+                        />
+                        <input
+                          type="text"
+                          value={activeSection.content_data?.button_secondary_link || ''}
+                          onChange={e => handleUpdateSection(activeSection.id, { content_data: { button_secondary_link: e.target.value } })}
+                          placeholder="Link (/about)"
+                          className="px-2.5 py-1.5 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-lg text-xs font-semibold focus:outline-none text-gray-900 dark:text-white"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -668,79 +1116,174 @@ export default function CustomizerEditor({
                 </div>
               )}
 
-              {/* Specific inputs for category_grid */}
+              {activeSection.section_type === 'social_feed' && (
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">Subtitle (Optional)</label>
+                    <input
+                      type="text"
+                      value={activeSection.content_data?.subtitle || ''}
+                      onChange={e => handleUpdateSection(activeSection.id, { content_data: { subtitle: e.target.value } })}
+                      placeholder="#ZAYNAHSVOGUE"
+                      className="w-full px-3 py-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">Description (Optional)</label>
+                    <input
+                      type="text"
+                      value={activeSection.content_data?.desc || ''}
+                      onChange={e => handleUpdateSection(activeSection.id, { content_data: { desc: e.target.value } })}
+                      placeholder="Tag us in your post..."
+                      className="w-full px-3 py-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
+                    />
+                  </div>
+                  <div className="space-y-1.5 pt-2 border-t border-gray-100 dark:border-gray-800">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">Number of Posts to Show</label>
+                      <span className="text-xs font-black text-gray-900 dark:text-white">
+                        {activeSection.settings?.limit || 8}
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min="4"
+                      max="12"
+                      step="4"
+                      value={activeSection.settings?.limit || 8}
+                      onChange={e => handleUpdateSection(activeSection.id, { settings: { limit: parseInt(e.target.value) } })}
+                      className="w-full accent-[#e94560]"
+                    />
+                  </div>
+                  <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-2">
+                    Note: To edit the actual social posts, please visit Settings -&gt; Store Configuration.
+                  </div>
+                </div>
+              )}
+
               {activeSection.section_type === 'category_grid' && (
                 <div className="space-y-4">
-                  <h4 className="text-xs font-bold text-gray-800 dark:text-gray-200">Category Grid Cards (Up to 4)</h4>
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-gray-800 dark:text-gray-200">Category Grid Cards</h4>
+                    <button
+                      onClick={() => {
+                        const items = activeSection.content_data?.items || [];
+                        handleUpdateSection(activeSection.id, {
+                          content_data: { items: [...items, { title: '', link: '', imageUrl: '' }] }
+                        });
+                      }}
+                      className="px-2 py-1 text-[10px] font-bold bg-gray-100 dark:bg-white/10 hover:bg-gray-200 text-gray-700 dark:text-gray-300 rounded-lg cursor-pointer"
+                    >
+                      + Add Card
+                    </button>
+                  </div>
                   
-                  {Array.from({ length: 4 }).map((_, idx) => {
+                  {(() => {
                     const items = activeSection.content_data?.items || [];
-                    const item = items[idx] || { title: '', link: '', imageUrl: '' };
-                    
-                    const updateGridItem = (itemUpdates: any) => {
-                      const updatedItems = [...items];
-                      updatedItems[idx] = { ...item, ...itemUpdates };
-                      handleUpdateSection(activeSection.id, { content_data: { items: updatedItems } });
-                    };
+                    if (items.length === 0) {
+                      return <p className="text-xs text-gray-500">No cards added yet. Click "+ Add Card" to start.</p>;
+                    }
+                    return items.map((item: any, idx: number) => {
+                      const updateGridItem = (itemUpdates: any) => {
+                        const updatedItems = [...items];
+                        updatedItems[idx] = { ...item, ...itemUpdates };
+                        handleUpdateSection(activeSection.id, { content_data: { items: updatedItems } });
+                      };
 
-                    const handleGridItemImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      try {
-                        const url = await uploadProductImage(file, activeSection.id);
-                        updateGridItem({ imageUrl: url });
-                        toast.success(`Image ${idx + 1} uploaded successfully`);
-                      } catch {
-                        toast.error('Image upload failed');
-                      }
-                    };
+                      const removeGridItem = () => {
+                        const updatedItems = [...items];
+                        updatedItems.splice(idx, 1);
+                        handleUpdateSection(activeSection.id, { content_data: { items: updatedItems } });
+                      };
 
-                    return (
-                      <div key={idx} className="border border-gray-200 dark:border-gray-800 p-3 rounded-xl bg-gray-50/55 dark:bg-[#0f0f1b]/55 space-y-2">
-                        <div className="flex items-center justify-between text-[10px] font-bold text-gray-500 uppercase">
-                          <span>Card {idx + 1}</span>
-                          {item.imageUrl && (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={item.imageUrl} alt="Card preview" className="w-8 h-8 object-cover rounded-lg" />
-                          )}
-                        </div>
+                      const openMediaSelectorForGrid = () => {
+                        setMediaUploadTarget({
+                          sectionId: activeSection.id,
+                          fieldPath: 'content_data',
+                          fieldKey: 'imageUrl',
+                          isGridItem: true,
+                          gridIndex: idx
+                        });
+                        setIsMediaModalOpen(true);
+                      };
 
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="space-y-1">
-                            <label className="text-[10px] text-gray-400">Card Label</label>
-                            <input
-                              type="text"
-                              value={item.title || ''}
-                              onChange={e => updateGridItem({ title: e.target.value })}
-                              placeholder="e.g. Girls"
-                              className="w-full px-2 py-1 text-xs rounded border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#16162a] text-gray-850 dark:text-gray-100 focus:outline-none"
-                            />
+                      return (
+                        <div key={idx} className="border border-gray-200 dark:border-gray-800 p-3 rounded-xl bg-gray-50/55 dark:bg-[#0f0f1b]/55 space-y-3 relative group">
+                          <button
+                            onClick={removeGridItem}
+                            className="absolute top-2 right-2 p-1 text-gray-400 hover:text-red-500 bg-white dark:bg-gray-800 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Remove card"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                          
+                          <div className="flex items-center justify-between text-[10px] font-bold text-gray-500 uppercase pr-6">
+                            <span>Card {idx + 1}</span>
+                            {item.imageUrl && (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={item.imageUrl} alt="Card preview" className="w-8 h-8 object-cover rounded-lg" />
+                            )}
                           </div>
 
                           <div className="space-y-1">
-                            <label className="text-[10px] text-gray-400">Target Link</label>
-                            <input
-                              type="text"
-                              value={item.link || ''}
-                              onChange={e => updateGridItem({ link: e.target.value })}
-                              placeholder="e.g. /category/girls"
+                            <label className="text-[10px] text-gray-400">Quick Select Category</label>
+                            <select
                               className="w-full px-2 py-1 text-xs rounded border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#16162a] text-gray-850 dark:text-gray-100 focus:outline-none"
-                            />
+                              onChange={(e) => {
+                                const catId = e.target.value;
+                                if (catId) {
+                                  const cat = categories.find(c => c.id === catId);
+                                  if (cat) {
+                                    updateGridItem({ title: cat.name, link: `/category/${cat.slug}` });
+                                  }
+                                }
+                              }}
+                            >
+                              <option value="">-- Select Category --</option>
+                              {categories.map(c => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1">
+                              <label className="text-[10px] text-gray-400">Card Label</label>
+                              <input
+                                type="text"
+                                value={item.title || ''}
+                                onChange={e => updateGridItem({ title: e.target.value })}
+                                placeholder="e.g. Girls"
+                                className="w-full px-2 py-1 text-xs rounded border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#16162a] text-gray-850 dark:text-gray-100 focus:outline-none"
+                              />
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="text-[10px] text-gray-400">Target Link</label>
+                              <input
+                                type="text"
+                                value={item.link || ''}
+                                onChange={e => updateGridItem({ link: e.target.value })}
+                                placeholder="e.g. /category/girls"
+                                className="w-full px-2 py-1 text-xs rounded border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#16162a] text-gray-850 dark:text-gray-100 focus:outline-none"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[10px] text-gray-400 block">Upload Card Image</label>
+                            <button
+                              type="button"
+                              onClick={openMediaSelectorForGrid}
+                              className="w-full px-2 py-1.5 text-xs font-bold bg-gray-100 dark:bg-white/10 hover:bg-gray-200 text-gray-700 dark:text-gray-300 rounded-lg cursor-pointer transition-colors"
+                            >
+                              Select Image
+                            </button>
                           </div>
                         </div>
-
-                        <div className="space-y-1">
-                          <label className="text-[10px] text-gray-400 block">Upload Card Image</label>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleGridItemImageUpload}
-                            className="text-[10px] text-gray-500"
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    });
+                  })()}
                 </div>
               )}
             </div>
@@ -807,6 +1350,13 @@ export default function CustomizerEditor({
           )}
         </div>
       </div>
+      
+      <MediaSelectorModal
+        isOpen={isMediaModalOpen}
+        onClose={() => setIsMediaModalOpen(false)}
+        onSelect={handleMediaSelected}
+        multiple={false}
+      />
     </div>
   );
 }

@@ -91,6 +91,7 @@ interface DBProductRow {
   size_guides?: any | null;
   frequently_bought_together_ids?: string[] | null;
   flash_sale_enabled?: boolean | null;
+  flash_sale_start_date?: string | null;
   flash_sale_end_date?: string | null;
   created_at: string;
   updated_at: string;
@@ -182,6 +183,7 @@ const mapProduct = (row: DBProductRow): Product => {
     } : undefined,
     frequentlyBoughtTogetherIds: row.frequently_bought_together_ids || [],
     flashSaleEnabled: row.flash_sale_enabled ?? false,
+    flashSaleStartDate: row.flash_sale_start_date || undefined,
     flashSaleEndDate: row.flash_sale_end_date || undefined,
     tags: row.tags ?? [],
     images,
@@ -317,6 +319,7 @@ export const createProduct = async (
         size_guide_id: product.sizeGuideId || null,
         frequently_bought_together_ids: product.frequentlyBoughtTogetherIds || [],
         flash_sale_enabled: product.flashSaleEnabled || false,
+        flash_sale_start_date: product.flashSaleStartDate || null,
         flash_sale_end_date: product.flashSaleEndDate || null,
         tags: product.tags,
         rating: product.rating,
@@ -423,6 +426,7 @@ export const updateProduct = async (
     if (product.sizeGuideId !== undefined) updatePayload.size_guide_id = product.sizeGuideId || null;
     if (product.frequentlyBoughtTogetherIds !== undefined) updatePayload.frequently_bought_together_ids = product.frequentlyBoughtTogetherIds;
     if (product.flashSaleEnabled !== undefined) updatePayload.flash_sale_enabled = product.flashSaleEnabled;
+    if (product.flashSaleStartDate !== undefined) updatePayload.flash_sale_start_date = product.flashSaleStartDate || null;
     if (product.flashSaleEndDate !== undefined) updatePayload.flash_sale_end_date = product.flashSaleEndDate || null;
     if (product.tags !== undefined) updatePayload.tags = product.tags;
     if (product.rating !== undefined) updatePayload.rating = product.rating;

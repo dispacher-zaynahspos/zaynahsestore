@@ -146,6 +146,8 @@ interface SettingsRow {
   frequently_bought_together_enabled?: boolean | null;
   stock_urgency_enabled?: boolean | null;
   flash_sale_enabled?: boolean | null;
+  flash_sale_start_date?: string | null;
+  flash_sale_end_date?: string | null;
   social_feeds_enabled?: boolean | null;
   cart_timer_enabled?: boolean | null;
   size_guide_enabled?: boolean | null;
@@ -157,6 +159,7 @@ interface SettingsRow {
   recent_buyers_initial_delay?: number | null;
   recent_buyers_interval?: number | null;
   recent_buyers_display_duration?: number | null;
+  recent_buyers_show_on_checkout?: boolean | null;
   exit_intent_image_url?: string | null;
   exit_intent_delay_mobile?: number | null;
   cookie_consent_text?: string | null;
@@ -306,6 +309,8 @@ const mapSettings = (row: SettingsRow): StoreSettings => ({
   frequently_bought_together_enabled: row.frequently_bought_together_enabled ?? true,
   stock_urgency_enabled: row.stock_urgency_enabled ?? true,
   flash_sale_enabled: row.flash_sale_enabled ?? true,
+  flash_sale_start_date: row.flash_sale_start_date || undefined,
+  flash_sale_end_date: row.flash_sale_end_date || undefined,
   social_feeds_enabled: row.social_feeds_enabled ?? true,
   cart_timer_enabled: row.cart_timer_enabled ?? true,
   size_guide_enabled: row.size_guide_enabled ?? true,
@@ -318,6 +323,7 @@ const mapSettings = (row: SettingsRow): StoreSettings => ({
   recent_buyers_initial_delay: row.recent_buyers_initial_delay ?? 15,
   recent_buyers_interval: row.recent_buyers_interval ?? 35,
   recent_buyers_display_duration: row.recent_buyers_display_duration ?? 6,
+  recent_buyers_show_on_checkout: row.recent_buyers_show_on_checkout ?? false,
   exit_intent_image_url: row.exit_intent_image_url ?? '',
   exit_intent_delay_mobile: row.exit_intent_delay_mobile ?? 25,
   cookie_consent_text: row.cookie_consent_text ?? 'We use cookies to optimize your experience, analyze traffic, and support checkout flows. By continuing, you agree to our privacy policy.',
@@ -512,6 +518,8 @@ export const updateSettings = async (settings: Partial<StoreSettings>): Promise<
     if (settings.frequently_bought_together_enabled !== undefined) updatePayload.frequently_bought_together_enabled = settings.frequently_bought_together_enabled;
     if (settings.stock_urgency_enabled !== undefined) updatePayload.stock_urgency_enabled = settings.stock_urgency_enabled;
     if (settings.flash_sale_enabled !== undefined) updatePayload.flash_sale_enabled = settings.flash_sale_enabled;
+    if (settings.flash_sale_start_date !== undefined) updatePayload.flash_sale_start_date = settings.flash_sale_start_date;
+    if (settings.flash_sale_end_date !== undefined) updatePayload.flash_sale_end_date = settings.flash_sale_end_date;
     if (settings.social_feeds_enabled !== undefined) updatePayload.social_feeds_enabled = settings.social_feeds_enabled;
     if (settings.cart_timer_enabled !== undefined) updatePayload.cart_timer_enabled = settings.cart_timer_enabled;
     if (settings.size_guide_enabled !== undefined) updatePayload.size_guide_enabled = settings.size_guide_enabled;
@@ -524,6 +532,7 @@ export const updateSettings = async (settings: Partial<StoreSettings>): Promise<
     if (settings.recent_buyers_initial_delay !== undefined) updatePayload.recent_buyers_initial_delay = settings.recent_buyers_initial_delay;
     if (settings.recent_buyers_interval !== undefined) updatePayload.recent_buyers_interval = settings.recent_buyers_interval;
     if (settings.recent_buyers_display_duration !== undefined) updatePayload.recent_buyers_display_duration = settings.recent_buyers_display_duration;
+    if (settings.recent_buyers_show_on_checkout !== undefined) updatePayload.recent_buyers_show_on_checkout = settings.recent_buyers_show_on_checkout;
     if (settings.exit_intent_image_url !== undefined) updatePayload.exit_intent_image_url = settings.exit_intent_image_url;
     if (settings.exit_intent_delay_mobile !== undefined) updatePayload.exit_intent_delay_mobile = settings.exit_intent_delay_mobile;
     if (settings.cookie_consent_text !== undefined) updatePayload.cookie_consent_text = settings.cookie_consent_text;

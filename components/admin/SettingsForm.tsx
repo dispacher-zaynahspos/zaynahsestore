@@ -212,6 +212,8 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
   const [frequentlyBoughtTogetherEnabled, setFrequentlyBoughtTogetherEnabled] = useState(initialSettings.frequently_bought_together_enabled ?? true);
   const [stockUrgencyEnabled, setStockUrgencyEnabled] = useState(initialSettings.stock_urgency_enabled ?? true);
   const [flashSaleEnabled, setFlashSaleEnabled] = useState(initialSettings.flash_sale_enabled ?? true);
+  const [flashSaleStartDate, setFlashSaleStartDate] = useState(initialSettings.flash_sale_start_date || '');
+  const [flashSaleEndDate, setFlashSaleEndDate] = useState(initialSettings.flash_sale_end_date || '');
   const [socialFeedsEnabled, setSocialFeedsEnabled] = useState(initialSettings.social_feeds_enabled ?? true);
   const [cartTimerEnabled, setCartTimerEnabled] = useState(initialSettings.cart_timer_enabled ?? true);
   const [sizeGuideEnabled, setSizeGuideEnabled] = useState(initialSettings.size_guide_enabled ?? true);
@@ -264,6 +266,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
   const [recentBuyersInitialDelay, setRecentBuyersInitialDelay] = useState(initialSettings.recent_buyers_initial_delay ?? 15);
   const [recentBuyersInterval, setRecentBuyersInterval] = useState(initialSettings.recent_buyers_interval ?? 35);
   const [recentBuyersDisplayDuration, setRecentBuyersDisplayDuration] = useState(initialSettings.recent_buyers_display_duration ?? 6);
+  const [recentBuyersShowOnCheckout, setRecentBuyersShowOnCheckout] = useState(initialSettings.recent_buyers_show_on_checkout ?? false);
   const [exitIntentImageUrl, setExitIntentImageUrl] = useState(initialSettings.exit_intent_image_url || '');
   const [exitIntentDelayMobile, setExitIntentDelayMobile] = useState(initialSettings.exit_intent_delay_mobile ?? 25);
   const [cookieConsentText, setCookieConsentText] = useState(initialSettings.cookie_consent_text || '');
@@ -850,6 +853,8 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
         frequently_bought_together_enabled: frequentlyBoughtTogetherEnabled,
         stock_urgency_enabled: stockUrgencyEnabled,
         flash_sale_enabled: flashSaleEnabled,
+        flash_sale_start_date: flashSaleStartDate || undefined,
+        flash_sale_end_date: flashSaleEndDate || undefined,
         social_feeds_enabled: socialFeedsEnabled,
         cart_timer_enabled: cartTimerEnabled,
         size_guide_enabled: sizeGuideEnabled,
@@ -861,6 +866,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
         recent_buyers_initial_delay: Number(recentBuyersInitialDelay),
         recent_buyers_interval: Number(recentBuyersInterval),
         recent_buyers_display_duration: Number(recentBuyersDisplayDuration),
+        recent_buyers_show_on_checkout: recentBuyersShowOnCheckout,
         exit_intent_image_url: exitIntentImageUrl.trim(),
         exit_intent_delay_mobile: Number(exitIntentDelayMobile),
         cookie_consent_text: cookieConsentText.trim(),
@@ -1164,10 +1170,8 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
           logoWidth={logoWidth}
           setLogoWidth={setLogoWidth}
           faviconUrl={faviconUrl}
-          bannerUrl={bannerUrl}
           uploadingLogo={uploadingLogo}
           uploadingFavicon={uploadingFavicon}
-          uploadingBanner={uploadingBanner}
           handleFileUpload={handleFileUpload}
           handleRemoveImage={handleRemoveImage}
         />
@@ -1485,6 +1489,10 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
           setStockUrgencyEnabled={setStockUrgencyEnabled}
           flashSaleEnabled={flashSaleEnabled}
           setFlashSaleEnabled={setFlashSaleEnabled}
+          flashSaleStartDate={flashSaleStartDate}
+          setFlashSaleStartDate={setFlashSaleStartDate}
+          flashSaleEndDate={flashSaleEndDate}
+          setFlashSaleEndDate={setFlashSaleEndDate}
           socialFeedsEnabled={socialFeedsEnabled}
           setSocialFeedsEnabled={setSocialFeedsEnabled}
           cartTimerEnabled={cartTimerEnabled}
@@ -1543,6 +1551,8 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
           setRecentBuyersInterval={setRecentBuyersInterval}
           recentBuyersDisplayDuration={recentBuyersDisplayDuration}
           setRecentBuyersDisplayDuration={setRecentBuyersDisplayDuration}
+          recentBuyersShowOnCheckout={recentBuyersShowOnCheckout}
+          setRecentBuyersShowOnCheckout={setRecentBuyersShowOnCheckout}
           socialFeedsHomepageEnabled={socialFeedsHomepageEnabled}
           setSocialFeedsHomepageEnabled={setSocialFeedsHomepageEnabled}
           socialFeedsProductEnabled={socialFeedsProductEnabled}

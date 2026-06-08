@@ -60,7 +60,18 @@ export default function MediaLibraryPage() {
     if (!files.length) return;
     try {
       setUploading(true);
-      await Promise.all(files.map(f => uploadProductImage(f, 'library')));
+      const supabase = createClient();
+      await Promise.all(
+        files.map(async f => {
+          const url = await uploadProductImage(f, 'library');
+          const { error } = await supabase.from('product_images').insert({
+            url,
+            alt: f.name,
+            product_id: null,
+          });
+          if (error) throw error;
+        })
+      );
       toast.success(`${files.length} file(s) uploaded`);
       await load();
     } catch (err) {

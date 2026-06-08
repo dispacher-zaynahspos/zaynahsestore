@@ -7,6 +7,7 @@ import { Trash2, Plus, Upload, Star, Bold, Italic, Underline, List, ListOrdered,
 import { Product, ProductImage, ProductVariant, ProductModifier, Category, VariantPreset, VariantPresetValue, Badge, SizeGuide } from '@/lib/types';
 import { createProduct, updateProduct } from '@/lib/services/products';
 import { uploadProductImage, deleteProductImage } from '@/lib/services/storage';
+import MediaSelectorModal from './MediaSelectorModal';
 import { getVariantPresets } from '@/lib/services/variantPresets';
 import { getSizeGuides } from '@/lib/services/sizeGuides';
 import { getBadges } from '@/lib/services/badges';
@@ -71,8 +72,9 @@ export default function ProductForm({ categories, initialProduct }: ProductFormP
   const [sizeGuidesList, setSizeGuidesList] = useState<SizeGuide[]>([]);
 
   const [flashSaleEnabled, setFlashSaleEnabled] = useState(initialProduct?.flashSaleEnabled ?? false);
+  const [flashSaleStartDate, setFlashSaleStartDate] = useState(initialProduct?.flashSaleStartDate ? new Date(initialProduct.flashSaleStartDate).toISOString().slice(0, 16) : '');
   const [flashSaleEndDate, setFlashSaleEndDate] = useState(initialProduct?.flashSaleEndDate ? new Date(initialProduct.flashSaleEndDate).toISOString().slice(0, 16) : '');
-  const [frequentlyBoughtTogetherIds, setFrequentlyBoughtTogetherIds] = useState<string[]>(initialProduct?.frequentlyBoughtTogetherIds || []);
+  const [frequentlyBoughtTogetherIds, setFrequentlyBoughtTogetherIds] = useState(initialProduct?.frequentlyBoughtTogetherIds || []);
   const [productList, setProductList] = useState<Product[]>([]);
 
   useEffect(() => {
@@ -266,122 +268,19 @@ export default function ProductForm({ categories, initialProduct }: ProductFormP
     }
   };
 
-  // Media Library Modal States & Methods
+  // Media Library State for Modal
   const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
-  const [libraryImages, setLibraryImages] = useState<{ id: string; url: string; alt?: string; productName?: string }[]>([]);
-  const [loadingLibrary, setLoadingLibrary] = useState(false);
-  const [librarySearch, setLibrarySearch] = useState('');
-  const [selectedLibraryUrls, setSelectedLibraryUrls] = useState<Set<string>>(new Set());
-
-  const loadLibraryImages = async () => {
-    try {
-      setLoadingLibrary(true);
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from('product_images')
-        .select('*, products(name)')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      // Filter by unique URLs so we don't display duplicate images
-      const seenUrls = new Set<string>();
-      const uniqueItems: { id: string; url: string; alt?: string; productName?: string }[] = [];
-
-      for (const row of (data || [])) {
-        if (!seenUrls.has(row.url)) {
-          seenUrls.add(row.url);
-          uniqueItems.push({
-            id: row.id,
-            url: row.url,
-            alt: row.alt || '',
-            productName: row.products?.name
-          });
-        }
-      }
-
-      setLibraryImages(uniqueItems);
-    } catch (err) {
-      console.error('Failed to load media library:', err);
-      toast.error('Failed to load media library');
-    } finally {
-      setLoadingLibrary(false);
-    }
-  };
-
-  useEffect(() => {
-    if (isMediaModalOpen) {
-      document.body.style.overflow = 'hidden';
-      loadLibraryImages();
-      setSelectedLibraryUrls(new Set());
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isMediaModalOpen]);
-
-  const handleModalImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
-
-    try {
-      setUploading(true);
-      const tempId = initialProduct?.id || 'temp-product-id';
-      
-      const newImages = await Promise.all(
-        files.map(async (file, idx) => {
-          const url = await uploadProductImage(file, tempId);
-          return {
-            url,
-            alt: file.name,
-            sortOrder: images.length + idx,
-            isPrimary: images.length === 0 && idx === 0
-          };
-        })
-      );
-
-      setImages(prev => [...prev, ...newImages]);
-      toast.success('Images uploaded successfully');
-      
-      // Add to library list and auto-select
-      const addedItems = newImages.map((img, idx) => ({
-        id: `temp-${Date.now()}-${idx}-${Math.random()}`,
-        url: img.url,
-        alt: img.alt
-      }));
-      
-      setLibraryImages(prev => [...addedItems, ...prev]);
-      setSelectedLibraryUrls(prev => {
-        const next = new Set(prev);
-        newImages.forEach(img => next.add(img.url));
-        return next;
-      });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to upload images';
-      toast.error(msg);
-      console.error(err);
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleAddSelectedLibraryImages = () => {
-    const urlsToAdd = Array.from(selectedLibraryUrls);
-    if (urlsToAdd.length === 0) {
-      setIsMediaModalOpen(false);
-      return;
-    }
+  
+  const handleAddSelectedLibraryImages = (urls: string[]) => {
+    if (urls.length === 0) return;
 
     const currentUrls = new Set(images.map(img => img.url));
-    const newImages = urlsToAdd
+    const newImages = urls
       .filter(url => !currentUrls.has(url))
       .map((url, idx) => {
-        const matchingLibImg = libraryImages.find(item => item.url === url);
         return {
           url,
-          alt: matchingLibImg?.alt || '',
+          alt: '',
           sortOrder: images.length + idx,
           isPrimary: images.length === 0 && idx === 0
         };
@@ -394,18 +293,6 @@ export default function ProductForm({ categories, initialProduct }: ProductFormP
       toast.info('Selected images are already added to this product');
     }
     setIsMediaModalOpen(false);
-  };
-
-  const toggleSelectLibraryUrl = (url: string) => {
-    setSelectedLibraryUrls(prev => {
-      const next = new Set(prev);
-      if (next.has(url)) {
-        next.delete(url);
-      } else {
-        next.add(url);
-      }
-      return next;
-    });
   };
 
 
@@ -523,6 +410,7 @@ export default function ProductForm({ categories, initialProduct }: ProductFormP
         sizeGuideId: sizeGuideId || undefined,
         frequentlyBoughtTogetherIds: frequentlyBoughtTogetherIds,
         flashSaleEnabled: flashSaleEnabled,
+        flashSaleStartDate: flashSaleStartDate ? new Date(flashSaleStartDate).toISOString() : undefined,
         flashSaleEndDate: flashSaleEndDate ? new Date(flashSaleEndDate).toISOString() : undefined,
         tags: parsedTags,
         description: description.trim() || undefined,
@@ -1445,14 +1333,25 @@ export default function ProductForm({ categories, initialProduct }: ProductFormP
               </label>
 
               {flashSaleEnabled && (
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Countdown End Time</label>
-                  <input
-                    type="datetime-local"
-                    value={flashSaleEndDate}
-                    onChange={(e) => setFlashSaleEndDate(e.target.value)}
-                    className="mt-1.5 w-full rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-[#0f0f1b]/50 px-4 py-2.5 text-sm font-medium text-gray-900 dark:text-white focus:border-[#1a1a2e] dark:focus:border-[#e94560] focus:bg-white dark:focus:bg-[#16162a] focus:outline-none transition-all"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Start Time</label>
+                    <input
+                      type="datetime-local"
+                      value={flashSaleStartDate}
+                      onChange={(e) => setFlashSaleStartDate(e.target.value)}
+                      className="mt-1.5 w-full rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-[#0f0f1b]/50 px-4 py-2.5 text-sm font-medium text-gray-900 dark:text-white focus:border-[#1a1a2e] dark:focus:border-[#e94560] focus:bg-white dark:focus:bg-[#16162a] focus:outline-none transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">End Time</label>
+                    <input
+                      type="datetime-local"
+                      value={flashSaleEndDate}
+                      onChange={(e) => setFlashSaleEndDate(e.target.value)}
+                      className="mt-1.5 w-full rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-[#0f0f1b]/50 px-4 py-2.5 text-sm font-medium text-gray-900 dark:text-white focus:border-[#1a1a2e] dark:focus:border-[#e94560] focus:bg-white dark:focus:bg-[#16162a] focus:outline-none transition-all"
+                    />
+                  </div>
                 </div>
               )}
             </div>
@@ -1628,153 +1527,12 @@ export default function ProductForm({ categories, initialProduct }: ProductFormP
     </form>
 
     {/* Media Library Modal */}
-    {isMediaModalOpen && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in overscroll-contain">
-        <div className="bg-white dark:bg-[#16162a] rounded-2xl max-w-4xl w-full max-h-[85vh] flex flex-col border border-gray-200 dark:border-gray-800 shadow-2xl overflow-hidden transition-all scale-up">
-          
-          {/* Modal Header */}
-          <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-black text-gray-900 dark:text-white">Media Library</h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                Select images to add to this product
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setIsMediaModalOpen(false)}
-              className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-white transition-all cursor-pointer"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-
-          {/* Modal Controls (Search & Upload) */}
-          <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row gap-3 items-center justify-between bg-gray-50/50 dark:bg-gray-900/10">
-            <div className="relative w-full sm:max-w-xs">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search library..."
-                value={librarySearch}
-                onChange={e => setLibrarySearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-[#16162a] text-sm focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
-              />
-            </div>
-
-            <div className="flex items-center gap-3 w-full sm:w-auto">
-              <label className="flex items-center justify-center gap-2 px-4 py-2 bg-[#1a1a2e] hover:bg-[#2e2e4e] text-white text-xs font-bold rounded-xl cursor-pointer transition-colors w-full sm:w-auto">
-                <Upload className="h-4.5 w-4.5" />
-                {uploading ? 'Uploading...' : 'Upload to Library'}
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={handleModalImageUpload}
-                  disabled={uploading}
-                  className="hidden"
-                />
-              </label>
-            </div>
-          </div>
-
-          {/* Modal Grid of Images */}
-          <div className="p-6 overflow-y-auto flex-1 min-h-[300px] overscroll-contain">
-            {loadingLibrary ? (
-              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
-                {Array.from({ length: 12 }).map((_, i) => (
-                  <div key={i} className="aspect-square bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse" />
-                ))}
-              </div>
-            ) : libraryImages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-center">
-                <ImageIcon className="h-12 w-12 text-gray-300 dark:text-gray-700 mb-3" />
-                <p className="text-sm font-semibold text-gray-500">
-                  No images found in Media Library
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
-                {libraryImages
-                  .filter(item => {
-                    if (!librarySearch) return true;
-                    const term = librarySearch.toLowerCase();
-                    return (
-                      (item.alt || '').toLowerCase().includes(term) ||
-                      (item.productName || '').toLowerCase().includes(term) ||
-                      (item.url || '').toLowerCase().includes(term)
-                    );
-                  })
-                  .map(item => {
-                    const isSelected = selectedLibraryUrls.has(item.url);
-                    return (
-                      <div
-                        key={item.id}
-                        onClick={() => toggleSelectLibraryUrl(item.url)}
-                        className={`group relative aspect-square rounded-xl overflow-hidden border-2 cursor-pointer transition-all ${
-                          isSelected
-                            ? 'border-[#e94560] ring-2 ring-[#e94560]/30'
-                            : 'border-gray-100 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
-                        }`}
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={item.url}
-                          alt={item.alt || 'Library Image'}
-                          className="absolute inset-0 w-full h-full object-cover"
-                        />
-
-                        {/* Selected Overlay */}
-                        {isSelected && (
-                          <div className="absolute inset-0 bg-[#e94560]/20 flex items-center justify-center">
-                            <div className="h-6 w-6 rounded-full bg-[#e94560] flex items-center justify-center shadow-lg">
-                              <Check className="h-3.5 w-3.5 text-white" />
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Name Overlay */}
-                        {item.productName && (
-                          <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-1">
-                            <span className="text-[9px] text-white font-medium truncate block">
-                              {item.productName}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-              </div>
-            )}
-          </div>
-
-          {/* Modal Footer */}
-          <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/20 flex items-center justify-between">
-            <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-              {selectedLibraryUrls.size} image(s) selected
-            </span>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setIsMediaModalOpen(false)}
-                className="px-4 py-2 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 text-xs font-bold rounded-xl cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleAddSelectedLibraryImages}
-                disabled={selectedLibraryUrls.size === 0}
-                className="px-4 py-2 bg-[#e94560] hover:bg-[#d8344e] disabled:opacity-50 text-white text-xs font-bold rounded-xl cursor-pointer transition-colors"
-              >
-                Add Selected Images
-              </button>
-            </div>
-          </div>
-
-        </div>
-      </div>
-    )}
+    <MediaSelectorModal
+      isOpen={isMediaModalOpen}
+      onClose={() => setIsMediaModalOpen(false)}
+      onSelect={handleAddSelectedLibraryImages}
+      multiple={true}
+    />
   </>
   );
 }

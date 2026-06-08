@@ -63,16 +63,8 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
 
   // Embla carousel for mobile touch swipe
   const [emblaRef, emblaApi] = useEmblaCarousel({
-    loop: true,
-    startIndex: activeImageIndex
+    loop: true
   });
-
-  // Keep Embla in sync when activeImageIndex changes from outside (thumbnails / variant selector)
-  useEffect(() => {
-    if (emblaApi) {
-      emblaApi.scrollTo(activeImageIndex, true);
-    }
-  }, [activeImageIndex, emblaApi]);
 
   // Keep activeImageIndex in sync when user swipes
   useEffect(() => {
@@ -132,13 +124,13 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
       const idx = images.findIndex(img => img.url === v.imageUrl);
       if (idx !== -1) {
         // Found — switch gallery to that index so arrows work from here
-        setActiveImageIndex(idx);
+        emblaApi?.scrollTo(idx);
       } else {
         // Variant image not in gallery — keep current index, just update activeImage fallback
         setActiveImage(v.imageUrl);
       }
     }
-  }, [images]);
+  }, [images, emblaApi]);
 
   // Client-side states (avoid hydration mismatch)
   const [mounted, setMounted] = useState(false);
@@ -149,7 +141,7 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
   const [productUrl, setProductUrl] = useState('');
 
   // Flash Sale Timer state
-  const [timeLeft, setTimeLeft] = useState({ hours: 4, minutes: 34, seconds: 12, expired: false });
+  const [timeLeft, setTimeLeft] = useState({ hours: 0, minutes: 0, seconds: 0, expired: true, isIncoming: false });
 
   // Bundle states
   const [bundleProducts, setBundleProducts] = useState<Product[]>([]);
@@ -201,22 +193,57 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
 
     // Timer countdown loop
     const updateTimeLeft = () => {
-      if (!product.flashSaleEnabled) {
-        setTimeLeft({ hours: 0, minutes: 0, seconds: 0, expired: true });
-        return;
-      }
-      if (!product.flashSaleEndDate) {
-        // Fallback: 4 hours from now
-        setTimeLeft({ hours: 4, minutes: 34, seconds: 12, expired: false });
-        return;
-      }
+      let isFlashSaleActive = false;
+      let targetDateStr: string | undefined = undefined;
+      let isIncoming = false;
 
       const now = new Date().getTime();
-      const end = new Date(product.flashSaleEndDate).getTime();
-      const diff = end - now;
+
+      // Check product level first
+      const prodStart = product.flashSaleStartDate ? new Date(product.flashSaleStartDate).getTime() : 0;
+      const prodEnd = product.flashSaleEndDate ? new Date(product.flashSaleEndDate).getTime() : 0;
+
+      if (product.flashSaleEnabled && (prodEnd > now || (prodStart > now && prodEnd === 0) || (!product.flashSaleStartDate && !product.flashSaleEndDate))) {
+        isFlashSaleActive = true;
+        if (prodStart > now) {
+          isIncoming = true;
+          targetDateStr = product.flashSaleStartDate!;
+        } else {
+          targetDateStr = product.flashSaleEndDate;
+        }
+      } else if (settings.flash_sale_enabled) {
+        // Fallback to global settings
+        const globalStart = settings.flash_sale_start_date ? new Date(settings.flash_sale_start_date).getTime() : 0;
+        const globalEnd = settings.flash_sale_end_date ? new Date(settings.flash_sale_end_date).getTime() : 0;
+
+        if (globalEnd > now || (globalStart > now && globalEnd === 0) || (!settings.flash_sale_start_date && !settings.flash_sale_end_date)) {
+          isFlashSaleActive = true;
+          if (globalStart > now) {
+            isIncoming = true;
+            targetDateStr = settings.flash_sale_start_date;
+          } else {
+            targetDateStr = settings.flash_sale_end_date;
+          }
+        }
+      }
+
+      if (!isFlashSaleActive) {
+        setTimeLeft({ hours: 0, minutes: 0, seconds: 0, expired: true, isIncoming: false });
+        return;
+      }
+
+      // Fallback: End of today if no target end date is set
+      if (!targetDateStr) {
+        const midnight = new Date();
+        midnight.setHours(23, 59, 59, 999);
+        targetDateStr = midnight.toISOString();
+      }
+
+      const targetTime = new Date(targetDateStr).getTime();
+      const diff = targetTime - now;
 
       if (diff <= 0) {
-        setTimeLeft({ hours: 0, minutes: 0, seconds: 0, expired: true });
+        setTimeLeft({ hours: 0, minutes: 0, seconds: 0, expired: true, isIncoming: false });
         return;
       }
 
@@ -224,14 +251,14 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
-      setTimeLeft({ hours, minutes, seconds, expired: false });
+      setTimeLeft({ hours, minutes, seconds, expired: false, isIncoming });
     };
 
     updateTimeLeft();
     const countdownTimer = setInterval(updateTimeLeft, 1000);
 
     return () => clearInterval(countdownTimer);
-  }, [product.id, settings.minViews, settings.maxViews, product.categoryId, product.flashSaleEnabled, product.flashSaleEndDate, product.frequentlyBoughtTogetherIds]);
+  }, [product.id, settings.minViews, settings.maxViews, product.categoryId, product.flashSaleEnabled, product.flashSaleStartDate, product.flashSaleEndDate, product.frequentlyBoughtTogetherIds, settings.flash_sale_enabled, settings.flash_sale_start_date, settings.flash_sale_end_date]);
 
   const handleAddBundleToCart = () => {
     // Add main product
@@ -319,12 +346,12 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
             className="relative aspect-square w-full overflow-hidden rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-transparent group"
           >
             {/* Embla Viewport */}
-            <div className="overflow-hidden w-full h-full cursor-zoom-in" ref={emblaRef} onClick={() => setLightboxOpen(true)}>
+            <div className="overflow-hidden w-full h-full cursor-zoom-in touch-pan-y" ref={emblaRef} onClick={() => setLightboxOpen(true)}>
               <div className="flex h-full">
                 {images.map((img, i) => (
                   <div
                     key={img.id || i}
-                    className="relative flex-none w-full h-full select-none overflow-hidden"
+                    className="relative flex-[0_0_100%] min-w-0 w-full h-full select-none overflow-hidden"
                     onMouseMove={(e) => {
                       if ((e.target as HTMLElement).closest('button')) return;
                       if (!imgContainerRef.current) return;
@@ -345,6 +372,7 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
                         }`}
                       style={isZoomed && i === activeImageIndex ? { transformOrigin: `${zoomPos.x}% ${zoomPos.y}%` } : {}}
                       priority={i === 0}
+                      draggable={false}
                       unoptimized={true}
                     />
                   </div>
@@ -363,7 +391,7 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
                 type="button"
                 onMouseEnter={() => setIsZoomed(false)}
                 onMouseMove={(e) => e.stopPropagation()}
-                onClick={(e) => { e.stopPropagation(); setActiveImageIndex(idx => (idx - 1 + images.length) % images.length); }}
+                onClick={(e) => { e.stopPropagation(); emblaApi?.scrollPrev(); }}
                 className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-9 h-9 flex items-center justify-center rounded-full bg-white/90 dark:bg-black/60 shadow-md text-gray-800 dark:text-white opacity-100 md:opacity-0 md:group-hover:opacity-100 hover:bg-white dark:hover:bg-black transition-all cursor-pointer"
                 aria-label="Previous image"
               >
@@ -377,7 +405,7 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
                 type="button"
                 onMouseEnter={() => setIsZoomed(false)}
                 onMouseMove={(e) => e.stopPropagation()}
-                onClick={(e) => { e.stopPropagation(); setActiveImageIndex(idx => (idx + 1) % images.length); }}
+                onClick={(e) => { e.stopPropagation(); emblaApi?.scrollNext(); }}
                 className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-9 h-9 flex items-center justify-center rounded-full bg-white/90 dark:bg-black/60 shadow-md text-gray-800 dark:text-white opacity-100 md:opacity-0 md:group-hover:opacity-100 hover:bg-white dark:hover:bg-black transition-all cursor-pointer"
                 aria-label="Next image"
               >
@@ -393,7 +421,7 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
                     key={i}
                     type="button"
                     onMouseMove={(e) => e.stopPropagation()}
-                    onClick={(e) => { e.stopPropagation(); setActiveImageIndex(i); }}
+                    onClick={(e) => { e.stopPropagation(); emblaApi?.scrollTo(i); }}
                     className={`w-1.5 h-1.5 rounded-full transition-all cursor-pointer ${i === activeImageIndex ? 'bg-white scale-125 shadow' : 'bg-white/50'
                       }`}
                   />
@@ -408,7 +436,7 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
               {images.map((img, i) => (
                 <button
                   key={i}
-                  onClick={() => setActiveImageIndex(i)}
+                  onClick={() => emblaApi?.scrollTo(i)}
                   className={`relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg border transition-all cursor-pointer ${i === activeImageIndex
                       ? 'border-[#e94560] ring-2 ring-[#e94560]/10'
                       : 'border-gray-200 dark:border-gray-800 hover:border-gray-400'
@@ -474,27 +502,36 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
             </div>
 
             {/* Countdown timer for sales / urgency */}
-            {mounted && settings.flash_sale_enabled !== false && product.flashSaleEnabled && !timeLeft.expired && (
-              <div className="bg-rose-50 dark:bg-rose-950/10 border border-rose-100 dark:border-rose-900/30 rounded-2xl p-4 mt-2">
-                <p className="text-xs font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
+            {mounted && !timeLeft.expired && (
+              <div className={`rounded-2xl p-4 mt-2 border ${timeLeft.isIncoming
+                ? 'bg-amber-50 dark:bg-amber-950/10 border-amber-100 dark:border-amber-900/30'
+                : 'bg-rose-50 dark:bg-rose-950/10 border-rose-100 dark:border-rose-900/30'
+                }`}>
+                <p className={`text-xs font-bold flex items-center gap-1.5 ${timeLeft.isIncoming ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400'}`}>
                   <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-450 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                    <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${timeLeft.isIncoming ? 'bg-amber-400' : 'bg-rose-400'}`}></span>
+                    <span className={`relative inline-flex rounded-full h-2 w-2 ${timeLeft.isIncoming ? 'bg-amber-500' : 'bg-rose-500'}`}></span>
                   </span>
-                  FLASH SALE — Offer Ends In:
+                  {timeLeft.isIncoming ? 'FLASH SALE — Starts In:' : 'FLASH SALE — Offer Ends In:'}
                 </p>
                 <div className="flex items-center gap-2 mt-2">
-                  <div className="flex flex-col items-center justify-center bg-white dark:bg-gray-800 text-rose-650 dark:text-rose-450 font-extrabold w-11 py-1 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700">
+                  <div className={`flex flex-col items-center justify-center bg-white dark:bg-gray-800 font-extrabold w-11 py-1 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 ${
+                    timeLeft.isIncoming ? 'text-amber-700 dark:text-amber-400' : 'text-rose-700 dark:text-rose-400'
+                  }`}>
                     <span className="text-xs font-mono">{String(timeLeft.hours).padStart(2, '0')}</span>
                     <span className="text-[7px] text-gray-400 font-normal">HRS</span>
                   </div>
-                  <span className="font-extrabold text-rose-500">:</span>
-                  <div className="flex flex-col items-center justify-center bg-white dark:bg-gray-800 text-rose-650 dark:text-rose-450 font-extrabold w-11 py-1 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700">
+                  <span className={`font-extrabold ${timeLeft.isIncoming ? 'text-amber-500' : 'text-rose-500'}`}>:</span>
+                  <div className={`flex flex-col items-center justify-center bg-white dark:bg-gray-800 font-extrabold w-11 py-1 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 ${
+                    timeLeft.isIncoming ? 'text-amber-700 dark:text-amber-400' : 'text-rose-700 dark:text-rose-400'
+                  }`}>
                     <span className="text-xs font-mono">{String(timeLeft.minutes).padStart(2, '0')}</span>
                     <span className="text-[7px] text-gray-400 font-normal">MIN</span>
                   </div>
-                  <span className="font-extrabold text-rose-500">:</span>
-                  <div className="flex flex-col items-center justify-center bg-white dark:bg-gray-800 text-rose-650 dark:text-rose-450 font-extrabold w-11 py-1 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700">
+                  <span className={`font-extrabold ${timeLeft.isIncoming ? 'text-amber-500' : 'text-rose-500'}`}>:</span>
+                  <div className={`flex flex-col items-center justify-center bg-white dark:bg-gray-800 font-extrabold w-11 py-1 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 ${
+                    timeLeft.isIncoming ? 'text-amber-700 dark:text-amber-400' : 'text-rose-700 dark:text-rose-400'
+                  }`}>
                     <span className="text-xs font-mono">{String(timeLeft.seconds).padStart(2, '0')}</span>
                     <span className="text-[7px] text-gray-400 font-normal">SEC</span>
                   </div>
@@ -742,9 +779,9 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
           {mounted && settings.frequently_bought_together_enabled !== false && bundleProducts.length > 0 && (
             <div className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#16162a] rounded-2xl p-5 space-y-4 shadow-sm transition-colors">
               <h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">Frequently Bought Together</h4>
-              <div className="flex flex-col sm:flex-row items-center gap-4">
+              <div className="flex flex-col sm:flex-row flex-wrap items-center gap-4">
                 {/* Current Product Mini-card */}
-                <div className="flex items-center gap-3 bg-gray-50 dark:bg-white/5 p-2 rounded-xl w-full border border-gray-100 dark:border-gray-800/80">
+                <div className="flex items-center gap-3 bg-gray-50 dark:bg-white/5 p-2 rounded-xl w-full sm:w-auto sm:flex-1 min-w-[220px] border border-gray-100 dark:border-gray-800/80">
                   <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-gray-100">
                     <Image
                       src={images[0]?.url || 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=600&auto=format&fit=crop&q=60'}
@@ -767,7 +804,7 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
                       <span className="text-gray-400 font-bold text-lg">+</span>
                       <div
                         onClick={() => setSelectedBundleIds(prev => prev.includes(bp.id) ? prev.filter(id => id !== bp.id) : [...prev, bp.id])}
-                        className={`flex items-center gap-3 bg-gray-50 dark:bg-white/5 p-2 rounded-xl w-full border cursor-pointer transition-all ${isChecked ? 'border-amber-500' : 'border-gray-100 dark:border-gray-850'
+                        className={`flex items-center gap-3 bg-gray-50 dark:bg-white/5 p-2 rounded-xl w-full sm:w-auto sm:flex-1 min-w-[220px] border cursor-pointer transition-all ${isChecked ? 'border-amber-500' : 'border-gray-100 dark:border-gray-850'
                           }`}
                       >
                         <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-gray-105 flex-shrink-0">

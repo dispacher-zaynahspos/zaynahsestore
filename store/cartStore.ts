@@ -5,7 +5,6 @@ import { CartItem, Product, ProductVariant, ProductModifier, Coupon } from '@/li
 interface CartStore {
   items: CartItem[];
   cartCreatedAt: string | null;
-  isDrawerOpen: boolean;
   appliedCoupon: Coupon | null;
   addItem: (product: Product, variant?: ProductVariant, modifiers?: ProductModifier[], qty?: number) => void;
   removeItem: (cartItemId: string) => void;
@@ -14,7 +13,6 @@ interface CartStore {
   totalItems: () => number;
   totalPrice: () => number;
   resetCartTimer: () => void;
-  setDrawerOpen: (open: boolean) => void;
   applyCoupon: (coupon: Coupon | null) => void;
 }
 
@@ -33,7 +31,6 @@ export const useCartStore = create<CartStore>()(
     (set, get) => ({
       items: [],
       cartCreatedAt: null,
-      isDrawerOpen: false,
       appliedCoupon: null,
 
       addItem: (product, variant, modifiers = [], qty = 1) => {
@@ -47,7 +44,6 @@ export const useCartStore = create<CartStore>()(
           const existing = state.items.find(i => i.id === cartItemId);
           if (existing) {
             return {
-              isDrawerOpen: true,
               cartCreatedAt: newCartCreatedAt,
               items: state.items.map(i =>
                 i.id === cartItemId
@@ -57,7 +53,6 @@ export const useCartStore = create<CartStore>()(
             };
           }
           return {
-            isDrawerOpen: true,
             cartCreatedAt: newCartCreatedAt,
             items: [...state.items, {
               id: cartItemId,
@@ -101,7 +96,6 @@ export const useCartStore = create<CartStore>()(
       totalItems: () => get().items.reduce((sum, i) => sum + i.quantity, 0),
       totalPrice: () => get().items.reduce((sum, i) => sum + i.total, 0),
       resetCartTimer: () => set({ cartCreatedAt: new Date().toISOString() }),
-      setDrawerOpen: (open) => set({ isDrawerOpen: open }),
       applyCoupon: (coupon) => set({ appliedCoupon: coupon }),
     }),
     { name: 'zaynahs-cart' }

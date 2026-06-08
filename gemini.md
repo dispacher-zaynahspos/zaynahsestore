@@ -54,6 +54,7 @@
 - Skeleton loaders on every data fetch
 - Toast notifications (sonner) for all actions
 - No page without loading state
+- **Category Links**: All category links MUST open on the shop page with the category filter applied (e.g. `/shop?category=slug`). Never link to a dedicated `/category/[slug]` route unless it redirects to the shop page.
 
 ---
 
@@ -460,6 +461,11 @@ images: {
   formats: ['image/webp', 'image/avif'],
 }
 ```
+
+## RULE S6 — UNIVERSAL MEDIA SELECTOR
+- All admin panel image upload features MUST use the shared `MediaSelectorModal` component instead of direct `<input type="file">`.
+- This ensures a unified experience where users can both upload new images and select from existing uploaded media in the Supabase `product-images` bucket.
+- The modal provides built-in upload logic, compression integration, and search/filtering of existing media.
 
 ---
 

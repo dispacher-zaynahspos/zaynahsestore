@@ -4,8 +4,8 @@ import React, { useState } from 'react';
 import { Plus, Edit, Trash2, X } from 'lucide-react';
 import { Category } from '@/lib/types';
 import { createCategory, updateCategory, deleteCategory } from '@/lib/services/categories';
-import { uploadProductImage } from '@/lib/services/storage';
 import { toast } from 'sonner';
+import MediaSelectorModal from './MediaSelectorModal';
 
 interface CategoryManagerProps {
   initialCategories: Category[];
@@ -25,7 +25,7 @@ export default function CategoryManager({ initialCategories }: CategoryManagerPr
   const [imageUrl, setImageUrl] = useState('');
   const [sortOrder, setSortOrder] = useState('0');
   const [active, setActive] = useState(true);
-  const [uploading, setUploading] = useState(false);
+  const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
 
   // Auto-fill slug
   React.useEffect(() => {
@@ -219,34 +219,14 @@ export default function CategoryManager({ initialCategories }: CategoryManagerPr
                   )}
 
                   <div className="flex-1 flex flex-col gap-1.5">
-                    <label className="relative self-start flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-white/5 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 text-xs font-bold rounded-lg cursor-pointer transition-colors">
-                      {uploading ? (
-                        <span>Uploading...</span>
-                      ) : (
-                        <span>Upload Image</span>
-                      )}
-                      <input 
-                        type="file" 
-                        accept="image/*" 
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          try {
-                            setUploading(true);
-                            const url = await uploadProductImage(file, 'categories');
-                            setImageUrl(url);
-                            toast.success('Category banner uploaded and compressed!');
-                          } catch (err) {
-                            toast.error('Failed to upload category image');
-                          } finally {
-                            setUploading(false);
-                          }
-                        }} 
-                        disabled={uploading} 
-                        className="hidden" 
-                      />
-                    </label>
-                    <span className="text-[10px] text-gray-400 dark:text-gray-500">Optimized WebP &lt; 50 KB</span>
+                    <button
+                      type="button"
+                      onClick={() => setIsMediaModalOpen(true)}
+                      className="relative self-start flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-white/5 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 text-xs font-bold rounded-lg cursor-pointer transition-colors"
+                    >
+                      Select Media
+                    </button>
+                    <span className="text-[10px] text-gray-400 dark:text-gray-500">Select or upload WebP &lt; 50 KB</span>
                   </div>
                 </div>
               </div>
@@ -303,6 +283,17 @@ export default function CategoryManager({ initialCategories }: CategoryManagerPr
           </div>
         </div>
       )}
+
+      <MediaSelectorModal
+        isOpen={isMediaModalOpen}
+        onClose={() => setIsMediaModalOpen(false)}
+        onSelect={(urls) => {
+          if (urls.length > 0) {
+            setImageUrl(urls[0]);
+          }
+        }}
+        multiple={false}
+      />
     </div>
   );
 }

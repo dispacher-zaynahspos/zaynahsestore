@@ -88,6 +88,7 @@ export interface Product {
   sizeGuide?: SizeGuide;
   frequentlyBoughtTogetherIds?: string[];
   flashSaleEnabled?: boolean;
+  flashSaleStartDate?: string | null;
   flashSaleEndDate?: string;
   createdAt: string;
   updatedAt: string;
@@ -241,6 +242,8 @@ export interface StoreSettings {
   frequently_bought_together_enabled?: boolean;
   stock_urgency_enabled?: boolean;
   flash_sale_enabled?: boolean;
+  flash_sale_start_date?: string;
+  flash_sale_end_date?: string;
   social_feeds_enabled?: boolean;
   cart_timer_enabled?: boolean;
   size_guide_enabled?: boolean;
@@ -253,6 +256,7 @@ export interface StoreSettings {
   recent_buyers_initial_delay?: number;
   recent_buyers_interval?: number;
   recent_buyers_display_duration?: number;
+  recent_buyers_show_on_checkout?: boolean;
   exit_intent_image_url?: string;
   exit_intent_delay_mobile?: number;
   cookie_consent_text?: string;
@@ -286,7 +290,7 @@ export interface SizeGuide {
 
 export interface HomepageSection {
   id: string;
-  section_type: 'hero_banner' | 'product_grid' | 'category_list' | 'promo_banner' | 'trust_badges' | 'recent_reviews' | 'brands_logos' | 'category_grid';
+  section_type: 'hero_banner' | 'product_grid' | 'category_list' | 'promo_banner' | 'trust_badges' | 'recent_reviews' | 'brands_logos' | 'category_grid' | 'social_feed';
   title?: string;
   settings: Record<string, any>;
   content_data: Record<string, any>;

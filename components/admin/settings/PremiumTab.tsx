@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
-import { Upload, Trash2, Image as ImageIcon, Loader2, Plus } from 'lucide-react';
+import React, { useState } from 'react';
+import { Upload, Trash2, Image as ImageIcon, Loader2, Plus, Search, Zap } from 'lucide-react';
 import { Product, StoreSettings } from '@/lib/types';
+import MediaSelectorModal from '../MediaSelectorModal';
 
 interface PremiumTabProps {
   initialSettings: StoreSettings;
@@ -22,6 +23,10 @@ interface PremiumTabProps {
   setStockUrgencyEnabled: (v: boolean) => void;
   flashSaleEnabled: boolean;
   setFlashSaleEnabled: (v: boolean) => void;
+  flashSaleStartDate: string;
+  setFlashSaleStartDate: (v: string) => void;
+  flashSaleEndDate: string;
+  setFlashSaleEndDate: (v: string) => void;
   socialFeedsEnabled: boolean;
   setSocialFeedsEnabled: (v: boolean) => void;
   cartTimerEnabled: boolean;
@@ -92,6 +97,8 @@ interface PremiumTabProps {
   setRecentBuyersInterval: (v: number) => void;
   recentBuyersDisplayDuration: number;
   setRecentBuyersDisplayDuration: (v: number) => void;
+  recentBuyersShowOnCheckout: boolean;
+  setRecentBuyersShowOnCheckout: (v: boolean) => void;
 
   // Social Ribbon Customizer
   socialFeedsHomepageEnabled: boolean;
@@ -140,6 +147,10 @@ export default function PremiumTab({
   setStockUrgencyEnabled,
   flashSaleEnabled,
   setFlashSaleEnabled,
+  flashSaleStartDate,
+  setFlashSaleStartDate,
+  flashSaleEndDate,
+  setFlashSaleEndDate,
   socialFeedsEnabled,
   setSocialFeedsEnabled,
   cartTimerEnabled,
@@ -198,6 +209,8 @@ export default function PremiumTab({
   setRecentBuyersInterval,
   recentBuyersDisplayDuration,
   setRecentBuyersDisplayDuration,
+  recentBuyersShowOnCheckout,
+  setRecentBuyersShowOnCheckout,
   socialFeedsHomepageEnabled,
   setSocialFeedsHomepageEnabled,
   socialFeedsProductEnabled,
@@ -225,6 +238,8 @@ export default function PremiumTab({
   handleAddSocialFeedItem,
   handleDeleteSocialFeedItem
 }: PremiumTabProps) {
+  const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
       {/* Active Features Checklist Toggle */}
@@ -344,7 +359,42 @@ export default function PremiumTab({
         </div>
       </div>
 
-      {/* Exit Intent Config */}
+      {/* Storewide Flash Sale */}
+      <div className="bg-white dark:bg-[#16162a] border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm space-y-4">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-8 h-8 rounded-full bg-[#e94560]/10 flex items-center justify-center">
+            <Zap className="h-4 w-4 text-[#e94560]" />
+          </div>
+          <div>
+            <h3 className="text-sm font-extrabold text-gray-900 dark:text-white uppercase tracking-wider">Storewide Flash Sale</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Configure global countdown timer.</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">Global Start Date & Time</label>
+            <input
+              type="datetime-local"
+              value={flashSaleStartDate ? new Date(new Date(flashSaleStartDate).getTime() - new Date(flashSaleStartDate).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''}
+              onChange={(e) => setFlashSaleStartDate(e.target.value ? new Date(e.target.value).toISOString() : '')}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-[#e94560] focus:border-[#e94560] bg-white dark:bg-[#16162a] text-gray-900 dark:text-white text-sm"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">Global End Date & Time</label>
+            <input
+              type="datetime-local"
+              value={flashSaleEndDate ? new Date(new Date(flashSaleEndDate).getTime() - new Date(flashSaleEndDate).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''}
+              onChange={(e) => setFlashSaleEndDate(e.target.value ? new Date(e.target.value).toISOString() : '')}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-[#e94560] focus:border-[#e94560] bg-white dark:bg-[#16162a] text-gray-900 dark:text-white text-sm"
+            />
+          </div>
+        </div>
+        <p className="text-[10px] text-gray-500 mt-1">Configure when the flash sale begins and ends. When active, it automatically shows a countdown timer to customers.</p>
+      </div>
+
+      {/* Cart Timer Settings */}
       <div className="bg-white dark:bg-[#16162a] border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm space-y-4">
         <h3 className="text-sm font-extrabold text-[#e94560] uppercase tracking-wider">Exit Intent Popup (WhatsApp)</h3>
         <div className="flex items-center justify-between">
@@ -590,6 +640,17 @@ export default function PremiumTab({
             type="checkbox"
             checked={recentBuyersEnabled}
             onChange={(e) => setRecentBuyersEnabled(e.target.checked)}
+            className="w-4 h-4 rounded text-[#e94560] focus:ring-[#e94560] cursor-pointer"
+          />
+        </div>
+
+        {/* Show on Checkout */}
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-bold text-gray-700 dark:text-gray-300">Show on Cart & Checkout Pages</label>
+          <input
+            type="checkbox"
+            checked={recentBuyersShowOnCheckout}
+            onChange={(e) => setRecentBuyersShowOnCheckout(e.target.checked)}
             className="w-4 h-4 rounded text-[#e94560] focus:ring-[#e94560] cursor-pointer"
           />
         </div>
@@ -848,21 +909,15 @@ export default function PremiumTab({
                     </button>
                   </div>
                 ) : (
-                  <label className="flex flex-col items-center justify-center w-16 h-16 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700 hover:border-[#e94560] cursor-pointer transition-colors bg-white dark:bg-[#16162a]">
-                    {uploadingFeedImage ? (
-                      <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-                    ) : (
-                      <Upload className="h-4 w-4 text-gray-400" />
-                    )}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleUploadSocialFeedImage}
-                      className="hidden"
-                    />
-                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setIsMediaModalOpen(true)}
+                    className="flex flex-col items-center justify-center w-16 h-16 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700 hover:border-[#e94560] cursor-pointer transition-colors bg-white dark:bg-[#16162a]"
+                  >
+                    <Search className="h-4 w-4 text-gray-400" />
+                  </button>
                 )}
-                <span className="text-[10px] text-gray-400">Optimized WebP, under 50KB automatically.</span>
+                <span className="text-[10px] text-gray-400">Select an existing image or upload a new one.</span>
               </div>
             </div>
 
@@ -940,6 +995,16 @@ export default function PremiumTab({
           </div>
         </div>
       </div>
+      <MediaSelectorModal
+        isOpen={isMediaModalOpen}
+        onClose={() => setIsMediaModalOpen(false)}
+        onSelect={(urls) => {
+          if (urls.length > 0) {
+            setTempFeedImageUrl(urls[0]);
+          }
+          setIsMediaModalOpen(false);
+        }}
+      />
     </div>
   );
 }

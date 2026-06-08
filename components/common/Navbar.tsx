@@ -27,7 +27,6 @@ export default function Navbar({
   const pathname = usePathname();
   const router = useRouter();
   const totalItems = useCart((state) => state.totalItems());
-  const setDrawerOpen = useCart((state) => state.setDrawerOpen);
   const isAdmin = pathname?.startsWith('/admin');
 
   // Load and fallback settings values
@@ -284,8 +283,8 @@ export default function Navbar({
   );
 
   const renderCart = () => !isAdmin && (
-    <button
-      onClick={() => setDrawerOpen(true)}
+    <Link
+      href="/cart"
       key="cart"
       className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-[#1a1a2e] dark:hover:text-white transition-all cursor-pointer"
     >
@@ -295,7 +294,7 @@ export default function Navbar({
           {totalItems}
         </span>
       )}
-    </button>
+    </Link>
   );
 
   const renderAccountLink = () => !isAdmin && (
@@ -664,16 +663,14 @@ export default function Navbar({
                       <span>Login / Register</span>
                     </Link>
                   )}
-                  <button
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      setDrawerOpen(true);
-                    }}
+                  <Link
+                    href="/cart"
+                    onClick={() => setMobileMenuOpen(false)}
                     className="flex w-full items-center gap-2.5 py-1.5 text-sm font-bold text-gray-900 dark:text-white hover:text-[#e94560] transition-colors cursor-pointer"
                   >
                     <ShoppingCart className="h-4 w-4" />
                     <span>Shopping Cart {mounted && totalItems > 0 && `(${totalItems})`}</span>
-                  </button>
+                  </Link>
                   <Link
                     href="/wishlist"
                     onClick={() => setMobileMenuOpen(false)}

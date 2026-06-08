@@ -12,6 +12,19 @@
 1. What changed and why
 ```
 
+### [2026-06-08] v2.5.0 — Make product_id Nullable in product_images
+**Files Updated:** [20260608135800_make_product_id_nullable_in_product_images.sql](file:///Users/shoaib/Desktop/Zaynahs%20e-store/supabase/migrations/20260608135800_make_product_id_nullable_in_product_images.sql), [SUPER_MASTER_SCHEMA.sql](file:///Users/shoaib/Desktop/Zaynahs%20e-store/supabase/schema/SUPER_MASTER_SCHEMA.sql), [SCHEMA_CHANGE_LOG.md](file:///Users/shoaib/Desktop/Zaynahs%20e-store/SCHEMA_CHANGE_LOG.md)
+**Changes:**
+1. Dropped `NOT NULL` constraint from `product_id` column in `product_images` table to allow general media library/banner image uploads to be registered in the database.
+
+### [2026-06-08] v2.4.0 — Flash Sale Start Dates Scheduling & Timer Robustness
+**Files Updated:** [20260608135000_add_flash_sale_start_dates.sql](file:///Users/shoaib/Desktop/Zaynahs%20e-store/supabase/migrations/20260608135000_add_flash_sale_start_dates.sql), [SUPER_MASTER_SCHEMA.sql](file:///Users/shoaib/Desktop/Zaynahs%20e-store/supabase/schema/SUPER_MASTER_SCHEMA.sql), [types.ts](file:///Users/shoaib/Desktop/Zaynahs%20e-store/lib/types.ts), [settings.ts](file:///Users/shoaib/Desktop/Zaynahs%20e-store/lib/services/settings.ts), [products.ts](file:///Users/shoaib/Desktop/Zaynahs%20e-store/lib/services/products.ts), [ProductDetail.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/store/ProductDetail.tsx), [SCHEMA_CHANGE_LOG.md](file:///Users/shoaib/Desktop/Zaynahs%20e-store/SCHEMA_CHANGE_LOG.md)
+**Changes:**
+1. Database migration added: `flash_sale_start_date` column to `store_settings` and `products` tables.
+2. Storefront Flash Sale Logic Upgrade: Fixed conditional logic so storefront detail timer falls back to global settings when product-level timer is not set or expired. Handled Start Date countdown ("Starts In:") and End Date countdown ("Ends In:").
+
+---
+
 ### [2026-06-08] v1.5.0 — Dynamic Product Size Guides Preset Creator & Interactive Sizing Table Builder
 **Files Updated:** supabase/migrations/20260608010000_add_size_guides_table.sql, supabase/schema/SUPER_MASTER_SCHEMA.sql, lib/types.ts, lib/services/sizeGuides.ts, lib/services/products.ts, lib/services/storage.ts, components/admin/ProductForm.tsx, components/admin/SettingsForm.tsx, components/store/ProductDetail.tsx, components/common/Icons.tsx, SCHEMA_CHANGE_LOG.md
 **Changes:**

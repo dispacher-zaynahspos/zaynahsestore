@@ -68,6 +68,7 @@ CREATE TABLE IF NOT EXISTS products (
   size_guide_id UUID REFERENCES size_guides(id) ON DELETE SET NULL,
   frequently_bought_together_ids UUID[] DEFAULT '{}'::uuid[],
   flash_sale_enabled BOOLEAN DEFAULT false,
+  flash_sale_start_date TIMESTAMPTZ,
   flash_sale_end_date TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -82,7 +83,7 @@ CREATE INDEX IF NOT EXISTS idx_products_active ON products (active);
 -- ============================================================
 CREATE TABLE IF NOT EXISTS product_images (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  product_id UUID REFERENCES products(id) ON DELETE CASCADE,
   url TEXT NOT NULL,
   alt TEXT,
   sort_order INTEGER DEFAULT 0,
@@ -295,6 +296,8 @@ CREATE TABLE IF NOT EXISTS store_settings (
   frequently_bought_together_enabled BOOLEAN DEFAULT true,
   stock_urgency_enabled BOOLEAN DEFAULT true,
   flash_sale_enabled BOOLEAN DEFAULT true,
+  flash_sale_start_date TIMESTAMPTZ,
+  flash_sale_end_date TIMESTAMPTZ,
   social_feeds_enabled BOOLEAN DEFAULT true,
   cart_timer_enabled BOOLEAN DEFAULT true,
   size_guide_enabled BOOLEAN DEFAULT true,
@@ -307,6 +310,7 @@ CREATE TABLE IF NOT EXISTS store_settings (
   recent_buyers_initial_delay INTEGER DEFAULT 15,
   recent_buyers_interval INTEGER DEFAULT 35,
   recent_buyers_display_duration INTEGER DEFAULT 6,
+  recent_buyers_show_on_checkout BOOLEAN DEFAULT false,
   exit_intent_image_url TEXT DEFAULT '',
   exit_intent_delay_mobile INTEGER DEFAULT 25,
   cookie_consent_text TEXT DEFAULT 'We use cookies to optimize your experience, analyze traffic, and support checkout flows. By continuing, you agree to our privacy policy.',

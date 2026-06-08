@@ -137,11 +137,101 @@ export default function StoreFront({
 
   const renderHeroBanner = (section: HomepageSection) => {
     const heightDesktop = section.settings?.height_desktop ?? '450px';
-    const heightMobile = section.settings?.height_mobile ?? '220px';
+    const heightMobile = section.settings?.height_mobile ?? '250px';
     const opacity = section.settings?.overlay_opacity ?? 0.3;
-    const bannerUrl = section.content_data?.image_url || settings.bannerUrl;
-    const buttonText = section.content_data?.button_text || 'Shop Now';
-    const buttonLink = section.content_data?.button_link || '/shop';
+    const overlayColor = section.settings?.overlay_color ?? '#000000';
+    
+    // Images
+    const desktopBannerUrl = section.content_data?.image_url || settings.bannerUrl;
+    const mobileBannerUrl = section.content_data?.mobile_image_url || desktopBannerUrl;
+    
+    // Content box position (desktop horizontal and vertical)
+    const contentPosDesktopX = section.settings?.content_position_desktop_x || section.settings?.content_position_desktop || 'center';
+    let containerJustifyDesktop = 'md:justify-center';
+    if (contentPosDesktopX === 'left') containerJustifyDesktop = 'md:justify-start';
+    if (contentPosDesktopX === 'right') containerJustifyDesktop = 'md:justify-end';
+
+    const contentPosDesktopY = section.settings?.content_position_desktop_y || 'middle';
+    let containerAlignDesktop = 'md:items-center';
+    if (contentPosDesktopY === 'top') containerAlignDesktop = 'md:items-start';
+    if (contentPosDesktopY === 'bottom') containerAlignDesktop = 'md:items-end';
+
+    // Content box position (mobile horizontal and vertical)
+    const contentPosMobileX = section.settings?.content_position_mobile_x || 'center';
+    let containerJustifyMobile = 'justify-center';
+    if (contentPosMobileX === 'left') containerJustifyMobile = 'justify-start';
+    if (contentPosMobileX === 'right') containerJustifyMobile = 'justify-end';
+
+    const contentPosMobileY = section.settings?.content_position_mobile_y || 'middle';
+    let containerAlignMobile = 'items-center';
+    if (contentPosMobileY === 'top') containerAlignMobile = 'items-start';
+    if (contentPosMobileY === 'bottom') containerAlignMobile = 'items-end';
+
+    // Desktop text align
+    const textAlignDesktop = section.settings?.text_align_desktop || 'center';
+    let textColAlignDesktop = 'md:text-center md:items-center';
+    if (textAlignDesktop === 'left') textColAlignDesktop = 'md:text-left md:items-start';
+    if (textAlignDesktop === 'right') textColAlignDesktop = 'md:text-right md:items-end';
+
+    // Mobile text align
+    const textAlignMobile = section.settings?.text_align_mobile || 'center';
+    let textColAlignMobile = 'text-center items-center';
+    if (textAlignMobile === 'left') textColAlignMobile = 'text-left items-start';
+    if (textAlignMobile === 'right') textColAlignMobile = 'text-right items-end';
+
+    // Glass backdrop container styling on desktop
+    const showBackdrop = section.settings?.show_backdrop_container ?? false;
+    const backdropClass = showBackdrop 
+      ? 'md:backdrop-blur-md md:bg-black/35 md:border md:border-white/10 md:p-8 md:rounded-2xl shadow-xl' 
+      : 'md:bg-transparent md:border-none md:p-0';
+
+    // Image Scaling and Focal Points
+    const imageScaleDesktop = section.settings?.image_scale_desktop ?? 100;
+    const imageFocalXDesktop = section.settings?.image_focal_x_desktop ?? 50;
+    const imageFocalYDesktop = section.settings?.image_focal_y_desktop ?? 50;
+
+    const imageScaleMobile = section.settings?.image_scale_mobile ?? 100;
+    const imageFocalXMobile = section.settings?.image_focal_x_mobile ?? 50;
+    const imageFocalYMobile = section.settings?.image_focal_y_mobile ?? 50;
+
+    // Content box widths
+    const contentWidthDesktop = section.settings?.content_width_desktop || '576px';
+    const contentWidthMobile = section.settings?.content_width_mobile || '100%';
+
+    // Supertitle / Tagline
+    const taglineText = section.content_data?.tagline || settings.tagline;
+    const taglineColor = section.settings?.tagline_color || '#ffffff';
+
+    // Heading custom sizes and colors
+    const headingSizeDesktop = section.settings?.heading_size_desktop || '5xl';
+    const headingSizeMobile = section.settings?.heading_size_mobile || '2xl';
+    
+    let headingDesktopClass = 'md:text-5xl';
+    if (headingSizeDesktop === '2xl') headingDesktopClass = 'md:text-2xl';
+    if (headingSizeDesktop === '3xl') headingDesktopClass = 'md:text-3xl';
+    if (headingSizeDesktop === '4xl') headingDesktopClass = 'md:text-4xl';
+    if (headingSizeDesktop === '6xl') headingDesktopClass = 'md:text-6xl';
+
+    let headingMobileClass = 'text-2xl';
+    if (headingSizeMobile === 'lg') headingMobileClass = 'text-lg';
+    if (headingSizeMobile === 'xl') headingMobileClass = 'text-xl';
+    if (headingSizeMobile === '3xl') headingMobileClass = 'text-3xl';
+
+    const headingColor = section.settings?.heading_color || '#ffffff';
+
+    // Subtitle
+    const subtitleColor = section.settings?.subtitle_color || '#e0e0e0';
+
+    // Buttons
+    const primaryButtonText = section.content_data?.button_text || '';
+    const primaryButtonLink = section.content_data?.button_link || '/shop';
+    const primaryButtonBg = section.settings?.btn_bg_color || '#e94560';
+    const primaryButtonTextColor = section.settings?.btn_text_color || '#ffffff';
+
+    const secondaryButtonText = section.content_data?.button_secondary_text || '';
+    const secondaryButtonLink = section.content_data?.button_secondary_link || '';
+    const secondaryButtonBg = section.settings?.sec_btn_bg_color || 'transparent';
+    const secondaryButtonTextColor = section.settings?.sec_btn_text_color || '#ffffff';
 
     return (
       <div 
@@ -153,45 +243,114 @@ export default function StoreFront({
         } as React.CSSProperties}
         className="relative md:h-[var(--height-desktop)] w-full bg-[#1a1a2e] overflow-hidden"
       >
-        {bannerUrl ? (
+        {desktopBannerUrl ? (
           <>
-            <Image
-              src={bannerUrl}
-              alt={section.title || settings.storeName}
-              fill
-              sizes="100vw"
-              priority
-              unoptimized={true}
-              className="object-cover"
-            />
+            {/* Desktop Image */}
+            <div className="absolute inset-0 hidden md:block overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={desktopBannerUrl}
+                alt={section.title || settings.storeName}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  objectPosition: `${imageFocalXDesktop}% ${imageFocalYDesktop}%`,
+                  transform: `scale(${imageScaleDesktop / 100})`,
+                  transformOrigin: `${imageFocalXDesktop}% ${imageFocalYDesktop}%`,
+                  transition: 'transform 0.3s ease, transform-origin 0.3s ease, object-position 0.3s ease'
+                }}
+              />
+            </div>
+            {/* Mobile Image */}
+            <div className="absolute inset-0 block md:hidden overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={mobileBannerUrl}
+                alt={section.title || settings.storeName}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  objectPosition: `${imageFocalXMobile}% ${imageFocalYMobile}%`,
+                  transform: `scale(${imageScaleMobile / 100})`,
+                  transformOrigin: `${imageFocalXMobile}% ${imageFocalYMobile}%`,
+                  transition: 'transform 0.3s ease, transform-origin 0.3s ease, object-position 0.3s ease'
+                }}
+              />
+            </div>
             <div 
-              className="absolute inset-0 bg-black" 
-              style={{ opacity }} 
+              className="absolute inset-0 transition-colors duration-300" 
+              style={{ backgroundColor: overlayColor, opacity }} 
             />
           </>
         ) : (
           <div className="absolute inset-0 bg-gradient-to-r from-[#1a1a2e] to-[#e94560]" />
         )}
-        <div className="absolute inset-0 flex flex-col justify-center items-center text-center p-6 bg-gradient-to-t from-black/55 to-transparent">
-          {settings.tagline && (
-            <p className="text-white/80 text-xs font-semibold uppercase tracking-wider mb-2">
-              {settings.tagline}
-            </p>
-          )}
-          <h1 className="text-white text-2xl font-black md:text-5xl tracking-tight max-w-2xl font-serif">
-            {section.title || settings.storeName}
-          </h1>
-          {section.content_data?.subtitle && (
-            <p className="text-white/70 text-xs sm:text-sm mt-2 max-w-md">
-              {section.content_data.subtitle}
-            </p>
-          )}
-          <Link 
-            href={buttonLink}
-            className="mt-6 px-6 py-2.5 bg-[#e94560] hover:bg-[#d83550] text-white text-xs font-bold uppercase rounded-xl transition-all shadow-lg active:scale-95 cursor-pointer"
+        
+        {/* Banner content layout container */}
+        <div className={`absolute inset-0 flex p-6 md:p-16 z-10 bg-gradient-to-t from-black/40 via-transparent to-transparent ${containerJustifyMobile} ${containerAlignMobile} ${containerJustifyDesktop} ${containerAlignDesktop}`}>
+          <div 
+            style={{
+              '--content-width-desktop': contentWidthDesktop,
+              '--content-width-mobile': contentWidthMobile
+            } as React.CSSProperties}
+            className={`flex flex-col w-[var(--content-width-mobile)] md:w-[var(--content-width-desktop)] max-w-full transition-all duration-300 ${textColAlignMobile} ${textColAlignDesktop} ${backdropClass}`}
           >
-            {buttonText}
-          </Link>
+            
+            {taglineText && (
+              <p 
+                style={{ color: taglineColor }}
+                className="text-xs font-extrabold uppercase tracking-widest mb-2"
+              >
+                {taglineText}
+              </p>
+            )}
+            
+            <h1 
+              style={{ color: headingColor }}
+              className={`font-black tracking-tight font-serif leading-tight ${headingMobileClass} ${headingDesktopClass}`}
+            >
+              {section.title || settings.storeName}
+            </h1>
+            
+            {section.content_data?.subtitle && (
+              <p 
+                style={{ color: subtitleColor }}
+                className="text-xs sm:text-sm mt-3 font-medium opacity-90 leading-relaxed"
+              >
+                {section.content_data.subtitle}
+              </p>
+            )}
+            
+            {/* CTA Buttons */}
+            {(primaryButtonText || secondaryButtonText) && (
+              <div className="mt-6 flex flex-wrap gap-3 items-center">
+                {primaryButtonText && (
+                  <Link 
+                    href={primaryButtonLink}
+                    style={{ backgroundColor: primaryButtonBg, color: primaryButtonTextColor }}
+                    className="px-6 py-2.5 text-xs font-extrabold uppercase rounded-xl transition-all shadow-md hover:brightness-110 active:scale-95 cursor-pointer"
+                  >
+                    {primaryButtonText}
+                  </Link>
+                )}
+                {secondaryButtonText && (
+                  <Link 
+                    href={secondaryButtonLink}
+                    style={{ 
+                      backgroundColor: secondaryButtonBg, 
+                      color: secondaryButtonTextColor,
+                      borderColor: secondaryButtonBg === 'transparent' ? secondaryButtonTextColor : 'transparent'
+                    }}
+                    className="px-6 py-2.5 text-xs font-extrabold uppercase rounded-xl border transition-all shadow-md hover:brightness-110 active:scale-95 cursor-pointer"
+                  >
+                    {secondaryButtonText}
+                  </Link>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -453,10 +612,16 @@ export default function StoreFront({
       { title: 'Accessories', link: '/shop', imageUrl: 'https://images.unsplash.com/photo-1509319117193-57bab727e09d?w=800&auto=format&fit=crop&q=80' }
     ];
 
-    const displayItems = Array.from({ length: 4 }).map((_, idx) => {
-      const item = items[idx];
-      return (item && item.imageUrl) ? item : defaultItems[idx];
-    });
+    const displayItems = items.length > 0 
+      ? items.filter((item: any) => item && item.imageUrl) 
+      : defaultItems;
+
+    // Use responsive columns based on length to maintain grid nicely
+    let gridCols = "grid-cols-2 md:grid-cols-4";
+    if (displayItems.length === 1) gridCols = "grid-cols-1 md:grid-cols-1 max-w-md mx-auto";
+    else if (displayItems.length === 2) gridCols = "grid-cols-2 md:grid-cols-2 max-w-2xl mx-auto";
+    else if (displayItems.length === 3) gridCols = "grid-cols-2 md:grid-cols-3 max-w-4xl mx-auto";
+    else if (displayItems.length > 4) gridCols = "grid-cols-2 md:grid-cols-4 lg:grid-cols-5";
 
     return (
       <div key={section.id} className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
@@ -467,8 +632,8 @@ export default function StoreFront({
             </h2>
           </div>
         )}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {displayItems.map((item, idx) => (
+        <div className={`grid gap-4 ${gridCols}`}>
+          {displayItems.map((item: any, idx: number) => (
             <Link 
               key={idx} 
               href={item.link || '/shop'}
@@ -489,6 +654,64 @@ export default function StoreFront({
                 {item.title || 'Explore'}
               </div>
             </Link>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const renderSocialFeed = (section: HomepageSection) => {
+    if (settings.social_feeds_homepage_enabled === false) return null;
+    
+    return (
+      <div key={section.id} className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 border-t border-gray-100 dark:border-gray-800">
+        <div className="text-center space-y-2 mb-8">
+          <span className="inline-block px-3 py-1 bg-amber-50 dark:bg-amber-950/40 text-amber-500 text-xs font-bold rounded-full uppercase tracking-wider">
+            {section.content_data?.subtitle || settings.social_feeds_subtitle || '#ZAYNAHSVOGUE'}
+          </span>
+          <h2 className="text-xl font-black uppercase tracking-wider text-gray-900 dark:text-white">
+            {section.title || settings.social_feeds_title || 'Follow Us On Social Media'}
+          </h2>
+          <p className="text-xs text-gray-550 dark:text-gray-400 max-w-sm mx-auto font-semibold">
+            {section.content_data?.desc || settings.social_feeds_desc || 'Tag us in your post to get featured on our page'}
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {(parsedFeeds.length > 0 ? parsedFeeds : [
+            { id: 'v1', imageUrl: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400&q=70', link: '#', username: 'buyer1', caption: 'Stunning piece!' },
+            { id: 'v2', imageUrl: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=400&q=70', link: '#', username: 'buyer2', caption: 'Obsessed with the quality.' },
+            { id: 'v3', imageUrl: 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?w=400&q=70', link: '#', username: 'buyer3', caption: 'Super fast shipping!' },
+            { id: 'v4', imageUrl: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=400&q=70', link: '#', username: 'buyer4', caption: 'Highly recommended.' }
+          ]).slice(0, section.settings?.limit || 8).map((feed, idx) => (
+            <a
+              key={feed.id || idx}
+              href={feed.link || '#'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="relative aspect-[9/16] bg-gray-150 dark:bg-gray-800 rounded-2xl overflow-hidden group border border-gray-100 dark:border-gray-855 block cursor-pointer"
+            >
+              <Image
+                src={feed.imageUrl}
+                alt={feed.caption || `Social post by @${feed.username}`}
+                fill
+                sizes="(max-width: 768px) 50vw, 25vw"
+                className="object-cover transition-transform duration-300 group-hover:scale-105"
+                unoptimized={true}
+              />
+              <div className="absolute inset-0 bg-black/40 flex flex-col justify-between p-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="w-8 h-8 bg-white/20 backdrop-blur rounded-full flex items-center justify-center border border-white/40 shadow self-end">
+                  <Play className="w-3.5 h-3.5 text-white fill-current translate-x-0.5" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black text-white">@{feed.username}</p>
+                  {feed.caption && <p className="text-[9px] text-gray-250 line-clamp-2 mt-0.5 leading-tight">{feed.caption}</p>}
+                </div>
+              </div>
+              <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur text-white text-[9px] font-bold px-2.5 py-1 rounded-full group-hover:opacity-0 transition-opacity">
+                @{feed.username}
+              </div>
+            </a>
           ))}
         </div>
       </div>
@@ -527,65 +750,13 @@ export default function StoreFront({
             return renderPromoBanner(section);
           case 'brands_logos':
             return renderBrandsLogos(section);
+          case 'social_feed':
+            return renderSocialFeed(section);
           default:
             return null;
         }
       })}
 
-      {/* Dynamic Social Feed on Homepage */}
-      {!searchQuery && settings.social_feeds_homepage_enabled !== false && (
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 border-t border-gray-100 dark:border-gray-800">
-          <div className="text-center space-y-2 mb-8">
-            <span className="inline-block px-3 py-1 bg-amber-50 dark:bg-amber-950/40 text-amber-500 text-xs font-bold rounded-full uppercase tracking-wider">
-              {settings.social_feeds_subtitle || '#ZAYNAHSVOGUE'}
-            </span>
-            <h2 className="text-xl font-black uppercase tracking-wider text-gray-900 dark:text-white">
-              {settings.social_feeds_title || 'Follow Us On Social Media'}
-            </h2>
-            <p className="text-xs text-gray-550 dark:text-gray-400 max-w-sm mx-auto font-semibold">
-              {settings.social_feeds_desc || 'Tag us in your post to get featured on our page'}
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {(parsedFeeds.length > 0 ? parsedFeeds : [
-              { id: 'v1', imageUrl: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400&q=70', link: '#', username: 'buyer1', caption: 'Stunning piece!' },
-              { id: 'v2', imageUrl: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=400&q=70', link: '#', username: 'buyer2', caption: 'Obsessed with the quality.' },
-              { id: 'v3', imageUrl: 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?w=400&q=70', link: '#', username: 'buyer3', caption: 'Super fast shipping!' },
-              { id: 'v4', imageUrl: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=400&q=70', link: '#', username: 'buyer4', caption: 'Highly recommended.' }
-            ]).slice(0, 8).map((feed, idx) => (
-              <a
-                key={feed.id || idx}
-                href={feed.link || '#'}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="relative aspect-[9/16] bg-gray-150 dark:bg-gray-800 rounded-2xl overflow-hidden group border border-gray-100 dark:border-gray-855 block cursor-pointer"
-              >
-                <Image
-                  src={feed.imageUrl}
-                  alt={feed.caption || `Social post by @${feed.username}`}
-                  fill
-                  sizes="(max-width: 768px) 50vw, 25vw"
-                  className="object-cover transition-transform duration-300 group-hover:scale-105"
-                  unoptimized={true}
-                />
-                <div className="absolute inset-0 bg-black/40 flex flex-col justify-between p-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <div className="w-8 h-8 bg-white/20 backdrop-blur rounded-full flex items-center justify-center border border-white/40 shadow self-end">
-                    <Play className="w-3.5 h-3.5 text-white fill-current translate-x-0.5" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black text-white">@{feed.username}</p>
-                    {feed.caption && <p className="text-[9px] text-gray-250 line-clamp-2 mt-0.5 leading-tight">{feed.caption}</p>}
-                  </div>
-                </div>
-                <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur text-white text-[9px] font-bold px-2.5 py-1 rounded-full group-hover:opacity-0 transition-opacity">
-                  @{feed.username}
-                </div>
-              </a>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

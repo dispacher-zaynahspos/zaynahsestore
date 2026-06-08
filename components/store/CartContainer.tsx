@@ -7,7 +7,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import {
   ChevronLeft, ShoppingBag, Send, HelpCircle, Plus, Minus, Trash2,
   Shield, Truck, Tag, X, ShoppingCart, Package, CheckCircle2, ChevronRight,
-  Lock, ArrowRight
+  Lock, ArrowRight, Clock
 } from '@/components/common/Icons';
 import { StoreSettings, ShippingMethod } from '@/lib/types';
 import { useCartStore } from '@/store/cartStore';
@@ -34,6 +34,46 @@ export default function CartContainer({ settings }: CartContainerProps) {
   const clearCart = useCartStore(state => state.clearCart);
   const appliedCoupon = useCartStore(state => state.appliedCoupon);
   const applyCoupon = useCartStore(state => state.applyCoupon);
+  const cartCreatedAt = useCartStore(state => state.cartCreatedAt);
+
+  const [mounted, setMounted] = useState(false);
+  const [timeLeftStr, setTimeLeftStr] = useState('');
+  const [isTimerExpired, setIsTimerExpired] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Cart Expiration countdown
+  useEffect(() => {
+    if (!mounted || settings.cart_timer_enabled === false || !cartCreatedAt || items.length === 0) return;
+
+    const timerLimitMinutes = settings.cart_timer_minutes ?? 10;
+    const limitMs = timerLimitMinutes * 60 * 1000;
+
+    const updateCountdown = () => {
+      const createdTime = new Date(cartCreatedAt).getTime();
+      const now = new Date().getTime();
+      const elapsed = now - createdTime;
+      const remaining = limitMs - elapsed;
+
+      if (remaining <= 0) {
+        setIsTimerExpired(true);
+        setTimeLeftStr('00:00');
+      } else {
+        setIsTimerExpired(false);
+        const minutes = Math.floor(remaining / 60000);
+        const seconds = Math.floor((remaining % 60000) / 1000);
+        setTimeLeftStr(
+          `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+        );
+      }
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+    return () => clearInterval(interval);
+  }, [mounted, cartCreatedAt, items.length, settings.cart_timer_minutes]);
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -131,6 +171,8 @@ export default function CartContainer({ settings }: CartContainerProps) {
   const freeShippingThreshold = settings.free_shipping_threshold ?? 2000;
   const qualifiesForFreeShipping = settings.free_shipping_bar_enabled !== false && subtotal >= freeShippingThreshold;
   const shippingCost = qualifiesForFreeShipping ? 0 : baseShippingCost;
+  const amountToFreeShipping = Math.max(0, freeShippingThreshold - subtotal);
+  const shippingPercent = Math.min((subtotal / freeShippingThreshold) * 100, 100);
 
   // Volume discount check
   const volumeDiscountThreshold = settings.volume_discount_threshold ?? 3;
@@ -281,63 +323,80 @@ export default function CartContainer({ settings }: CartContainerProps) {
     const variantStr = parts.join(' · ');
 
     return (
-      <div className={`flex items-start gap-3 ${compact ? 'py-2.5' : 'p-4 bg-white dark:bg-[#16162a] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm'}`}>
-        {/* Image */}
-        <div className={`relative flex-shrink-0 overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-[#0f0f1b] ${compact ? 'h-14 w-14' : 'h-20 w-20'}`}>
-          {img ? (
-            <Image src={img} alt={item.product.name} fill sizes="80px" className="object-cover" unoptimized />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center"><Package className="h-6 w-6 text-gray-300" /></div>
-          )}
+      <div className="flex items-start gap-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-0">
+        {/* Image Container with Badge */}
+        <div className="relative flex-shrink-0">
+          <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-[#0f0f1b] relative h-16 w-16 shadow-sm">
+            {img ? (
+              <Image src={img} alt={item.product.name} fill sizes="80px" className="object-cover" unoptimized />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center"><Package className="h-6 w-6 text-gray-300" /></div>
+            )}
+          </div>
           {compact && (
-            <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#1a1a2e] text-[9px] font-black text-white ring-1 ring-white dark:ring-[#0f0f1b]">
+            <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-gray-800/90 dark:bg-gray-100/90 backdrop-blur-sm text-[10px] font-bold text-white dark:text-black ring-2 ring-white dark:ring-[#16162a] z-10 shadow-sm">
               {item.quantity}
             </span>
           )}
         </div>
 
         {/* Info */}
-        <div className="flex-1 min-w-0">
-          <h3 className={`font-bold text-gray-900 dark:text-white line-clamp-2 ${compact ? 'text-xs' : 'text-sm'}`}>
-            {item.product.name}
-          </h3>
-          {variantStr && (
-            <p className="text-[11px] text-gray-400 dark:text-gray-500 font-semibold mt-0.5">{variantStr}</p>
-          )}
-          {item.selectedModifiers.length > 0 && (
-            <p className="text-[11px] text-gray-400 dark:text-gray-500 font-semibold mt-0.5">
-              + {item.selectedModifiers.map(m => m.name).join(', ')}
-            </p>
+        <div className="flex-1 min-w-0 flex flex-col justify-center min-h-[4rem]">
+          <div className="flex justify-between items-start gap-2">
+            <h3 className="font-bold text-gray-900 dark:text-white line-clamp-2 text-sm leading-tight">
+              {item.product.name}
+            </h3>
+            {compact && (
+              <p className="text-sm font-black text-gray-900 dark:text-white shrink-0">
+                {formatPrice(item.unitPrice * item.quantity, settings.currencySymbol)}
+              </p>
+            )}
+          </div>
+
+          {(variantStr || item.selectedModifiers.length > 0) && (
+            <div className="mt-1 space-y-0.5">
+              {variantStr && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold">{variantStr}</p>
+              )}
+              {item.selectedModifiers.length > 0 && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold">
+                  + {item.selectedModifiers.map(m => m.name).join(', ')}
+                </p>
+              )}
+            </div>
           )}
 
           {!compact && (
             <div className="flex items-center justify-between mt-3">
               {/* Qty stepper */}
               <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (item.quantity <= 1) { removeItem(item.id); toast.success('Item removed'); }
-                    else updateQuantity(item.id, item.quantity - 1);
-                  }}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#0f0f1b] hover:border-[#e94560] hover:text-[#e94560] transition-all cursor-pointer text-gray-500 dark:text-gray-400 active:scale-90"
-                >
-                  <Minus className="h-3.5 w-3.5" />
-                </button>
-                <span className="min-w-[28px] text-center text-sm font-black text-gray-900 dark:text-white">{item.quantity}</span>
-                <button
-                  type="button"
-                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#0f0f1b] hover:border-[#e94560] hover:text-[#e94560] transition-all cursor-pointer text-gray-500 dark:text-gray-400 active:scale-90"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                </button>
+                <div className="flex items-center bg-gray-50 dark:bg-[#0f0f1b] border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (item.quantity <= 1) { removeItem(item.id); toast.success('Item removed'); }
+                      else updateQuantity(item.id, item.quantity - 1);
+                    }}
+                    className="flex h-8 w-8 items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer text-gray-500 dark:text-gray-400 active:scale-95"
+                  >
+                    <Minus className="h-3.5 w-3.5" />
+                  </button>
+                  <span className="w-8 text-center text-sm font-bold text-gray-900 dark:text-white select-none">{item.quantity}</span>
+                  <button
+                    type="button"
+                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                    className="flex h-8 w-8 items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer text-gray-500 dark:text-gray-400 active:scale-95"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </button>
+                </div>
                 <button
                   type="button"
                   onClick={() => { removeItem(item.id); toast.success(`${item.product.name} removed`); }}
-                  className="ml-1 flex h-8 w-8 items-center justify-center rounded-lg text-gray-300 hover:text-[#e94560] hover:bg-red-50 dark:hover:bg-red-900/20 transition-all cursor-pointer active:scale-90"
+                  className="ml-2 flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all cursor-pointer active:scale-95"
+                  title="Remove item"
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <Trash2 className="h-4 w-4" />
                 </button>
               </div>
               {/* Line price */}
@@ -346,23 +405,7 @@ export default function CartContainer({ settings }: CartContainerProps) {
               </span>
             </div>
           )}
-
-          {compact && (
-            <p className="text-xs font-black text-gray-900 dark:text-white mt-1">
-              {formatPrice(item.unitPrice * item.quantity, settings.currencySymbol)}
-            </p>
-          )}
         </div>
-
-        {compact && (
-          <button
-            type="button"
-            onClick={() => { removeItem(item.id); toast.success('Item removed'); }}
-            className="flex-shrink-0 flex h-6 w-6 items-center justify-center rounded-lg text-gray-300 hover:text-[#e94560] transition-all cursor-pointer"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        )}
       </div>
     );
   };
@@ -420,6 +463,35 @@ export default function CartContainer({ settings }: CartContainerProps) {
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Free Shipping Tracker */}
+      {settings.free_shipping_bar_enabled !== false && (
+        <div className="space-y-1.5 py-1">
+          <div className="flex justify-between text-xs font-bold text-gray-700 dark:text-gray-300">
+            {qualifiesForFreeShipping ? (
+              <span className="text-emerald-500 dark:text-emerald-400 flex items-center gap-1.5">
+                <Truck className="w-4 h-4" /> You've unlocked free shipping!
+              </span>
+            ) : (
+              <span>Add {formatPrice(amountToFreeShipping, settings.currencySymbol)} for free shipping</span>
+            )}
+            <span>{formatPrice(freeShippingThreshold, settings.currencySymbol)}</span>
+          </div>
+          <div className="h-2 w-full bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
+            <div 
+              className={`h-full rounded-full transition-all duration-500 ${qualifiesForFreeShipping ? 'bg-emerald-500' : 'bg-[#e94560]'}`}
+              style={{ width: `${shippingPercent}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Volume Discount Hint */}
+      {!qualifiesForVolumeDiscount && settings.volume_discounts_enabled !== false && (
+        <div className="text-[10px] text-amber-600 dark:text-amber-400 font-bold bg-amber-500/10 dark:bg-amber-500/10 px-2.5 py-1.5 rounded-lg w-full text-center flex items-center justify-center gap-1 border border-amber-500/20 select-none">
+          <span>💡 Buy {volumeDiscountThreshold} items to get {volumeDiscountPercentage}% off!</span>
         </div>
       )}
 
@@ -489,15 +561,29 @@ export default function CartContainer({ settings }: CartContainerProps) {
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8 space-y-6">
 
           {/* Header */}
-          <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-gray-500 hover:text-[#e94560] transition-colors">
+          <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-y-3 gap-x-4 mb-2">
+            <Link href="/" className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-gray-500 hover:text-[#e94560] transition-colors whitespace-nowrap">
               <ChevronLeft className="h-4 w-4" />
-              Continue Shopping
+              <span className="hidden sm:inline">Continue Shopping</span>
+              <span className="sm:hidden">Back</span>
             </Link>
             <div className="flex items-center gap-2">
               <ShoppingCart className="h-5 w-5 text-[#e94560]" />
-              <h1 className="text-lg font-black text-gray-900 dark:text-white">
+              <h1 className="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
                 Cart <span className="text-gray-400 font-semibold text-sm">({itemCount})</span>
+                {/* Cart Expiry Timer Indicator */}
+                {settings.cart_timer_enabled !== false && cartCreatedAt && timeLeftStr && (
+                  <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold ml-2 ${
+                    isTimerExpired
+                      ? 'text-rose-500 bg-rose-500/10 dark:text-rose-400'
+                      : 'text-amber-600 bg-amber-500/10 dark:text-amber-400'
+                  }`}>
+                    <Clock className="w-3.5 h-3.5 shrink-0 animate-pulse" />
+                    <span>
+                      {isTimerExpired ? "Reservation expired!" : `Reserved for ${timeLeftStr}`}
+                    </span>
+                  </div>
+                )}
               </h1>
             </div>
             <button
@@ -514,11 +600,13 @@ export default function CartContainer({ settings }: CartContainerProps) {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10 items-start">
 
             {/* LEFT: Item list */}
-            <div className="lg:col-span-7 space-y-3">
-              {items.map(item => <CartItemCard key={item.id} item={item} compact={false} />)}
+            <div className="lg:col-span-7 space-y-4">
+              <div className="bg-white dark:bg-[#16162a] rounded-2xl border border-gray-100 dark:border-gray-800 p-5 shadow-sm space-y-1">
+                {items.map(item => <CartItemCard key={item.id} item={item} compact={false} />)}
+              </div>
 
               {/* Shipping method selector in cart view */}
-              <div className="bg-white dark:bg-[#16162a] rounded-2xl border border-gray-100 dark:border-gray-800 p-4 shadow-sm space-y-3">
+              <div className="bg-white dark:bg-[#16162a] rounded-2xl border border-gray-100 dark:border-gray-800 p-5 shadow-sm space-y-3">
                 <h3 className="text-sm font-black text-gray-900 dark:text-white flex items-center gap-2">
                   <Truck className="h-4 w-4 text-[#e94560]" />
                   Choose Shipping

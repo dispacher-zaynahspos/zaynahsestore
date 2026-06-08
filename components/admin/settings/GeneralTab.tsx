@@ -28,12 +28,10 @@ interface GeneralTabProps {
   logoWidth: number;
   setLogoWidth: (val: number) => void;
   faviconUrl: string;
-  bannerUrl: string;
   uploadingLogo: boolean;
   uploadingFavicon: boolean;
-  uploadingBanner: boolean;
-  handleFileUpload: (e: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'favicon' | 'banner') => void;
-  handleRemoveImage: (type: 'logo' | 'favicon' | 'banner') => void;
+  handleFileUpload: (e: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'favicon') => void;
+  handleRemoveImage: (type: 'logo' | 'favicon') => void;
 }
 
 export default function GeneralTab({
@@ -61,10 +59,8 @@ export default function GeneralTab({
   logoWidth,
   setLogoWidth,
   faviconUrl,
-  bannerUrl,
   uploadingLogo,
   uploadingFavicon,
-  uploadingBanner,
   handleFileUpload,
   handleRemoveImage,
 }: GeneralTabProps) {
@@ -273,7 +269,7 @@ export default function GeneralTab({
               <div className="flex items-center gap-4 p-4 rounded-xl border border-dashed border-gray-200 dark:border-gray-800 bg-gray-50/20 dark:bg-[#0f0f1b]/20">
                 {faviconUrl ? (
                   <div className="flex flex-col items-center gap-2">
-                    <div className="relative h-12 w-12 border border-gray-200 dark:border-gray-850 rounded-lg overflow-hidden bg-white dark:bg-[#0f0f1b] flex items-center justify-center p-1.5">
+                    <div className="relative h-12 w-12 border border-gray-200 dark:border-gray-855 rounded-lg overflow-hidden bg-white dark:bg-[#0f0f1b] flex items-center justify-center p-1.5">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={faviconUrl} alt="Store Favicon Preview" className="h-full w-full object-contain" />
                     </div>
@@ -314,59 +310,6 @@ export default function GeneralTab({
                   </label>
                   <span className="text-[10px] text-gray-400 dark:text-gray-500">Small icon for tab headers</span>
                 </div>
-              </div>
-            </div>
-
-            {/* Shop Banner Upload Zone */}
-            <div className="space-y-2.5">
-              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Shop Banner / Hero Image</label>
-              <div className="flex flex-col items-stretch gap-4 p-4 rounded-xl border border-dashed border-gray-200 dark:border-gray-800 bg-gray-50/20 dark:bg-[#0f0f1b]/20">
-                {bannerUrl ? (
-                  <div className="space-y-2">
-                    <div className="relative aspect-video w-full border border-gray-200 dark:border-gray-850 rounded-lg overflow-hidden bg-gray-50">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={bannerUrl} alt="Store Banner Preview" className="h-full w-full object-cover" />
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-[10px] text-gray-400 dark:text-gray-500">Banner dimensions compressed</span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveImage('banner')}
-                        className="flex items-center gap-1 text-[11px] font-bold text-red-500 hover:text-red-600 transition-colors"
-                      >
-                        <Trash2 className="h-3 w-3" /> Remove Banner
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex aspect-video w-full items-center justify-center rounded-xl bg-gray-100 dark:bg-white/5 text-gray-400 border border-gray-200 dark:border-gray-800">
-                    <div className="text-center space-y-1">
-                      <ImageIcon className="h-8 w-8 mx-auto" />
-                      <span className="block text-xs font-semibold">No Shop Banner Uploaded</span>
-                    </div>
-                  </div>
-                )}
-
-                <label className="relative flex justify-center items-center gap-2 w-full py-3 bg-gray-100 hover:bg-gray-200 dark:bg-white/5 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 text-xs font-bold rounded-lg cursor-pointer transition-colors">
-                  {uploadingBanner ? (
-                    <>
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      <span>Uploading & Compressing...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="h-3.5 w-3.5" />
-                      <span>Upload Shop Banner</span>
-                    </>
-                  )}
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    onChange={(e) => handleFileUpload(e, 'banner')} 
-                    disabled={uploadingBanner} 
-                    className="hidden" 
-                  />
-                </label>
               </div>
             </div>
           </div>

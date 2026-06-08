@@ -18,7 +18,6 @@ interface ProductCardProps {
 
 export default function ProductCard({ product, currencySymbol = 'Rs.', settings }: ProductCardProps) {
   const addItem = useCartStore(state => state.addItem);
-  const setDrawerOpen = useCartStore(state => state.setDrawerOpen);
   const primaryImage = product.images.find(img => img.isPrimary)?.url || product.images[0]?.url || 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=600&auto=format&fit=crop&q=60';
 
   const [hoveredImage, setHoveredImage] = useState<string | null>(null);
@@ -74,7 +73,6 @@ export default function ProductCard({ product, currencySymbol = 'Rs.', settings 
     }
     addItem(product, undefined, [], 1);
     toast.success(`${product.name} added to cart!`);
-    setDrawerOpen(true);
   };
 
   // Swatch settings
