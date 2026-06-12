@@ -36,9 +36,9 @@ async function purgeCloudflareUrls(urls: string[]) {
 
 export async function revalidateProduct(slug: string) {
   try {
-    // 1. Revalidate Next.js cache tag
-    revalidateTag(`product-${slug}`);
-    revalidateTag('products'); // Also revalidate products list tag if used
+    // 1. Revalidate Next.js cache tag (requires 2 arguments in this Next.js version)
+    revalidateTag(`product-${slug}`, 'max');
+    revalidateTag('products', 'max');
 
     // 2. Purge Cloudflare URL cache
     const urls = [`${SITE_URL}/product/${slug}`];
@@ -52,9 +52,9 @@ export async function revalidateProduct(slug: string) {
 
 export async function revalidateBanner() {
   try {
-    // 1. Revalidate Next.js cache tags
-    revalidateTag('banners');
-    revalidateTag('homepage');
+    // 1. Revalidate Next.js cache tags (requires 2 arguments in this Next.js version)
+    revalidateTag('banners', 'max');
+    revalidateTag('homepage', 'max');
 
     // 2. Purge Cloudflare homepage cache
     const urls = [`${SITE_URL}/`, `${SITE_URL}`];
@@ -68,9 +68,9 @@ export async function revalidateBanner() {
 
 export async function revalidateCategory(slug: string) {
   try {
-    // 1. Revalidate Next.js cache tags
-    revalidateTag(`category-${slug}`);
-    revalidateTag('categories');
+    // 1. Revalidate Next.js cache tags (requires 2 arguments in this Next.js version)
+    revalidateTag(`category-${slug}`, 'max');
+    revalidateTag('categories', 'max');
 
     // 2. Purge Cloudflare URL cache
     const urls = [
@@ -87,8 +87,8 @@ export async function revalidateCategory(slug: string) {
 
 export async function revalidateHomepage() {
   try {
-    // 1. Revalidate Next.js cache tags
-    revalidateTag('homepage');
+    // 1. Revalidate Next.js cache tags (requires 2 arguments in this Next.js version)
+    revalidateTag('homepage', 'max');
 
     // 2. Purge Cloudflare homepage cache
     const urls = [`${SITE_URL}/`, `${SITE_URL}`];
