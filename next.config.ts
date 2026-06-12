@@ -93,6 +93,30 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      {
+        source: '/adim',
+        destination: '/admin',
+        permanent: true,
+      },
+      {
+        source: '/admi',
+        destination: '/admin',
+        permanent: true,
+      },
+      {
+        source: '/admn',
+        destination: '/admin',
+        permanent: true,
+      },
+      {
+        source: '/adminn',
+        destination: '/admin',
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
