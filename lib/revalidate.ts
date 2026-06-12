@@ -1,132 +1,101 @@
 import { revalidateTag } from 'next/cache';
 
-/**
- * Purge specific URLs from the Cloudflare Edge CDN cache.
- * Uses CLOUDFLARE_ZONE_ID and CLOUDFLARE_API_TOKEN environment variables.
- * 
- * @param urls Array of absolute URLs to purge
- */
-const purgeCloudflareCache = async (urls: string[]) => {
-  const zoneId = process.env.CLOUDFLARE_ZONE_ID;
-  const apiToken = process.env.CLOUDFLARE_API_TOKEN;
+const CLOUDFLARE_ZONE_ID = process.env.CLOUDFLARE_ZONE_ID;
+const CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
-  if (!zoneId || !apiToken) {
-    console.warn('[Cloudflare] Cache purge skipped. Zone ID or API Token environment variables missing.');
+async function purgeCloudflareUrls(urls: string[]) {
+  if (!CLOUDFLARE_ZONE_ID || !CLOUDFLARE_API_TOKEN) {
+    console.warn('Cloudflare credentials missing. Skipping cache purge.');
     return;
   }
 
   try {
-    const response = await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/purge_cache`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ files: urls }),
-    });
+    const res = await fetch(
+      `https://api.cloudflare.com/client/v4/zones/${CLOUDFLARE_ZONE_ID}/purge_cache`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ files: urls }),
+      }
+    );
 
-    const result = await response.json();
-
-    if (!response.ok) {
-      console.error('[Cloudflare] Purge API error:', result);
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      console.error('Failed to purge Cloudflare cache:', data);
     } else {
-      console.log('[Cloudflare] Cache purged successfully for:', urls, result);
+      console.log('Successfully purged Cloudflare cache:', urls);
     }
   } catch (error) {
-    console.error('[Cloudflare] Fetch request failed during cache purge:', error);
+    console.error('Error purging Cloudflare cache:', error);
   }
-};
+}
 
-/**
- * Revalidate cache for a specific product page.
- */
 export async function revalidateProduct(slug: string) {
   try {
-    console.log(`[Revalidate] Triggering revalidation for product: ${slug}`);
-    
-    // 1. Next.js cache revalidation
-    revalidateTag(`product-${slug}`, 'max');
-    revalidateTag('products', 'max');
+    // 1. Revalidate Next.js cache tag
+    revalidateTag(`product-${slug}`);
+    revalidateTag('products'); // Also revalidate products list tag if used
 
-    // 2. Cloudflare Cache Purge
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || '';
-    if (siteUrl) {
-      const urls = [
-        `${siteUrl}/product/${slug}`,
-        `${siteUrl}/`,
-      ];
-      await purgeCloudflareCache(urls);
-    }
+    // 2. Purge Cloudflare URL cache
+    const urls = [`${SITE_URL}/product/${slug}`];
+    await purgeCloudflareUrls(urls);
+    console.log(`Revalidated product: ${slug}`);
   } catch (error) {
-    console.error(`[Revalidate] revalidateProduct failed for slug: ${slug}`, error);
+    console.error(`Error in revalidateProduct for ${slug}:`, error);
+    throw error;
   }
 }
 
-/**
- * Revalidate cache when banners are modified.
- */
 export async function revalidateBanner() {
   try {
-    console.log('[Revalidate] Triggering revalidation for banners');
+    // 1. Revalidate Next.js cache tags
+    revalidateTag('banners');
+    revalidateTag('homepage');
 
-    // 1. Next.js cache revalidation
-    revalidateTag('banners', 'max');
-    revalidateTag('homepage', 'max');
-
-    // 2. Cloudflare Cache Purge
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || '';
-    if (siteUrl) {
-      await purgeCloudflareCache([`${siteUrl}/`]);
-    }
+    // 2. Purge Cloudflare homepage cache
+    const urls = [`${SITE_URL}/`, `${SITE_URL}`];
+    await purgeCloudflareUrls(urls);
+    console.log('Revalidated banners & homepage');
   } catch (error) {
-    console.error('[Revalidate] revalidateBanner failed:', error);
+    console.error('Error in revalidateBanner:', error);
+    throw error;
   }
 }
 
-/**
- * Revalidate cache for a specific category.
- */
 export async function revalidateCategory(slug: string) {
   try {
-    console.log(`[Revalidate] Triggering revalidation for category: ${slug}`);
+    // 1. Revalidate Next.js cache tags
+    revalidateTag(`category-${slug}`);
+    revalidateTag('categories');
 
-    // 1. Next.js cache revalidation
-    revalidateTag(`category-${slug}`, 'max');
-    revalidateTag('categories', 'max');
-
-    // 2. Cloudflare Cache Purge
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || '';
-    if (siteUrl) {
-      const urls = [
-        `${siteUrl}/category/${slug}`,
-        `${siteUrl}/shop?category=${slug}`,
-        `${siteUrl}/`,
-      ];
-      await purgeCloudflareCache(urls);
-    }
+    // 2. Purge Cloudflare URL cache
+    const urls = [
+      `${SITE_URL}/category/${slug}`,
+      `${SITE_URL}/shop?category=${slug}`
+    ];
+    await purgeCloudflareUrls(urls);
+    console.log(`Revalidated category: ${slug}`);
   } catch (error) {
-    console.error(`[Revalidate] revalidateCategory failed for slug: ${slug}`, error);
+    console.error(`Error in revalidateCategory for ${slug}:`, error);
+    throw error;
   }
 }
 
-/**
- * Revalidate cache for storefront homepage and settings.
- */
 export async function revalidateHomepage() {
   try {
-    console.log('[Revalidate] Triggering revalidation for homepage');
+    // 1. Revalidate Next.js cache tags
+    revalidateTag('homepage');
 
-    // 1. Next.js cache revalidation
-    revalidateTag('homepage', 'max');
-    revalidateTag('banners', 'max');
-    revalidateTag('settings', 'max');
-
-    // 2. Cloudflare Cache Purge
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || '';
-    if (siteUrl) {
-      await purgeCloudflareCache([`${siteUrl}/`]);
-    }
+    // 2. Purge Cloudflare homepage cache
+    const urls = [`${SITE_URL}/`, `${SITE_URL}`];
+    await purgeCloudflareUrls(urls);
+    console.log('Revalidated homepage');
   } catch (error) {
-    console.error('[Revalidate] revalidateHomepage failed:', error);
+    console.error('Error in revalidateHomepage:', error);
+    throw error;
   }
 }

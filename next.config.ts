@@ -60,7 +60,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: 'Cache-Control',
-            value: 'no-store, no-cache, must-revalidate',
+            value: 'no-store',
           },
         ],
       },
@@ -69,7 +69,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: 'Cache-Control',
-            value: 'no-store, no-cache, must-revalidate',
+            value: 'no-store',
           },
         ],
       },
@@ -78,12 +78,12 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: 'Cache-Control',
-            value: 'no-store, no-cache, must-revalidate',
+            value: 'no-store',
           },
         ],
       },
       {
-        source: '/:path((?!api|_next|fonts|cart|checkout|account).*)',
+        source: '/:path((?!api|_next|static|fonts|cart|checkout|account).*)',
         headers: [
           {
             key: 'Cache-Control',
