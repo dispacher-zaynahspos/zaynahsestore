@@ -110,24 +110,17 @@ export const submitReview = async (review: {
     
     const savedReview = mapReview(data);
 
-    // Asynchronously fetch product details and trigger admin email alert
-    import('@/lib/services/products').then(({ getProductById }) => {
-      getProductById(review.productId).then(product => {
-        if (product) {
-          import('@/lib/email/triggers').then(({ onNewReview }) => {
-            onNewReview(savedReview, product).catch(err => {
-              console.error('[Email Trigger] failed in submitReview:', err);
-            });
-          }).catch(err => {
-            console.error('[Email Trigger] dynamic triggers import failed in submitReview:', err);
-          });
-        }
-      }).catch(err => {
-        console.error('[Email Trigger] getProductById failed in submitReview:', err);
-      });
-    }).catch(err => {
-      console.error('[Email Trigger] dynamic products service import failed in submitReview:', err);
-    });
+    // Await the email dispatch so the serverless function does not exit/freeze before delivery completes
+    try {
+      const { getProductById } = await import('@/lib/services/products');
+      const product = await getProductById(review.productId);
+      if (product) {
+        const { onNewReview } = await import('@/lib/email/triggers');
+        await onNewReview(savedReview, product);
+      }
+    } catch (err) {
+      console.error('[Email Trigger] failed in submitReview trigger:', err);
+    }
     
     return savedReview;
   } catch (error) {

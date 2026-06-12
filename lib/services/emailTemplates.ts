@@ -1,6 +1,4 @@
-'use server';
-
-import { createClient } from '@/lib/supabase/server';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import { EmailTemplate } from '@/lib/types';
 import { revalidateTag } from 'next/cache';
 
@@ -18,8 +16,7 @@ const mapTemplate = (row: any): EmailTemplate => ({
 
 export const getEmailTemplates = async (): Promise<EmailTemplate[]> => {
   try {
-    const supabase = await createClient();
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('email_templates')
       .select('*')
       .order('category', { ascending: false })
@@ -35,8 +32,7 @@ export const getEmailTemplates = async (): Promise<EmailTemplate[]> => {
 
 export const getEmailTemplate = async (emailType: string): Promise<EmailTemplate | null> => {
   try {
-    const supabase = await createClient();
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('email_templates')
       .select('*')
       .eq('email_type', emailType)
@@ -55,14 +51,13 @@ export const updateEmailTemplate = async (
   updates: Partial<Omit<EmailTemplate, 'id' | 'emailType' | 'category' | 'label' | 'description' | 'updatedAt'>>
 ): Promise<EmailTemplate> => {
   try {
-    const supabase = await createClient();
     const payload: any = {};
     if (updates.subject !== undefined) payload.subject = updates.subject;
     if (updates.customHtml !== undefined) payload.custom_html = updates.customHtml;
     if (updates.enabled !== undefined) payload.enabled = updates.enabled;
     payload.updated_at = new Date().toISOString();
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('email_templates')
       .update(payload)
       .eq('email_type', emailType)
@@ -80,8 +75,7 @@ export const updateEmailTemplate = async (
 
 export const resetEmailTemplate = async (emailType: string): Promise<EmailTemplate> => {
   try {
-    const supabase = await createClient();
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('email_templates')
       .update({ custom_html: null, updated_at: new Date().toISOString() })
       .eq('email_type', emailType)

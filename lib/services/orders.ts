@@ -139,14 +139,13 @@ export const createOrder = async (order: {
     if (error) throw error;
     const mapped = mapOrder(data);
 
-    // Asynchronously dispatch the Order Placed email using a dynamic import to prevent circular dependency
-    import('@/lib/email/triggers').then(({ onOrderPlaced }) => {
-      onOrderPlaced(mapped, { email: order.customerEmail, name: order.customerName, phone: order.customerPhone }).catch(err => {
-        console.error('[Email Trigger] failed in createOrder:', err);
-      });
-    }).catch(err => {
-      console.error('[Email Trigger] dynamic import failed in createOrder:', err);
-    });
+    // Await the email dispatch so the serverless function does not exit/freeze before delivery completes
+    try {
+      const { onOrderPlaced } = await import('@/lib/email/triggers');
+      await onOrderPlaced(mapped, { email: order.customerEmail, name: order.customerName, phone: order.customerPhone });
+    } catch (err) {
+      console.error('[Email Trigger] failed in createOrder:', err);
+    }
 
     return mapped;
   } catch (error) {
@@ -214,15 +213,14 @@ export const updateOrderStatus = async (id: string, status: Order['status']): Pr
     if (error) throw error;
     const mapped = mapOrder(data);
 
-    // Call triggers asynchronously if status changed
+    // Await the email dispatch so the serverless function does not exit/freeze before delivery completes
     if (oldStatus !== status) {
-      import('@/lib/email/triggers').then(({ onOrderStatusChange }) => {
-        onOrderStatusChange(mapped, { name: mapped.customerName, phone: mapped.customerPhone }, status).catch(err => {
-          console.error('[Email Trigger] failed in updateOrderStatus trigger:', err);
-        });
-      }).catch(err => {
-        console.error('[Email Trigger] import failed in updateOrderStatus:', err);
-      });
+      try {
+        const { onOrderStatusChange } = await import('@/lib/email/triggers');
+        await onOrderStatusChange(mapped, { name: mapped.customerName, phone: mapped.customerPhone }, status);
+      } catch (err) {
+        console.error('[Email Trigger] failed in updateOrderStatus trigger:', err);
+      }
     }
 
     return mapped;
@@ -289,13 +287,12 @@ export const updateOrderDetails = async (
                             oldTracking !== updates.trackingNumber;
 
     if (statusChanged || trackingUpdated) {
-      import('@/lib/email/triggers').then(({ onOrderStatusChange }) => {
-        onOrderStatusChange(mapped, { name: mapped.customerName, phone: mapped.customerPhone }, mapped.status).catch(err => {
-          console.error('[Email Trigger] failed in updateOrderDetails:', err);
-        });
-      }).catch(err => {
-        console.error('[Email Trigger] import failed in updateOrderDetails:', err);
-      });
+      try {
+        const { onOrderStatusChange } = await import('@/lib/email/triggers');
+        await onOrderStatusChange(mapped, { name: mapped.customerName, phone: mapped.customerPhone }, mapped.status);
+      } catch (err) {
+        console.error('[Email Trigger] failed in updateOrderDetails:', err);
+      }
     }
 
     return mapped;

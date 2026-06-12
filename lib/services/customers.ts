@@ -167,13 +167,12 @@ export async function customerSignup(data: {
       });
 
       if (customer.email) {
-        import('@/lib/email/triggers').then(({ onUserRegister }) => {
-          onUserRegister({ name: customer.name, email: customer.email }).catch(err => {
-            console.error('[Email Trigger] failed in customerSignup update:', err);
-          });
-        }).catch(err => {
-          console.error('[Email Trigger] import failed in customerSignup update:', err);
-        });
+        try {
+          const { onUserRegister } = await import('@/lib/email/triggers');
+          await onUserRegister({ name: customer.name, email: customer.email });
+        } catch (err) {
+          console.error('[Email Trigger] failed in customerSignup update:', err);
+        }
       }
 
       return { success: true, customer };
@@ -207,13 +206,12 @@ export async function customerSignup(data: {
     });
 
     if (customer.email) {
-      import('@/lib/email/triggers').then(({ onUserRegister }) => {
-        onUserRegister({ name: customer.name, email: customer.email }).catch(err => {
-          console.error('[Email Trigger] failed in customerSignup insert:', err);
-        });
-      }).catch(err => {
-        console.error('[Email Trigger] import failed in customerSignup insert:', err);
-      });
+      try {
+        const { onUserRegister } = await import('@/lib/email/triggers');
+        await onUserRegister({ name: customer.name, email: customer.email });
+      } catch (err) {
+        console.error('[Email Trigger] failed in customerSignup insert:', err);
+      }
     }
 
     return { success: true, customer };

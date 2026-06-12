@@ -447,8 +447,7 @@ export const getProductBySlug = async (slug: string) => {
 
 export const getProductById = async (id: string): Promise<Product | null> => {
   try {
-    const supabase = await createClient();
-    const { data, error } = await supabase
+    const { data, error } = await staticSupabase
       .from('products')
       .select('*, product_images(*), product_variants(*), product_modifiers(*), categories(*), badges(*), size_guides(*)')
       .eq('id', id)
