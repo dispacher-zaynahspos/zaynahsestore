@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { toast } from 'sonner';
+import { ExternalLink } from '@/components/common/Icons';
 
 interface EmailTabProps {
   smtpEmail: string;
@@ -137,9 +138,23 @@ export default function EmailTab({
                 placeholder="16-character code (no spaces)"
                 className="mt-1.5 w-full rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-5/50 dark:bg-[#0f0f1b]/50 px-4 py-2.5 text-sm font-medium text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-[#1a1a2e] dark:focus:border-[#e94560] focus:bg-white dark:focus:bg-[#16162a] focus:outline-none transition-all"
               />
-              <p className="text-[10px] text-amber-500 dark:text-amber-400 font-semibold mt-1">
-                ⚠️ Use a Gmail App Password, not your normal account password.
-              </p>
+              <div className="mt-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 text-[11px] text-amber-800 dark:text-amber-300 space-y-1.5 leading-relaxed">
+                <p className="font-bold flex items-center gap-1">
+                  ⚠️ Note: Do not use your regular Gmail password.
+                </p>
+                <p>
+                  You must enable <strong>2-Step Verification</strong> on your Google Account first, then generate a 16-character App Password.
+                </p>
+                <a
+                  href="https://myaccount.google.com/apppasswords"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 font-bold text-[#e94560] dark:text-[#e94560] hover:underline"
+                >
+                  <span>Generate Gmail App Password</span>
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </div>
             </div>
 
             <div>
