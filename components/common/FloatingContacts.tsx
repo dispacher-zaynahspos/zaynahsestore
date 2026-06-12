@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { StoreSettings } from '@/lib/types';
+import { cleanWhatsAppPhone } from '@/lib/utils/whatsapp';
 
 const InstagramIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
@@ -67,7 +68,7 @@ export default function FloatingContacts({ settings }: FloatingContactsProps) {
 
   // Format active urls based on enabled config flags
   const whatsappUrl = (settings.floatingWhatsappEnabled !== false && whatsappNumber)
-    ? `https://wa.me/${whatsappNumber.replace(/\D/g, '')}?text=${encodeURIComponent(settings.floatingWhatsappPreset || "Hello! I am visiting your store and have a question.")}`
+    ? `https://wa.me/${cleanWhatsAppPhone(whatsappNumber)}?text=${encodeURIComponent(settings.floatingWhatsappPreset || "Hello! I am visiting your store and have a question.")}`
     : null;
 
   const instagramUrlFormatted = (settings.floatingInstagramEnabled !== false && instagramUrl)

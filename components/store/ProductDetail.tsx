@@ -29,7 +29,7 @@ import { StoreSettings, Product, ProductVariant, ProductModifier, PaymentMethod 
 import { getProducts } from '@/lib/services/products';
 import PaymentBadges from '@/components/common/PaymentBadges';
 import { useCartStore } from '@/store/cartStore';
-import { formatPrice } from '@/lib/utils/whatsapp';
+import { formatPrice, cleanWhatsAppPhone } from '@/lib/utils/whatsapp';
 import { toast } from 'sonner';
 import VariantSelector from './VariantSelector';
 import { trackEvent } from '@/lib/trackEvent';
@@ -388,7 +388,7 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const whatsappUrl = `https://wa.me/${settings.whatsappNumber.replace(/\D/g, '')}?text=${encodeURIComponent(`Hello, I have a question about ${product.name}: ${productUrl}`)}`;
+  const whatsappUrl = `https://wa.me/${cleanWhatsAppPhone(settings.whatsappNumber)}?text=${encodeURIComponent(`Hello, I have a question about ${product.name}: ${productUrl}`)}`;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 space-y-6">

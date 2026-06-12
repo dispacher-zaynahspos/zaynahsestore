@@ -24,6 +24,7 @@ import {
   deletePaymentMethod
 } from '@/lib/services/paymentMethods';
 import { toast } from 'sonner';
+import { cleanWhatsAppPhone } from '@/lib/utils/whatsapp';
 
 import GeneralTab from './settings/GeneralTab';
 import HeaderTab from './settings/HeaderTab';
@@ -789,7 +790,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
     if (!whatsappNumber.trim()) return toast.error('WhatsApp Number is required');
 
     // Rule W2 Check: Clean WhatsApp number
-    const cleanPhone = whatsappNumber.replace(/\D/g, '');
+    const cleanPhone = cleanWhatsAppPhone(whatsappNumber);
 
     try {
       const payload: Partial<StoreSettings> = {
@@ -812,7 +813,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
         footerText: footerText.trim() || undefined,
         socialFacebook: socialFacebook.trim() || undefined,
         socialInstagram: socialInstagram.trim() || undefined,
-        socialWhatsapp: socialWhatsapp.trim() || undefined,
+        socialWhatsapp: cleanWhatsAppPhone(socialWhatsapp) || undefined,
         socialYoutube: socialYoutube.trim() || undefined,
         enableFakeViews,
         minViews: Number(minViews),

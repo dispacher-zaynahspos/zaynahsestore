@@ -8,6 +8,7 @@ import {
 import { getWhatsAppSubscribers } from '@/lib/services/sections';
 import { WhatsAppSubscriber } from '@/lib/types';
 import { toast } from 'sonner';
+import { cleanWhatsAppPhone } from '@/lib/utils/whatsapp';
 
 export default function AdminLeadsPage() {
   const [leads, setLeads] = useState<WhatsAppSubscriber[]>([]);
@@ -119,7 +120,7 @@ export default function AdminLeadsPage() {
   };
 
   const getWhatsAppURL = (lead: WhatsAppSubscriber) => {
-    const phone = getCleanPhone(lead.phone);
+    const phone = cleanWhatsAppPhone(lead.phone);
     const greeting = lead.name ? `Dear ${lead.name}` : 'Hello';
     const message = `${greeting}, thank you for subscribing at Zaynah's E-Store! We noticed you claimed a special coupon on our store. Let us know if you need any assistance placing your order.`;
     return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;

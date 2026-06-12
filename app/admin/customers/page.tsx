@@ -8,7 +8,7 @@ import {
 import { getAdminCustomers } from '@/lib/services/customers';
 import { getWhatsAppSubscribers } from '@/lib/services/sections';
 import { WhatsAppSubscriber } from '@/lib/types';
-import { formatPrice } from '@/lib/utils/whatsapp';
+import { formatPrice, cleanWhatsAppPhone } from '@/lib/utils/whatsapp';
 import { toast } from 'sonner';
 
 interface CustomerRecord {
@@ -266,7 +266,7 @@ export default function AdminCustomersPage() {
                             {/* WhatsApp message redirect */}
                             {customer.phone ? (
                               <a
-                                href={`https://wa.me/${getCleanPhone(customer.phone)}`}
+                                href={`https://wa.me/${cleanWhatsAppPhone(customer.phone)}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="h-8 w-8 rounded-lg bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500 hover:text-white dark:hover:bg-emerald-600 flex items-center justify-center transition-all cursor-pointer"
@@ -366,8 +366,8 @@ export default function AdminCustomersPage() {
                         </td>
                         <td className="py-4.5 px-6">
                           <div className="flex items-center justify-center gap-2">
-                            <a
-                              href={`https://wa.me/${getCleanPhone(lead.phone)}`}
+                             <a
+                              href={`https://wa.me/${cleanWhatsAppPhone(lead.phone)}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="h-8 w-8 rounded-lg bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500 hover:text-white dark:hover:bg-emerald-600 flex items-center justify-center transition-all cursor-pointer"

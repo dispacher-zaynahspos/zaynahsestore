@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { StoreSettings } from '@/lib/types';
 import { toast } from 'sonner';
+import { cleanWhatsAppPhone } from '@/lib/utils/whatsapp';
 
 const FacebookIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
@@ -346,7 +347,7 @@ export default function Footer({ settings }: FooterProps) {
 
                   {settings.socialWhatsapp && (
                     <a
-                      href={`https://wa.me/${settings.socialWhatsapp.replace(/\D/g, '')}`}
+                      href={`https://wa.me/${cleanWhatsAppPhone(settings.socialWhatsapp)}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-100 dark:bg-[#16162a] border border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-300 hover:bg-[#10b981] hover:text-white dark:hover:bg-[#10b981] dark:hover:text-white transition-all cursor-pointer"

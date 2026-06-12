@@ -21,7 +21,7 @@ import {
 } from '@/components/common/Icons';
 import { Order, StoreSettings, StatusLogItem } from '@/lib/types';
 import { updateOrderStatus, updateOrderDetails } from '@/lib/services/orders';
-import { formatPrice } from '@/lib/utils/whatsapp';
+import { formatPrice, cleanWhatsAppPhone } from '@/lib/utils/whatsapp';
 import { toast } from 'sonner';
 
 interface OrderLogProps {
@@ -368,7 +368,7 @@ export default function OrderLog({ initialOrders, settings }: OrderLogProps) {
                     <td className="py-4 px-6" onClick={(e) => e.stopPropagation()}>
                       <p className="font-bold text-[#1a1a2e] dark:text-white">{order.customerName || 'N/A'}</p>
                       <a 
-                        href={`https://wa.me/${order.customerPhone?.replace(/\D/g, '')}`}
+                        href={`https://wa.me/${cleanWhatsAppPhone(order.customerPhone)}`}
                         target="_blank"
                         rel="noreferrer"
                         className="text-xs text-[#10b981] hover:underline font-semibold flex items-center gap-1 mt-0.5"
@@ -801,7 +801,7 @@ export default function OrderLog({ initialOrders, settings }: OrderLogProps) {
                           <div className="flex items-center gap-2 mt-1">
                             <span className="font-mono text-gray-800 dark:text-gray-200 font-bold">{selectedOrder.customerPhone}</span>
                             <a 
-                              href={`https://wa.me/${selectedOrder.customerPhone.replace(/\D/g, '')}`}
+                             href={`https://wa.me/${cleanWhatsAppPhone(selectedOrder.customerPhone)}`}
                               target="_blank"
                               rel="noreferrer"
                               className="text-xs text-emerald-600 dark:text-emerald-400 font-bold hover:underline flex items-center gap-0.5 ml-1"
