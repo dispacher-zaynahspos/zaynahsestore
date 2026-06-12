@@ -23,10 +23,6 @@ interface TrustTabProps {
   setSafeCheckoutText: (val: string) => void;
   safeCheckoutMethods: string[];
   setSafeCheckoutMethods: (updateFn: (prev: string[]) => string[]) => void;
-  enableTicker: boolean;
-  setEnableTicker: (val: boolean) => void;
-  tickerText: string;
-  setTickerText: (val: string) => void;
   
   trustBadge1Title: string;
   setTrustBadge1Title: (val: string) => void;
@@ -84,10 +80,6 @@ export default function TrustTab({
   setSafeCheckoutText,
   safeCheckoutMethods,
   setSafeCheckoutMethods,
-  enableTicker,
-  setEnableTicker,
-  tickerText,
-  setTickerText,
   
   trustBadge1Title,
   setTrustBadge1Title,
@@ -272,41 +264,6 @@ export default function TrustTab({
                       })}
                     </div>
                   </div>
-                </div>
-
-                {/* Scrolling Ticker Editor Section */}
-                <div className="border-t border-gray-150 dark:border-gray-800 pt-3 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 block">Enable Scrolling Ticker</label>
-                      <span className="text-[10px] text-gray-400 dark:text-gray-500 font-semibold block mt-0.5">Show an infinite scrolling banner below description</span>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={enableTicker}
-                        onChange={(e) => setEnableTicker(e.target.checked)}
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#e94560]" />
-                    </label>
-                  </div>
-
-                  {enableTicker && (
-                    <div className="space-y-2 animate-fade-in pt-1">
-                      <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Ticker Content (One item per line)</label>
-                      <textarea
-                        value={tickerText}
-                        onChange={(e) => setTickerText(e.target.value)}
-                        rows={3}
-                        placeholder="e.g. Free returns within 30 days&#10;Unlimited delivery for only $175"
-                        className="mt-1.5 w-full rounded-xl border border-gray-200 dark:border-gray-850 bg-gray-50/50 dark:bg-[#0f0f1b]/50 px-4 py-2.5 text-sm font-semibold text-gray-900 dark:text-white focus:outline-none focus:border-[#e94560] resize-none"
-                      />
-                      <p className="text-[10px] text-gray-400 dark:text-gray-500 font-semibold leading-relaxed">
-                        Write one phrase per line. They will automatically loop infinitely and be separated by ✦ symbols.
-                      </p>
-                    </div>
-                  )}
                 </div>
               </div>
             )}

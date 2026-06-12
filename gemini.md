@@ -463,17 +463,28 @@ images: {
 ```
 
 ## RULE S6 — UNIVERSAL MEDIA SELECTOR
-- All admin panel image upload features MUST use the shared `MediaSelectorModal` component instead of direct `<input type="file">`.
-- This ensures a unified experience where users can both upload new images and select from existing uploaded media in the Supabase `product-images` bucket.
-- The modal provides built-in upload logic, compression integration, and search/filtering of existing media.
+- All admin panel image selection features MUST use the shared `MediaSelectorModal` component instead of direct `<input type="file">`.
+- Selection buttons must use the centralized `Image` icon from `@/components/common/Icons` (e.g. `import { Image as ImageIcon } from '@/components/common/Icons'`) and standardized styling to ensure consistency across the application.
+- Direct upload inputs are forbidden on settings forms and product editors; new media must be uploaded within the `MediaSelectorModal` context to maintain library consistency.
 
 ---
 
-## RULE K1 — INSTANT PAGE-LEVEL SKELETONS
+## RULE K1 — INSTANT PAGE-LEVEL SKELETONS & COLOR SCALE
 - Every directory/route group must have a corresponding `loading.tsx` to handle async page transitions instantly.
 - **Customer Storefront (`app/(store)/loading.tsx`)**: Default loader using `GridSkeleton` from `@/components/common/LoadingSkeleton` to represent grids of product cards.
 - **Product Details (`app/(store)/product/[slug]/loading.tsx`)**: Specific loader using `DetailSkeleton` showing product details structure (two-column layout).
 - **Admin Dashboard (`app/admin/loading.tsx`)**: Generic loader displaying statistics cards and list tables skeleton layouts.
+- **Skeleton Color Standardization**: All skeleton component backgrounds and placeholders must use standard, documented Tailwind color weights (e.g. `bg-gray-100` and `dark:bg-gray-800`). Under no circumstances should non-standard Tailwind colors (e.g. `bg-gray-150`, `bg-gray-155`) be used.
 - **Contrast Integrity**: Skeletons must support both light and dark mode colors (e.g. `dark:bg-[#16162a]`, `dark:border-gray-800/80`, `bg-gray-100`, `dark:bg-gray-800`).
+
+---
+
+## RULE O1 — MODULAR CODE ARCHITECTURE & SEPARATE MODAL/TAB FILES
+- **One File Per Modal/Tab**: Every settings tab, dashboard form, modal dialog, sliding sheet, or customizer property panel MUST be written in its own separate, dedicated file (e.g. under `components/admin/customizer/sections/` or `components/admin/settings/`).
+- **No Multi-Modal/Multi-Feature Files**: It is strictly forbidden to group multiple modals, multiple settings tabs, or multiple distinct features inside a single file. Every modal or tab must live in its own isolated file to keep features easily updateable.
+- **File Length Limits**: Individual files should be kept under 500 lines of code where possible. Large monolithic components exceeding 600 lines are strictly forbidden to prevent confusion, improve page load speeds, and facilitate seamless features update.
+- **Strict Separation of Concerns**: Master containers should focus solely on page layouts, state orchestrations, and API bindings, delegating UI blocks and input handlers to child components via clean props interfaces.
+
+
 
 

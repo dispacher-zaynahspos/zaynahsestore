@@ -32,6 +32,7 @@ import { useCartStore } from '@/store/cartStore';
 import { formatPrice } from '@/lib/utils/whatsapp';
 import { toast } from 'sonner';
 import VariantSelector from './VariantSelector';
+import { trackEvent } from '@/lib/trackEvent';
 
 interface ProductDetailProps {
   product: Product;
@@ -141,7 +142,7 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
   const [productUrl, setProductUrl] = useState('');
 
   // Flash Sale Timer state
-  const [timeLeft, setTimeLeft] = useState({ hours: 0, minutes: 0, seconds: 0, expired: true, isIncoming: false });
+  const [timeLeft, setTimeLeft] = useState({ hours: 0, minutes: 0, seconds: 0, expired: true, isIncoming: false, isInfinite: false });
 
   // Bundle states
   const [bundleProducts, setBundleProducts] = useState<Product[]>([]);
@@ -171,6 +172,27 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
     const wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
     setIsWishlisted(wishlist.includes(product.id));
 
+    // Track ViewContent event
+    trackEvent('ViewContent', {
+      content_ids: [product.id],
+      content_name: product.name,
+      content_type: 'product',
+      value: product.price,
+      currency: settings.currency || 'PKR'
+    });
+
+    // Update recently viewed products in localStorage
+    try {
+      const recentStr = localStorage.getItem('recently-viewed') || '[]';
+      const recent: string[] = JSON.parse(recentStr);
+      const filtered = recent.filter(id => id !== product.id);
+      const updated = [product.id, ...filtered].slice(0, 10);
+      localStorage.setItem('recently-viewed', JSON.stringify(updated));
+      window.dispatchEvent(new Event('recently-viewed-updated'));
+    } catch (err) {
+      console.error('Failed to update recently viewed:', err);
+    }
+
     // Fetch products for bundle recommendations
     const loadBundleData = async () => {
       try {
@@ -196,6 +218,7 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
       let isFlashSaleActive = false;
       let targetDateStr: string | undefined = undefined;
       let isIncoming = false;
+      let isInfinite = false;
 
       const now = new Date().getTime();
 
@@ -203,20 +226,28 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
       const prodStart = product.flashSaleStartDate ? new Date(product.flashSaleStartDate).getTime() : 0;
       const prodEnd = product.flashSaleEndDate ? new Date(product.flashSaleEndDate).getTime() : 0;
 
-      if (product.flashSaleEnabled && (prodEnd > now || (prodStart > now && prodEnd === 0) || (!product.flashSaleStartDate && !product.flashSaleEndDate))) {
-        isFlashSaleActive = true;
-        if (prodStart > now) {
-          isIncoming = true;
-          targetDateStr = product.flashSaleStartDate!;
-        } else {
-          targetDateStr = product.flashSaleEndDate;
+      if (product.flashSaleEnabled) {
+        if (!product.flashSaleStartDate && !product.flashSaleEndDate) {
+          isFlashSaleActive = true;
+          isInfinite = true;
+        } else if (prodEnd > now || (prodStart > now && prodEnd === 0)) {
+          isFlashSaleActive = true;
+          if (prodStart > now) {
+            isIncoming = true;
+            targetDateStr = product.flashSaleStartDate!;
+          } else {
+            targetDateStr = product.flashSaleEndDate;
+          }
         }
       } else if (settings.flash_sale_enabled) {
         // Fallback to global settings
         const globalStart = settings.flash_sale_start_date ? new Date(settings.flash_sale_start_date).getTime() : 0;
         const globalEnd = settings.flash_sale_end_date ? new Date(settings.flash_sale_end_date).getTime() : 0;
 
-        if (globalEnd > now || (globalStart > now && globalEnd === 0) || (!settings.flash_sale_start_date && !settings.flash_sale_end_date)) {
+        if (!settings.flash_sale_start_date && !settings.flash_sale_end_date) {
+          isFlashSaleActive = true;
+          isInfinite = true;
+        } else if (globalEnd > now || (globalStart > now && globalEnd === 0)) {
           isFlashSaleActive = true;
           if (globalStart > now) {
             isIncoming = true;
@@ -228,7 +259,12 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
       }
 
       if (!isFlashSaleActive) {
-        setTimeLeft({ hours: 0, minutes: 0, seconds: 0, expired: true, isIncoming: false });
+        setTimeLeft({ hours: 0, minutes: 0, seconds: 0, expired: true, isIncoming: false, isInfinite: false });
+        return;
+      }
+
+      if (isInfinite) {
+        setTimeLeft({ hours: 0, minutes: 0, seconds: 0, expired: false, isIncoming: false, isInfinite: true });
         return;
       }
 
@@ -243,7 +279,7 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
       const diff = targetTime - now;
 
       if (diff <= 0) {
-        setTimeLeft({ hours: 0, minutes: 0, seconds: 0, expired: true, isIncoming: false });
+        setTimeLeft({ hours: 0, minutes: 0, seconds: 0, expired: true, isIncoming: false, isInfinite: false });
         return;
       }
 
@@ -251,7 +287,7 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
-      setTimeLeft({ hours, minutes, seconds, expired: false, isIncoming });
+      setTimeLeft({ hours, minutes, seconds, expired: false, isIncoming, isInfinite: false });
     };
 
     updateTimeLeft();
@@ -269,6 +305,21 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
         addItem(p, p.hasVariants && p.variants.length > 0 ? p.variants[0] : undefined, [], 1);
       }
     });
+
+    // Track AddToCart for bundle
+    const totalBundleValue = (selectedVariant?.price ?? product.price) + 
+      bundleProducts
+        .filter(p => selectedBundleIds.includes(p.id))
+        .reduce((sum, p) => sum + p.price, 0);
+    const bundleIds = [product.id, ...bundleProducts.filter(p => selectedBundleIds.includes(p.id)).map(p => p.id)];
+    trackEvent('AddToCart', {
+      content_ids: bundleIds,
+      content_name: `${product.name} Bundle`,
+      content_type: 'product_group',
+      value: totalBundleValue,
+      currency: settings.currency || 'PKR'
+    });
+
     toast.success('Successfully added bundle items to cart!');
   };
 
@@ -301,6 +352,16 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
       return;
     }
     addItem(product, selectedVariant, selectedModifiers, quantity);
+
+    // Track AddToCart event
+    trackEvent('AddToCart', {
+      content_ids: [product.id],
+      content_name: product.name,
+      content_type: 'product',
+      value: unitPrice * quantity,
+      currency: settings.currency || 'PKR'
+    });
+
     toast.success(`${product.name} added to cart!`);
   };
 
@@ -490,15 +551,27 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
             </div>
 
             {/* Pricing */}
-            <div className="flex items-baseline gap-2 flex-wrap">
+            <div className="flex items-baseline gap-2.5 flex-wrap">
               <span className="text-2xl font-extrabold text-[#1a1a2e] dark:text-white">
                 {formatPrice(unitPrice, settings.currencySymbol)}
               </span>
-              {product.comparePrice && product.comparePrice > unitPrice && (
-                <span className="text-sm text-gray-400 line-through font-semibold">
-                  {formatPrice(product.comparePrice, settings.currencySymbol)}
-                </span>
-              )}
+              {(() => {
+                const currentComparePrice = selectedVariant?.comparePrice ?? product.comparePrice;
+                if (currentComparePrice && currentComparePrice > unitPrice) {
+                  const pct = Math.round(((currentComparePrice - unitPrice) / currentComparePrice) * 100);
+                  return (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-400 line-through font-semibold">
+                        {formatPrice(currentComparePrice, settings.currencySymbol)}
+                      </span>
+                      <span className="rounded-md bg-[#e94560]/10 dark:bg-[#e94560]/20 px-2 py-0.5 text-[10px] font-black text-[#e94560] tracking-wide">
+                        -{pct}%
+                      </span>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
             </div>
 
             {/* Countdown timer for sales / urgency */}
@@ -512,30 +585,36 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
                     <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${timeLeft.isIncoming ? 'bg-amber-400' : 'bg-rose-400'}`}></span>
                     <span className={`relative inline-flex rounded-full h-2 w-2 ${timeLeft.isIncoming ? 'bg-amber-500' : 'bg-rose-500'}`}></span>
                   </span>
-                  {timeLeft.isIncoming ? 'FLASH SALE — Starts In:' : 'FLASH SALE — Offer Ends In:'}
+                  {timeLeft.isIncoming ? 'FLASH SALE — Starts In:' : 'FLASH SALE — Offer Active:'}
                 </p>
-                <div className="flex items-center gap-2 mt-2">
-                  <div className={`flex flex-col items-center justify-center bg-white dark:bg-gray-800 font-extrabold w-11 py-1 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 ${
-                    timeLeft.isIncoming ? 'text-amber-700 dark:text-amber-400' : 'text-rose-700 dark:text-rose-400'
-                  }`}>
-                    <span className="text-xs font-mono">{String(timeLeft.hours).padStart(2, '0')}</span>
-                    <span className="text-[7px] text-gray-400 font-normal">HRS</span>
+                {!timeLeft.isInfinite ? (
+                  <div className="flex items-center gap-2 mt-2">
+                    <div className={`flex flex-col items-center justify-center bg-white dark:bg-gray-800 font-extrabold w-11 py-1 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 ${
+                      timeLeft.isIncoming ? 'text-amber-700 dark:text-amber-400' : 'text-rose-700 dark:text-rose-400'
+                    }`}>
+                      <span className="text-xs font-mono">{String(timeLeft.hours).padStart(2, '0')}</span>
+                      <span className="text-[7px] text-gray-400 font-normal">HRS</span>
+                    </div>
+                    <span className={`font-extrabold ${timeLeft.isIncoming ? 'text-amber-500' : 'text-rose-500'}`}>:</span>
+                    <div className={`flex flex-col items-center justify-center bg-white dark:bg-gray-800 font-extrabold w-11 py-1 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 ${
+                      timeLeft.isIncoming ? 'text-amber-700 dark:text-amber-400' : 'text-rose-700 dark:text-rose-400'
+                    }`}>
+                      <span className="text-xs font-mono">{String(timeLeft.minutes).padStart(2, '0')}</span>
+                      <span className="text-[7px] text-gray-400 font-normal">MIN</span>
+                    </div>
+                    <span className={`font-extrabold ${timeLeft.isIncoming ? 'text-amber-500' : 'text-rose-500'}`}>:</span>
+                    <div className={`flex flex-col items-center justify-center bg-white dark:bg-gray-800 font-extrabold w-11 py-1 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 ${
+                      timeLeft.isIncoming ? 'text-amber-700 dark:text-amber-400' : 'text-rose-700 dark:text-rose-400'
+                    }`}>
+                      <span className="text-xs font-mono">{String(timeLeft.seconds).padStart(2, '0')}</span>
+                      <span className="text-[7px] text-gray-400 font-normal">SEC</span>
+                    </div>
                   </div>
-                  <span className={`font-extrabold ${timeLeft.isIncoming ? 'text-amber-500' : 'text-rose-500'}`}>:</span>
-                  <div className={`flex flex-col items-center justify-center bg-white dark:bg-gray-800 font-extrabold w-11 py-1 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 ${
-                    timeLeft.isIncoming ? 'text-amber-700 dark:text-amber-400' : 'text-rose-700 dark:text-rose-400'
-                  }`}>
-                    <span className="text-xs font-mono">{String(timeLeft.minutes).padStart(2, '0')}</span>
-                    <span className="text-[7px] text-gray-400 font-normal">MIN</span>
-                  </div>
-                  <span className={`font-extrabold ${timeLeft.isIncoming ? 'text-amber-500' : 'text-rose-500'}`}>:</span>
-                  <div className={`flex flex-col items-center justify-center bg-white dark:bg-gray-800 font-extrabold w-11 py-1 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 ${
-                    timeLeft.isIncoming ? 'text-amber-700 dark:text-amber-400' : 'text-rose-700 dark:text-rose-400'
-                  }`}>
-                    <span className="text-xs font-mono">{String(timeLeft.seconds).padStart(2, '0')}</span>
-                    <span className="text-[7px] text-gray-400 font-normal">SEC</span>
-                  </div>
-                </div>
+                ) : (
+                  <p className="text-xs font-semibold text-rose-500 dark:text-rose-400 mt-1">
+                    Special discounted price is currently active!
+                  </p>
+                )}
               </div>
             )}
 
@@ -1177,64 +1256,6 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
           </div>
         </div>
       )}
-
-      {/* Instagram/TikTok Social Feed Embeds (Premium Mock) */}
-      {settings.social_feeds_product_enabled !== false && (
-        <div className="border-t border-gray-200 dark:border-gray-800 mt-12 pt-8">
-          <div className="text-center space-y-2 mb-6">
-            <span className="inline-block px-3 py-1 bg-amber-50 dark:bg-amber-950/40 text-amber-500 text-xs font-bold rounded-full uppercase tracking-wider">
-              {settings.social_feeds_subtitle || '#ZAYNAHSVOGUE'}
-            </span>
-            <h3 className="text-lg font-black uppercase text-gray-900 dark:text-white tracking-wider">
-              {settings.social_feeds_title || 'Loved On Social Media'}
-            </h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
-              {settings.social_feeds_desc || 'See how our premium buyers wear and style their favorites. Tag us to get featured!'}
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {(parsedFeeds.length > 0 ? parsedFeeds : [
-              { id: 'v1', imageUrl: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400&q=70', link: '#', username: 'buyer1', caption: 'Stunning piece!' },
-              { id: 'v2', imageUrl: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=400&q=70', link: '#', username: 'buyer2', caption: 'Obsessed with the quality.' },
-              { id: 'v3', imageUrl: 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?w=400&q=70', link: '#', username: 'buyer3', caption: 'Super fast shipping!' },
-              { id: 'v4', imageUrl: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=400&q=70', link: '#', username: 'buyer4', caption: 'Highly recommended.' }
-            ]).slice(0, 8).map((feed, idx) => (
-              <a
-                key={feed.id || idx}
-                href={feed.link || '#'}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="relative aspect-[9/16] bg-gray-150 dark:bg-gray-800 rounded-2xl overflow-hidden group border border-gray-100 dark:border-gray-855 block cursor-pointer"
-              >
-                <Image
-                  src={feed.imageUrl}
-                  alt={feed.caption || `Social post by @${feed.username}`}
-                  fill
-                  sizes="(max-width: 768px) 50vw, 25vw"
-                  className="object-cover transition-transform duration-300 group-hover:scale-105"
-                  unoptimized={true}
-                />
-                {/* Play/Eye overlay on hover */}
-                <div className="absolute inset-0 bg-black/40 flex flex-col justify-between p-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <div className="w-8 h-8 bg-white/20 backdrop-blur rounded-full flex items-center justify-center border border-white/40 shadow self-end">
-                    <Play className="w-3.5 h-3.5 text-white fill-current translate-x-0.5" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black text-white">@{feed.username}</p>
-                    {feed.caption && <p className="text-[9px] text-gray-250 line-clamp-2 mt-0.5 leading-tight">{feed.caption}</p>}
-                  </div>
-                </div>
-                {/* Default username tag visible when not hovered */}
-                <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur text-white text-[9px] font-bold px-2.5 py-1 rounded-full group-hover:opacity-0 transition-opacity">
-                  @{feed.username}
-                </div>
-              </a>
-            ))}
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }

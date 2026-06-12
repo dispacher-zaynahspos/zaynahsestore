@@ -12,6 +12,109 @@
 1. What changed and why
 ```
 
+### [2026-06-12] v3.7.0 — Meta Catalog Real-time Sync Database Schema
+**Files Updated:** [SUPER_MASTER_SCHEMA.sql](file:///Users/shoaib/Desktop/Zaynahs%20e-store/supabase/schema/SUPER_MASTER_SCHEMA.sql), [20260612110000_add_meta_catalog_sync.sql](file:///Users/shoaib/Desktop/Zaynahs%20e-store/supabase/migrations/20260612110000_add_meta_catalog_sync.sql)
+**Changes:**
+1. Appended `meta_sync_status` (TEXT), `meta_sync_error` (TEXT), and `meta_last_synced_at` (TIMESTAMPTZ) fields to the `products` table definition to track Meta Catalog sync statuses.
+2. Created the `meta_category_mapping` database table to map storefront categories to Meta's standard catalog product category paths.
+
+### [2026-06-12] v3.6.0 — Zaynahs SEO + AI Copywriting and Media Library Tables
+**Files Updated:** [SUPER_MASTER_SCHEMA.sql](file:///Users/shoaib/Desktop/Zaynahs%20e-store/supabase/schema/SUPER_MASTER_SCHEMA.sql), [20260612100000_add_seo_and_media_library.sql](file:///Users/shoaib/Desktop/Zaynahs%20e-store/supabase/migrations/20260612100000_add_seo_and_media_library.sql)
+**Changes:**
+1. Created `seo_meta` database table to track metadata overrides (title, meta descriptions, open graph details, and structured FAQ arrays) for products, categories, and custom pages.
+2. Created `media_library` database table to log uploaded files, SEO-friendly file names, captions, alt text, and AI statuses.
+3. Created `ai_settings` database table to store Content/Image SEO AI provider parameters, model selections, and rotating API keys.
+
+### [2026-06-12] v3.5.0 — Email Templates System & Order Tracking Columns
+**Files Updated:** [SUPER_MASTER_SCHEMA.sql](file:///Users/shoaib/Desktop/Zaynahs%20e-store/supabase/schema/SUPER_MASTER_SCHEMA.sql), [SCHEMA_CHANGE_LOG.md](file:///Users/shoaib/Desktop/Zaynahs%20e-store/SCHEMA_CHANGE_LOG.md)
+**Changes:**
+1. Email Templates Database Table: Created the `email_templates` table via migration containing `email_type`, `category`, `label`, `description`, `enabled`, `subject`, and `custom_html` columns, pre-seeded with 18 default customer and admin email types.
+2. Orders Table Columns: Appended `review_email_pending` (BOOLEAN), `delivered_at` (TIMESTAMPTZ), `tracking_number` (TEXT), `courier_name` (TEXT), `tracking_url` (TEXT), `cancel_reason` (TEXT), and `refund_amount` (NUMERIC) fields to the orders table.
+
+### [2026-06-12] v3.4.0 — Tracking Pixels, SEO Title Suffix & AI Configurations
+**Files Updated:** [SUPER_MASTER_SCHEMA.sql](file:///Users/shoaib/Desktop/Zaynahs%20e-store/supabase/schema/SUPER_MASTER_SCHEMA.sql), [types.ts](file:///Users/shoaib/Desktop/Zaynahs%20e-store/lib/types.ts), [settings.ts](file:///Users/shoaib/Desktop/Zaynahs%20e-store/lib/services/settings.ts)
+**Changes:**
+1. Database Schema Additions: Altered `store_settings` table to add Meta Pixel, GA4, GTM, TikTok, Snapchat, Pinterest, and Twitter/X tracking columns, dynamic `meta_title_suffix` and `twitter_handle` columns, and AI content/vision configuration variables (Groq/Gemini models, tones, languages, and generation switches).
+2. Centralized Scripts and Event Triggers: Mounted client-side event listeners tracking standard ecommerce actions on product details, cart changes, checkout forms, search query triggers, and order completions.
+
+### [2026-06-12] v3.3.0 — Product Card Customization Templates & Media Library Upgrades
+**Files Updated:** [SUPER_MASTER_SCHEMA.sql](file:///Users/shoaib/Desktop/Zaynahs%20e-store/supabase/schema/SUPER_MASTER_SCHEMA.sql), [types.ts](file:///Users/shoaib/Desktop/Zaynahs%20e-store/lib/types.ts), [settings.ts](file:///Users/shoaib/Desktop/Zaynahs%20e-store/lib/services/settings.ts)
+**Changes:**
+1. Product Card Customization Fields: Added `card_style`, `card_show_stars`, `card_show_quickview`, `card_show_wishlist`, `card_show_quickcart`, `card_alignment`, and `card_elements_order` columns to `store_settings` to support visual customizations, 5 templates, alignment, and element reordering.
+
+### [2026-06-12] v3.2.0 — Dynamic Theme Appearance Presets System
+**Files Updated:** [SUPER_MASTER_SCHEMA.sql](file:///Users/shoaib/Desktop/Zaynahs%20e-store/supabase/schema/SUPER_MASTER_SCHEMA.sql), [types.ts](file:///Users/shoaib/Desktop/Zaynahs%20e-store/lib/types.ts), [settings.ts](file:///Users/shoaib/Desktop/Zaynahs%20e-store/lib/services/settings.ts)
+**Changes:**
+1. Database Appearance Columns: Added `theme_preset` (TEXT) and `theme_config` (JSONB) columns to the `store_settings` table via migration to store visual presentation configurations and 10 ready-made presets.
+
+### [2026-06-12] v3.1.0 — Shopify-Style Orders Log, Staff Notes, Timeline Logs, and Financial Dashboard
+**Files Updated:** [SUPER_MASTER_SCHEMA.sql](file:///Users/shoaib/Desktop/Zaynahs%20e-store/supabase/schema/SUPER_MASTER_SCHEMA.sql), [types.ts](file:///Users/shoaib/Desktop/Zaynahs%20e-store/lib/types.ts), [orders.ts](file:///Users/shoaib/Desktop/Zaynahs%20e-store/lib/services/orders.ts), [OrderLog.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/admin/OrderLog.tsx), [products.ts](file:///Users/shoaib/Desktop/Zaynahs%20e-store/lib/services/products.ts), [PreviewClient.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/app/admin/settings/customizer/preview/PreviewClient.tsx)
+**Changes:**
+1. Orders Database Alteration: Added `staff_notes` (TEXT) and `status_logs` (JSONB) to the `orders` table via migration to support internal note editing and order lifecycle history logging.
+2. Orders Lifecycle Status Log: Configured status updates and staff notes additions to write rich timeline event logs to `status_logs` automatically.
+3. Compare Price Variant Calculation Fix: Overhauled `applyFlashSaleDiscounts` on the server and `liveProducts` on the client customizer preview to dynamically calculate and fallback variants' original compare prices proportionally, ensuring flash sale price calculations cut off the original compare price instead of the selling price when a compare price is present.
+
+### [2026-06-12] v3.0.0 — Dedicated WhatsApp Leads Tab, Email Capture, & Live Previews
+**Files Updated:** [types.ts](file:///Users/shoaib/Desktop/Zaynahs%20e-store/lib/types.ts), [sections.ts](file:///Users/shoaib/Desktop/Zaynahs%20e-store/lib/services/sections.ts), [layout.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/app/admin/layout.tsx), [PremiumFeaturesProvider.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/store/PremiumFeaturesProvider.tsx), [PremiumTab.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/admin/settings/PremiumTab.tsx), [page.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/app/admin/leads/page.tsx)
+**Changes:**
+1. Extended WhatsApp subscribers schema: Supported storing optional email address and widget source types ('wheel' vs 'exit_intent').
+2. Leads tab additions: Replaced customer lists sub-tab with a fully dedicated Sidebar menu item "WhatsApp Leads" routing to a detailed dashboard.
+3. Advanced admin filtering: Implemented search filters, date range filters (Today, Yesterday, Last 7/30 days), source widget segment filters, prefilled WhatsApp templates, and copy buttons on the leads page.
+4. Settings live preview mockups: Built visual storefront popup mocks (Exit intent dialog card & Spin wheel SVG layout) directly inside the Settings console page updating in real-time.
+
+### [2026-06-12] v2.9.2 — YouTube/Vimeo Video Embeds & Custom Autoplay Controls
+**Files Updated:** [HeroBannerSettings.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/admin/customizer/sections/HeroBannerSettings.tsx), [StoreFront.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/store/StoreFront.tsx), [SCHEMA_CHANGE_LOG.md](file:///Users/shoaib/Desktop/Zaynahs%20e-store/SCHEMA_CHANGE_LOG.md)
+**Changes:**
+1. Customizer settings: Added support for YouTube and Vimeo video URLs in slide desktop/mobile video settings, and added dynamic autoplay checkboxes `video_autoplay` and `mobile_video_autoplay` to let administrators toggle autoplay (muted background loops) vs manual play (with controls enabled).
+2. Storefront YouTube/Vimeo Embed support: Updated `StoreFront.tsx` to detect YouTube/Vimeo links using regex parsers, rendering them as clean, responsive `<iframe>` tags. If autoplay is enabled, the embedded videos run muted, inline, and looped. Otherwise, controls are enabled and autoplay is disabled.
+3. Fallback video control support: Direct video formats (e.g. `.mp4`, `.webm`) respect the same autoplay settings on storefront.
+
+### [2026-06-12] v2.9.1 — Left/Right sorting arrows, variant scaling, & storefront category sale display
+**Files Updated:** [FlashSaleSettings.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/admin/customizer/sections/FlashSaleSettings.tsx), [products.ts](file:///Users/shoaib/Desktop/Zaynahs%20e-store/lib/services/products.ts), [StoreFront.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/store/StoreFront.tsx), [SCHEMA_CHANGE_LOG.md](file:///Users/shoaib/Desktop/Zaynahs%20e-store/SCHEMA_CHANGE_LOG.md)
+**Changes:**
+1. Horizontal Sorting: Added ChevronLeft and ChevronRight alongside vertical Up/Down buttons in the product list sorting controls of the theme customizer, allowing administrators to sort/reorder items back and forth ("agge peche").
+2. Storefront Category Display: Overhauled `StoreFront.tsx`'s FlashSaleSection to query and display all active category discount products alongside the manually selected individual products.
+3. Proportional Variant Pricing: Extended database-level `applyFlashSaleDiscounts` to automatically recalculate prices for all variants (either proportionally using the discounted product base price ratio, or by applying the percentage/fixed category discount directly to each variant), ensuring storewide price consistency for all combinations.
+
+### [2026-06-12] v2.9.0 — Customizer Flash Sale Grid, Reordering & Category Rules
+**Files Updated:** [types.ts](file:///Users/shoaib/Desktop/Zaynahs%20e-store/lib/types.ts), [products.ts](file:///Users/shoaib/Desktop/Zaynahs%20e-store/lib/services/products.ts), [sections.ts](file:///Users/shoaib/Desktop/Zaynahs%20e-store/lib/services/sections.ts), [CustomizerEditor.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/admin/CustomizerEditor.tsx), [FlashSaleSettings.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/admin/customizer/sections/FlashSaleSettings.tsx), [StoreFront.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/store/StoreFront.tsx), [SCHEMA_CHANGE_LOG.md](file:///Users/shoaib/Desktop/Zaynahs%20e-store/SCHEMA_CHANGE_LOG.md)
+**Changes:**
+1. Customizer Section Addition: Added the new `'flash_sale'` section type, permitting administrators to insert a live Flash Sale grid with custom title, start date-time picker, end date-time picker, custom button labels/links, and choose products with specific flash sale prices.
+2. Dynamic Pricing Overrides: Implemented server-side pricing resolution helper `applyFlashSaleDiscounts` inside `lib/services/products.ts` called on `getProducts` and `getProductBySlug`. If the current time lies between the flash sale start and end times, matched products dynamically display their flash sale price and save the original price as crossed-out `comparePrice` everywhere (store grids, detail pages, and cart logic).
+3. Storefront UI: Created a premium dark-accented horizontal block layout (`FlashSaleSection`) on the home page with a live countdown timer ticking every second, showing starts/ends countdowns and displaying the discounted products.
+4. Product Reordering & Sorting: Integrated Up/Down chevron arrows inside the Customizer products list settings, sorting the storefront grid items dynamically based on the customizer's exact array sequence.
+5. Category-wide Sales: Added category selection and discount types (Percentage % vs Fixed Amount Rs.) to apply flash sale discounts to all products in a chosen category dynamically.
+
+### [2026-06-12] v2.8.0 — Homepage Product Grid "View All" Button Customization & Social Links
+**Files Updated:** [ProductGridSettings.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/admin/customizer/sections/ProductGridSettings.tsx), [StoreFront.tsx](file:///Users/shoaib%20e-store/components/store/StoreFront.tsx), [GlobalSettings.tsx](file:///Users/shoaib%20e-store/components/admin/customizer/pages/GlobalSettings.tsx), [SCHEMA_CHANGE_LOG.md](file:///Users/shoaib%2520e-store/SCHEMA_CHANGE_LOG.md)
+**Changes:**
+1. Customizer Settings: Added inputs to modify View All button text (`viewAllText`) and custom link URL (`viewAllUrl`) on the homepage Product Grid settings form.
+2. Dynamic Linking & Fallback: Configured the customer storefront rendering (`renderProductGrid` in `StoreFront.tsx`) to show customized text and route to the custom URL. If the URL is blank, it dynamically routes to `/shop?category={slug}` matching the selected source category.
+3. Social Link Settings: Added missing input fields for Snapchat, Twitter (X), YouTube, and WhatsApp contact numbers inside the Theme Customizer's Global Settings page (`GlobalSettings.tsx`) under Footer & Social tabs, matching the primary Settings page.
+
+### [2026-06-12] v2.7.0 — Product Page Custom Reordering & Announcement Bar Shortcuts
+**Files Updated:** [SUPER_MASTER_SCHEMA.sql](file:///Users/shoaib/Desktop/Zaynahs%20e-store/supabase/schema/SUPER_MASTER_SCHEMA.sql), [20260612011000_add_product_page_layout.sql](file:///Users/shoaib/Desktop/Zaynahs%20e-store/supabase/migrations/20260612011000_add_product_page_layout.sql), [types.ts](file:///Users/shoaib/Desktop/Zaynahs%20e-store/lib/types.ts), [settings.ts](file:///Users/shoaib/Desktop/Zaynahs%20e-store/lib/services/settings.ts), [CustomizerEditor.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/admin/CustomizerEditor.tsx), [ProductDetailPageSettings.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/admin/customizer/pages/ProductDetailPageSettings.tsx), [PreviewClient.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/app/admin/settings/customizer/preview/PreviewClient.tsx), [Navbar.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/common/Navbar.tsx), [Footer.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/common/Footer.tsx), [PremiumTab.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/admin/settings/PremiumTab.tsx), [SettingsForm.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/admin/SettingsForm.tsx)
+**Changes:**
+1. Database Schema: Added `product_page_layout` text array column to `store_settings` to persist custom product details sections order.
+2. Customizer Reordering: Added up/down reordering controls for Product Page blocks inside `ProductDetailPageSettings.tsx`.
+3. Preview Client Sync: Updated preview to render Product Detail Page blocks dynamically in the saved/live layout order.
+4. Iframe Click-to-Select: Configured click events on Header, Footer, and Announcement Bar inside `Navbar.tsx` and `Footer.tsx` to communicate with the parent editor via postMessage to auto-select properties.
+5. Announcement Bar Editing: Allowed news bar/announcement bar edits directly on the Home Page Customizer stack, the Global Header Customizer settings, and the main Premium Features tab.
+6. Real-time Live Preview: Logo width, news text, and all customizer properties sync dynamically in the preview, and are only saved on clicking "Save Layout".
+
+### [2026-06-12] v2.6.0 — Theme Customizer Modular Refactoring & Modularity Guidelines
+**Files Updated:** [gemini.md](file:///Users/shoaib/Desktop/Zaynahs%20e-store/gemini.md), [CustomizerEditor.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/admin/CustomizerEditor.tsx), [HeroBannerSettings.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/admin/customizer/sections/HeroBannerSettings.tsx), [ProductGridSettings.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/admin/customizer/sections/ProductGridSettings.tsx), [CategoryListSettings.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/admin/customizer/sections/CategoryListSettings.tsx), [CategoryGridSettings.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/admin/customizer/sections/CategoryGridSettings.tsx), [PromoBannerSettings.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/admin/customizer/sections/PromoBannerSettings.tsx), [RecentReviewsSettings.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/admin/customizer/sections/RecentReviewsSettings.tsx), [BrandsLogosSettings.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/admin/customizer/sections/BrandsLogosSettings.tsx), [SocialFeedSettings.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/admin/customizer/sections/SocialFeedSettings.tsx), [SCHEMA_CHANGE_LOG.md](file:///Users/shoaib/Desktop/Zaynahs%20e-store/SCHEMA_CHANGE_LOG.md)
+**Changes:**
+1. Added RULE O1 to gemini.md defining strict modularity requirements (separate files for settings tabs/modals, keep files under 500 lines).
+2. Refactored the homepage sections theme customizer editor to move inline section fields into dedicated separate components under `components/admin/customizer/sections/`.
+3. Reduced CustomizerEditor.tsx size from 1577 lines to ~470 lines for better updateability and speed.
+4. Integrated Page Selector dropdown to switch between Home Page, Shop Page, Product Details, and Global Settings within the Theme Customizer.
+5. Connected ShopPageSettings, ProductDetailPageSettings, and GlobalSettings components with live state management.
+6. Synchronized settings state down to the preview iframe on change and page navigation.
+7. Wired up database persistence using updateSettings server action in handleSaveLayout.
+
+---
+
 ### [2026-06-08] v2.5.0 — Make product_id Nullable in product_images
 **Files Updated:** [20260608135800_make_product_id_nullable_in_product_images.sql](file:///Users/shoaib/Desktop/Zaynahs%20e-store/supabase/migrations/20260608135800_make_product_id_nullable_in_product_images.sql), [SUPER_MASTER_SCHEMA.sql](file:///Users/shoaib/Desktop/Zaynahs%20e-store/supabase/schema/SUPER_MASTER_SCHEMA.sql), [SCHEMA_CHANGE_LOG.md](file:///Users/shoaib/Desktop/Zaynahs%20e-store/SCHEMA_CHANGE_LOG.md)
 **Changes:**
@@ -569,5 +672,39 @@ Changes:
   1. **Coupons Database** — Created `coupons` table supporting percentage/fixed discounts, minimum subtotal checkouts validation, and status flags.
   2. **Admin Coupons Manager** — Created coupons creator with validation states in Settings.
   3. **Visual Customization** — Programmed Admin controls for Frequently Bought Together products, customizable Instagram/social feeds ribbon, and per-product Countdown sales clocks.
+
+---
+
+### [2026-06-11] v2.6.0 — Loading Skeletons Color Scale Standardization & Customizer Loaders
+**Files Updated:** [LoadingSkeleton.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/common/LoadingSkeleton.tsx), [app/(store)/loading.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/app/%28store%29/loading.tsx), [app/admin/loading.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/app/admin/loading.tsx), [app/admin/dashboard/loading.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/app/admin/dashboard/loading.tsx), [app/admin/products/loading.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/app/admin/products/loading.tsx), [app/admin/categories/loading.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/app/admin/categories/loading.tsx), [app/admin/orders/loading.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/app/admin/orders/loading.tsx), [app/admin/settings/loading.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/app/admin/settings/loading.tsx), [app/admin/settings/customizer/loading.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/app/admin/settings/customizer/loading.tsx), [gemini.md](file:///Users/shoaib/Desktop/Zaynahs%20e-store/gemini.md)
+**Changes:**
+1. Standardized all skeleton loaders in both customer storefront and admin route loaders to use Tailwind standard color weight `bg-gray-100` (and `dark:bg-gray-800`), eliminating non-standard colors (`bg-gray-150`, `bg-gray-155`).
+2. Documented the skeleton color scale rules in `RULE K1` inside `gemini.md`.
+
+---
+
+### [2026-06-11] v2.7.0 — Customizer Preview Layout Bypass & Scaled Viewports
+**Files Updated:** [layout.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/app/admin/layout.tsx), [CustomizerEditor.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/admin/CustomizerEditor.tsx), [Icons.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/common/Icons.tsx)
+**Changes:**
+1. Exempted the `/admin/settings/customizer/preview` path from the admin dashboard layout wrapper in `app/admin/layout.tsx` so that only the storefront landing page renders inside the iframe preview (no nested admin sidebar/navigation).
+2. Added `Tablet` icon to centralized `Icons.tsx` registry.
+3. Overhauled customizer viewports in `CustomizerEditor.tsx` to support:
+   - **Desktop**: A true `1440px` wide desktop view scaled dynamically using `transform: scale()` via ResizeObserver (optimized with a `0.75` scale multiplier to zoom out and center content beautifully in the preview container). Added `mx-auto` and inline margins to ensure perfect horizontal centering.
+   - **Tablet**: Unscaled flexible width viewport.
+   - **Mobile**: Anchored mobile smartphone frame with added horizontal centering alignment.
+
+---
+
+### [2026-06-11] v2.8.0 — Full-Screen Customizer, 3-Column Layout & Bidirectional Sync
+**Files Updated:** [CustomizerEditor.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/admin/CustomizerEditor.tsx), [StoreFront.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/store/StoreFront.tsx), [page.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/app/admin/settings/customizer/page.tsx), [SCHEMA_CHANGE_LOG.md](file:///Users/shoaib/Desktop/Zaynahs%20e-store/SCHEMA_CHANGE_LOG.md)
+**Changes:**
+1. Overhauled the Homepage Customizer layout into a full-screen application. Removed page-level headers to optimize height.
+2. Implemented a 3-column layout mimicking Shopify's Theme Customizer: Left Sidebar (Sections list and order), Center Workspace (Live preview iframe), Right Sidebar (active section property inputs).
+3. Created a customizer header containing: Exit to Dashboard (`/admin/dashboard`), Viewport segmented switcher, and "Save Layout" button.
+4. Set up fluid, non-scaled Desktop preview (`100%` width/height) to match a real desktop monitor naturally.
+5. Implemented bi-directional synchronization:
+   - Selecting/ordering a section in the left panel automatically triggers a `scroll_to_section` postMessage event to scroll the preview to that section.
+   - Clicking a section inside the preview frame posts a `select_section` event to automatically select and focus that section in the customizer editor.
+
 
 

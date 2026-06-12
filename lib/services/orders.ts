@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { Order, CartItem } from '@/lib/types';
+import { Order, CartItem, StatusLogItem } from '@/lib/types';
 import { getCustomerSession } from '@/lib/utils/customer-auth';
 
 interface OrderRow {
@@ -10,11 +10,21 @@ interface OrderRow {
   order_number: string;
   customer_name?: string | null;
   customer_phone?: string | null;
+  customer_id?: string | null;
   items?: unknown;
   subtotal?: string | number | null;
   total?: string | number | null;
   status: string;
   notes?: string | null;
+  staff_notes?: string | null;
+  status_logs?: unknown;
+  review_email_pending?: boolean | null;
+  delivered_at?: string | null;
+  tracking_number?: string | null;
+  courier_name?: string | null;
+  tracking_url?: string | null;
+  cancel_reason?: string | null;
+  refund_amount?: string | number | null;
   created_at: string;
   updated_at: string;
 }
@@ -24,11 +34,21 @@ const mapOrder = (row: OrderRow): Order => ({
   orderNumber: row.order_number,
   customerName: row.customer_name || undefined,
   customerPhone: row.customer_phone || undefined,
+  customerId: row.customer_id || undefined,
   items: (row.items || []) as CartItem[],
   subtotal: row.subtotal ? parseFloat(row.subtotal.toString()) : 0,
   total: row.total ? parseFloat(row.total.toString()) : 0,
   status: row.status as Order['status'],
   notes: row.notes || undefined,
+  staffNotes: row.staff_notes || undefined,
+  statusLogs: (row.status_logs || []) as StatusLogItem[],
+  reviewEmailPending: row.review_email_pending ?? false,
+  deliveredAt: row.delivered_at || undefined,
+  trackingNumber: row.tracking_number || undefined,
+  courierName: row.courier_name || undefined,
+  trackingUrl: row.tracking_url || undefined,
+  cancelReason: row.cancel_reason || undefined,
+  refundAmount: row.refund_amount ? parseFloat(row.refund_amount.toString()) : undefined,
   createdAt: row.created_at,
   updatedAt: row.updated_at
 });
@@ -36,6 +56,7 @@ const mapOrder = (row: OrderRow): Order => ({
 export const createOrder = async (order: {
   customerName?: string;
   customerPhone?: string;
+  customerEmail?: string;
   items: CartItem[];
   subtotal: number;
   total: number;
@@ -60,6 +81,12 @@ export const createOrder = async (order: {
 
           if (existingCustomer) {
             customerId = existingCustomer.id;
+            if (order.customerEmail) {
+              await supabaseAdmin
+                .from('customers')
+                .update({ email: order.customerEmail })
+                .eq('id', customerId);
+            }
           } else {
             // Auto-create guest account record
             const { data: newCustomer } = await supabaseAdmin
@@ -67,7 +94,7 @@ export const createOrder = async (order: {
               .insert({
                 name: order.customerName || 'Guest Customer',
                 phone: order.customerPhone,
-                email: null,
+                email: order.customerEmail || null,
                 password_hash: null
               })
               .select('id')
@@ -83,6 +110,16 @@ export const createOrder = async (order: {
       }
     }
 
+    // Initialize the timeline with the creation event
+    const initialLogs: StatusLogItem[] = [
+      {
+        id: crypto.randomUUID(),
+        type: 'creation',
+        message: 'Order created clicked by customer on WhatsApp',
+        createdAt: new Date().toISOString()
+      }
+    ];
+
     const { data, error } = await supabase
       .from('orders')
       .insert({
@@ -93,13 +130,25 @@ export const createOrder = async (order: {
         subtotal: order.subtotal,
         total: order.total,
         notes: order.notes,
-        status: 'pending'
+        status: 'pending',
+        status_logs: initialLogs
       })
       .select('*')
       .single();
 
     if (error) throw error;
-    return mapOrder(data);
+    const mapped = mapOrder(data);
+
+    // Asynchronously dispatch the Order Placed email using a dynamic import to prevent circular dependency
+    import('@/lib/email/triggers').then(({ onOrderPlaced }) => {
+      onOrderPlaced(mapped, { email: order.customerEmail, name: order.customerName, phone: order.customerPhone }).catch(err => {
+        console.error('[Email Trigger] failed in createOrder:', err);
+      });
+    }).catch(err => {
+      console.error('[Email Trigger] dynamic import failed in createOrder:', err);
+    });
+
+    return mapped;
   } catch (error) {
     console.error('[orders] createOrder failed:', error);
     throw error;
@@ -125,17 +174,133 @@ export const getOrders = async (): Promise<Order[]> => {
 export const updateOrderStatus = async (id: string, status: Order['status']): Promise<Order> => {
   try {
     const supabase = await createClient();
+
+    // 1. Fetch current order to get its status logs
+    const { data: currentOrder, error: fetchError } = await supabase
+      .from('orders')
+      .select('status, status_logs')
+      .eq('id', id)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    const oldStatus = currentOrder.status;
+    const currentLogs = (currentOrder.status_logs || []) as StatusLogItem[];
+
+    // 2. Add log entry if status changed
+    let updatedLogs = currentLogs;
+    if (oldStatus !== status) {
+      const logEntry: StatusLogItem = {
+        id: crypto.randomUUID(),
+        type: 'status_change',
+        message: `Order status changed from ${oldStatus.toUpperCase()} to ${status.toUpperCase()}`,
+        status: status,
+        createdAt: new Date().toISOString()
+      };
+      updatedLogs = [...currentLogs, logEntry];
+    }
+
+    // 3. Update order in database
     const { data, error } = await supabase
       .from('orders')
-      .update({ status })
+      .update({ 
+        status,
+        status_logs: updatedLogs
+      })
       .eq('id', id)
       .select('*')
       .single();
 
     if (error) throw error;
-    return mapOrder(data);
+    const mapped = mapOrder(data);
+
+    // Call triggers asynchronously if status changed
+    if (oldStatus !== status) {
+      import('@/lib/email/triggers').then(({ onOrderStatusChange }) => {
+        onOrderStatusChange(mapped, { name: mapped.customerName, phone: mapped.customerPhone }, status).catch(err => {
+          console.error('[Email Trigger] failed in updateOrderStatus trigger:', err);
+        });
+      }).catch(err => {
+        console.error('[Email Trigger] import failed in updateOrderStatus:', err);
+      });
+    }
+
+    return mapped;
   } catch (error) {
     console.error('[orders] updateOrderStatus failed:', error);
+    throw error;
+  }
+};
+
+export const updateOrderDetails = async (
+  id: string,
+  updates: {
+    status?: Order['status'];
+    staffNotes?: string;
+    statusLogs?: StatusLogItem[];
+    deliveredAt?: string;
+    trackingNumber?: string;
+    courierName?: string;
+    trackingUrl?: string;
+    cancelReason?: string;
+    refundAmount?: number;
+    reviewEmailPending?: boolean;
+  }
+): Promise<Order> => {
+  try {
+    const supabase = await createClient();
+
+    // Fetch current state before update to detect changes
+    const { data: currentOrder } = await supabase
+      .from('orders')
+      .select('status, tracking_number')
+      .eq('id', id)
+      .single();
+      
+    const oldStatus = currentOrder?.status;
+    const oldTracking = currentOrder?.tracking_number;
+
+    const payload: any = {};
+    if (updates.status !== undefined) payload.status = updates.status;
+    if (updates.staffNotes !== undefined) payload.staff_notes = updates.staffNotes;
+    if (updates.statusLogs !== undefined) payload.status_logs = updates.statusLogs;
+    if (updates.deliveredAt !== undefined) payload.delivered_at = updates.deliveredAt;
+    if (updates.trackingNumber !== undefined) payload.tracking_number = updates.trackingNumber;
+    if (updates.courierName !== undefined) payload.courier_name = updates.courierName;
+    if (updates.trackingUrl !== undefined) payload.tracking_url = updates.trackingUrl;
+    if (updates.cancelReason !== undefined) payload.cancel_reason = updates.cancelReason;
+    if (updates.refundAmount !== undefined) payload.refund_amount = updates.refundAmount;
+    if (updates.reviewEmailPending !== undefined) payload.review_email_pending = updates.reviewEmailPending;
+
+    const { data, error } = await supabase
+      .from('orders')
+      .update(payload)
+      .eq('id', id)
+      .select('*')
+      .single();
+
+    if (error) throw error;
+    const mapped = mapOrder(data);
+
+    // Call triggers if status changed OR if status is shipped/out_for_delivery and tracking details were added/updated
+    const statusChanged = updates.status !== undefined && oldStatus !== updates.status;
+    const trackingUpdated = ['shipped', 'out_for_delivery'].includes(mapped.status) && 
+                            updates.trackingNumber !== undefined && 
+                            oldTracking !== updates.trackingNumber;
+
+    if (statusChanged || trackingUpdated) {
+      import('@/lib/email/triggers').then(({ onOrderStatusChange }) => {
+        onOrderStatusChange(mapped, { name: mapped.customerName, phone: mapped.customerPhone }, mapped.status).catch(err => {
+          console.error('[Email Trigger] failed in updateOrderDetails:', err);
+        });
+      }).catch(err => {
+        console.error('[Email Trigger] import failed in updateOrderDetails:', err);
+      });
+    }
+
+    return mapped;
+  } catch (error) {
+    console.error('[orders] updateOrderDetails failed:', error);
     throw error;
   }
 };

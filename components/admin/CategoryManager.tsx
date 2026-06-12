@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Plus, Edit, Trash2, X } from 'lucide-react';
+import { Plus, Edit, Trash2, X, Image as ImageIcon } from '@/components/common/Icons';
 import { Category } from '@/lib/types';
 import { createCategory, updateCategory, deleteCategory } from '@/lib/services/categories';
+import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import MediaSelectorModal from './MediaSelectorModal';
 
@@ -91,16 +92,68 @@ export default function CategoryManager({ initialCategories }: CategoryManagerPr
     };
 
     try {
+      let savedCategory: Category;
       if (editId) {
-        const updated = await updateCategory(editId, payload);
-        setCategories(prev => prev.map(c => c.id === editId ? updated : c));
+        savedCategory = await updateCategory(editId, payload);
+        setCategories(prev => prev.map(c => c.id === editId ? savedCategory : c));
         toast.success('Category updated successfully');
       } else {
-        const created = await createCategory(payload);
-        setCategories(prev => [...prev, created]);
+        savedCategory = await createCategory(payload);
+        setCategories(prev => [...prev, savedCategory]);
         toast.success('Category created successfully');
       }
       setIsOpen(false);
+
+      // Fetch settings to check auto_content_seo
+      const supabase = createClient();
+      const { data: aiSettings } = await supabase
+        .from('ai_settings')
+        .select('auto_content_seo')
+        .eq('id', '00000000-0000-4000-8000-000000000002')
+        .single();
+      
+      const isAutoSeoOn = aiSettings?.auto_content_seo ?? true;
+      const categoryIdToOptimize = savedCategory.id;
+      const categorySlugToOptimize = savedCategory.slug;
+
+      // Asynchronously trigger SEO optimization or IndexNow ping in the background
+      (async () => {
+        try {
+          if (isAutoSeoOn) {
+            toast.info('Generating AI SEO content and pinging IndexNow...');
+            const optRes = await fetch('/api/seo/optimize', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                entity_type: 'category',
+                entity_id: categoryIdToOptimize
+              })
+            });
+            if (optRes.ok) {
+              toast.success('AI SEO optimization complete & IndexNow notified for category!');
+            } else {
+              console.error('Auto SEO optimization failed on save for category');
+            }
+          } else {
+            // Just trigger IndexNow
+            const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://zaynahs.pk';
+            const pageUrl = `${siteUrl}/shop?category=${categorySlugToOptimize}`;
+            const pingRes = await fetch('/api/indexnow', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                urls: [pageUrl]
+              })
+            });
+            if (pingRes.ok) {
+              toast.success('IndexNow notified of updated category!');
+            }
+          }
+        } catch (bgErr) {
+          console.error('Error running background SEO tasks:', bgErr);
+        }
+      })();
+
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : 'Failed to save category';
       toast.error(errMsg);
@@ -193,6 +246,11 @@ export default function CategoryManager({ initialCategories }: CategoryManagerPr
                   onChange={(e) => setSlug(e.target.value)}
                   className="mt-1.5 w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2.5 text-sm font-medium focus:border-[#1a1a2e] focus:bg-white focus:outline-none transition-all"
                 />
+                {slug && (
+                  <p className="mt-1 text-[10px] text-gray-550 dark:text-gray-400 font-bold">
+                    Preview Path: <span className="text-[#e94560] font-mono">/shop?category={slug}</span>
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -224,6 +282,7 @@ export default function CategoryManager({ initialCategories }: CategoryManagerPr
                       onClick={() => setIsMediaModalOpen(true)}
                       className="relative self-start flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-white/5 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 text-xs font-bold rounded-lg cursor-pointer transition-colors"
                     >
+                      <ImageIcon className="h-4 w-4" />
                       Select Media
                     </button>
                     <span className="text-[10px] text-gray-400 dark:text-gray-500">Select or upload WebP &lt; 50 KB</span>

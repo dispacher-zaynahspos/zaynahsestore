@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, ShoppingBag, FolderOpen, ClipboardList, Settings, LogOut, Store, Star, Layers, Images, Award, Users, Layout } from 'lucide-react';
+import { LayoutDashboard, ShoppingBag, FolderOpen, ClipboardList, Settings, LogOut, Store, Star, Layers, Images, Award, Users, Layout, MessageSquare, TrendingUp } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import ThemeToggle from '@/components/common/ThemeToggle';
@@ -31,20 +31,26 @@ export default function AdminLayout({
 
   const navItems = [
     { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
+    { label: 'Reporting', href: '/admin/reporting', icon: TrendingUp },
     { label: 'Products', href: '/admin/products', icon: ShoppingBag },
     { label: 'Categories', href: '/admin/categories', icon: FolderOpen },
     { label: 'Variants', href: '/admin/variants', icon: Layers },
     { label: 'Media', href: '/admin/media', icon: Images },
     { label: 'Orders Log', href: '/admin/orders', icon: ClipboardList },
     { label: 'Customers', href: '/admin/customers', icon: Users },
+    { label: 'WhatsApp Leads', href: '/admin/leads', icon: MessageSquare },
     { label: 'Reviews', href: '/admin/reviews', icon: Star },
     { label: 'Badges', href: '/admin/badges', icon: Award },
     { label: 'Settings', href: '/admin/settings', icon: Settings },
     { label: 'Homepage Customizer', href: '/admin/settings/customizer', icon: Layout },
   ];
 
-  // If we are on the login page, don't show the dashboard layout
-  if (pathname === '/admin/login') {
+  // If we are on the login page, customizer preview page, or customizer page, don't show the dashboard layout
+  if (
+    pathname === '/admin/login' || 
+    pathname === '/admin/settings/customizer/preview' ||
+    pathname === '/admin/settings/customizer'
+  ) {
     return <>{children}</>;
   }
 

@@ -6,7 +6,38 @@ import { getSettings } from '@/lib/services/settings';
 import { getTopReviews } from '@/lib/services/reviews';
 import { getHomepageSections } from '@/lib/services/sections';
 
-export const revalidate = 0; // Dynamic server rendering
+import { Metadata } from 'next';
+
+export const revalidate = 600; // Cache for 10 minutes
+
+export async function generateMetadata(): Promise<Metadata> {
+  try {
+    const settings = await getSettings();
+    const brandName = settings.storeName || 'Zaynahs E-Store';
+    const tagline = settings.tagline || 'Premium Mobile Shop';
+    const banner = settings.bannerUrl || '/og-default.jpg';
+    const desc = (settings.metaDescription || settings.tagline || 'Premium Pakistani E-Commerce Store').slice(0, 160);
+
+    return {
+      title: `${brandName} - ${tagline}`,
+      description: desc,
+      openGraph: {
+        title: `${brandName} - ${tagline}`,
+        description: desc,
+        images: [{ url: banner }],
+      },
+      twitter: {
+        title: `${brandName} - ${tagline}`,
+        description: desc,
+        images: [banner],
+      }
+    };
+  } catch (err) {
+    return {
+      title: 'Zaynahs E-Store'
+    };
+  }
+}
 
 export default async function CatalogPage() {
   const [products, categories, settings, reviews, sections] = await Promise.all([

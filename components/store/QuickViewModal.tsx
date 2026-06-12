@@ -48,13 +48,6 @@ export default function QuickViewModal({ product, settings, onClose }: QuickView
     startIndex: activeIdx
   });
 
-  // Keep Embla in sync when activeIdx changes from outside
-  useEffect(() => {
-    if (emblaApi) {
-      emblaApi.scrollTo(activeIdx, true);
-    }
-  }, [activeIdx, emblaApi]);
-
   // Keep activeIdx in sync when user swipes
   useEffect(() => {
     if (!emblaApi) return;
@@ -79,9 +72,9 @@ export default function QuickViewModal({ product, settings, onClose }: QuickView
     setSelectedVariant(v);
     if (v.imageUrl) {
       const idx = images.findIndex(img => img.url === v.imageUrl);
-      if (idx !== -1) setActiveIdx(idx);
+      if (idx !== -1) emblaApi?.scrollTo(idx);
     }
-  }, [images]);
+  }, [images, emblaApi]);
 
   // ── Derived values ────────────────────────────────────────────────────────
   const stockAvailable = product.isService
@@ -164,7 +157,7 @@ export default function QuickViewModal({ product, settings, onClose }: QuickView
                   <>
                     <button
                       type="button"
-                      onClick={() => setActiveIdx(i => (i - 1 + images.length) % images.length)}
+                      onClick={() => emblaApi?.scrollPrev()}
                       className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-white/90 dark:bg-black/60 shadow text-gray-700 dark:text-white hover:bg-white dark:hover:bg-black transition-all cursor-pointer"
                       aria-label="Previous image"
                     >
@@ -172,7 +165,7 @@ export default function QuickViewModal({ product, settings, onClose }: QuickView
                     </button>
                     <button
                       type="button"
-                      onClick={() => setActiveIdx(i => (i + 1) % images.length)}
+                      onClick={() => emblaApi?.scrollNext()}
                       className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-white/90 dark:bg-black/60 shadow text-gray-700 dark:text-white hover:bg-white dark:hover:bg-black transition-all cursor-pointer"
                       aria-label="Next image"
                     >
@@ -186,7 +179,7 @@ export default function QuickViewModal({ product, settings, onClose }: QuickView
                       <button
                         key={i}
                         type="button"
-                        onClick={() => setActiveIdx(i)}
+                        onClick={() => emblaApi?.scrollTo(i)}
                         className={`w-1.5 h-1.5 rounded-full transition-all cursor-pointer ${i === activeIdx ? 'bg-white scale-125 shadow' : 'bg-white/50'}`}
                       />
                     ))}
@@ -201,7 +194,7 @@ export default function QuickViewModal({ product, settings, onClose }: QuickView
                     <button
                       key={i}
                       type="button"
-                      onClick={() => setActiveIdx(i)}
+                      onClick={() => emblaApi?.scrollTo(i)}
                       className={`relative h-12 w-12 flex-shrink-0 rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${
                         i === activeIdx ? 'border-[#e94560]' : 'border-transparent hover:border-gray-400'
                       }`}
@@ -228,14 +221,19 @@ export default function QuickViewModal({ product, settings, onClose }: QuickView
               </div>
 
               {/* Price */}
-              <div className="flex items-baseline gap-2 flex-wrap">
+              <div className="flex items-baseline gap-2.5 flex-wrap">
                 <span className="text-xl font-extrabold text-[#1a1a2e] dark:text-white">
                   {formatPrice(basePrice, settings.currencySymbol)}
                 </span>
                 {comparePrice && comparePrice > basePrice && (
-                  <span className="text-sm text-gray-400 line-through font-semibold">
-                    {formatPrice(comparePrice, settings.currencySymbol)}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm text-gray-400 line-through font-semibold">
+                      {formatPrice(comparePrice, settings.currencySymbol)}
+                    </span>
+                    <span className="rounded-md bg-[#e94560]/10 dark:bg-[#e94560]/20 px-1.5 py-0.5 text-[9px] font-black text-[#e94560] tracking-wide animate-none">
+                      -{Math.round(((comparePrice - basePrice) / comparePrice) * 100)}%
+                    </span>
+                  </div>
                 )}
               </div>
 

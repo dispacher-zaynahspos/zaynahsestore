@@ -2,13 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Save, Upload, Trash2, Image as ImageIcon, Loader2, Plus, CreditCard, Truck, Edit2, Check, X, Shield, ChevronUp, ChevronDown, ChevronRight, ChevronLeft, Settings, Layout, Navigation, Package, Zap, MessageCircle, Globe, ShoppingBag, HelpCircle } from 'lucide-react';
+import { Save, Upload, Trash2, Image as ImageIcon, Loader2, Plus, CreditCard, Truck, Edit2, Check, X, Shield, ChevronUp, ChevronDown, ChevronRight, ChevronLeft, Settings, Layout, Navigation, Package, Zap, MessageCircle, Globe, ShoppingBag, HelpCircle, Mail } from 'lucide-react';
 import { StoreSettings, ShippingMethod, PaymentMethod, Category, Product, NavigationItem, SizeGuide, Coupon } from '@/lib/types';
 import { updateSettings } from '@/lib/services/settings';
 import { getSizeGuides, createSizeGuide, updateSizeGuide, deleteSizeGuide } from '@/lib/services/sizeGuides';
 import { getCoupons, createCoupon, updateCoupon, deleteCoupon } from '@/lib/services/coupons';
 import * as CentralIcons from '@/components/common/Icons';
-import { uploadSettingsImage } from '@/lib/services/storage';
+import { uploadImage } from '@/lib/uploadImage';
 import { getCategories } from '@/lib/services/categories';
 import { getAllProductsAdmin } from '@/lib/services/products';
 import {
@@ -37,6 +37,10 @@ import ShippingTab from './settings/ShippingTab';
 import PremiumTab from './settings/PremiumTab';
 import SizeGuidesTab from './settings/SizeGuidesTab';
 import CouponsTab from './settings/CouponsTab';
+import PixelsTab from './settings/PixelsTab';
+import AITab from './settings/AITab';
+import EmailTab from './settings/EmailTab';
+import MetaSyncTab from './settings/MetaSyncTab';
 
 interface SettingsFormProps {
   initialSettings: StoreSettings;
@@ -133,7 +137,11 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
   const [footerCol3Title, setFooterCol3Title] = useState(initialSettings.footerCol3Title || 'Quick Links');
   const [footerCol4Title, setFooterCol4Title] = useState(initialSettings.footerCol4Title || 'Newsletter');
   const [footerCol4Text, setFooterCol4Text] = useState(initialSettings.footerCol4Text || 'Subscribe to get special offers, free giveaways, and once-in-a-lifetime deals.');
-  const [footerBottomText, setFooterBottomText] = useState(initialSettings.footerBottomText || 'All rights reserved.');
+  const [footerBottomText, setFooterBottomText] = useState(initialSettings.footerBottomText || '');
+  const [footerShowPayments, setFooterShowPayments] = useState(initialSettings.footerShowPayments ?? true);
+  const [footerShowMenu, setFooterShowMenu] = useState(initialSettings.footerShowMenu ?? true);
+  const [footerShowNewsletter, setFooterShowNewsletter] = useState(initialSettings.footerShowNewsletter ?? true);
+  const [footerShowSocial, setFooterShowSocial] = useState(initialSettings.footerShowSocial ?? true);
 
   // Header settings states
   const [headerSticky, setHeaderSticky] = useState(initialSettings.headerSticky ?? true);
@@ -233,6 +241,67 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
   );
   const [cartTimerMessage, setCartTimerMessage] = useState(initialSettings.cart_timer_message ?? 'Items in your cart are reserved for {timer} minutes.');
   const [couponCodesEnabled, setCouponCodesEnabled] = useState(initialSettings.coupon_codes_enabled ?? true);
+
+  // Pixels & Tracking States
+  const [metaPixelId, setMetaPixelId] = useState(initialSettings.meta_pixel_id || '');
+  const [ga4MeasurementId, setGa4MeasurementId] = useState(initialSettings.ga4_measurement_id || '');
+  const [gtmContainerId, setGtmContainerId] = useState(initialSettings.gtm_container_id || '');
+  const [tiktokPixelId, setTiktokPixelId] = useState(initialSettings.tiktok_pixel_id || '');
+  const [twitterPixelId, setTwitterPixelId] = useState(initialSettings.twitter_pixel_id || '');
+  const [snapchatPixelId, setSnapchatPixelId] = useState(initialSettings.snapchat_pixel_id || '');
+  const [pinterestTagId, setPinterestTagId] = useState(initialSettings.pinterest_tag_id || '');
+
+  // SEO & Social States
+  const [twitterHandle, setTwitterHandle] = useState(initialSettings.twitter_handle || '');
+  const [metaTitleSuffix, setMetaTitleSuffix] = useState(initialSettings.meta_title_suffix || '');
+
+  // AI settings States
+  const [contentProvider, setContentProvider] = useState(initialSettings.content_provider || 'groq');
+  const [contentModel, setContentModel] = useState(initialSettings.content_model || 'llama-3.3-70b-versatile');
+  const [contentKeys, setContentKeys] = useState(initialSettings.content_keys || '');
+  const [visionProvider, setVisionProvider] = useState(initialSettings.vision_provider || 'gemini');
+  const [visionModel, setVisionModel] = useState(initialSettings.vision_model || 'gemini-2.0-flash');
+  const [visionKeys, setVisionKeys] = useState(initialSettings.vision_keys || '');
+  const [aiTone, setAiTone] = useState(initialSettings.ai_tone || 'Professional');
+  const [aiLanguage, setAiLanguage] = useState(initialSettings.ai_language || 'English');
+  const [aiCustomInstructions, setAiCustomInstructions] = useState(initialSettings.ai_custom_instructions || '');
+  const [autoContentSeo, setAutoContentSeo] = useState(initialSettings.auto_content_seo ?? true);
+  const [autoMediaAi, setAutoMediaAi] = useState(initialSettings.auto_media_ai ?? true);
+
+  // SMTP/Email Settings States
+  const [smtpEmail, setSmtpEmail] = useState(initialSettings.smtp_email || '');
+  const [smtpAppPassword, setSmtpAppPassword] = useState(initialSettings.smtp_app_password || '');
+  const [smtpFromName, setSmtpFromName] = useState(initialSettings.smtp_from_name || '');
+  const [adminNotificationEmail, setAdminNotificationEmail] = useState(initialSettings.admin_notification_email || '');
+  const [lowStockThreshold, setLowStockThreshold] = useState(initialSettings.low_stock_threshold ?? 5);
+
+  const defaultEmailNotifications = {
+    welcome: true,
+    password_reset: true,
+    password_changed: true,
+    order_placed: true,
+    order_confirmed: true,
+    order_shipped: true,
+    order_delivered: true,
+    order_cancelled: true,
+    order_refunded: true,
+    review_request: true,
+    admin_new_order: true,
+    admin_low_stock: true,
+    admin_new_customer: true,
+    admin_new_review: true,
+    admin_contact_form: true
+  };
+  const [emailNotifications, setEmailNotifications] = useState<Record<string, boolean>>(() => {
+    const raw = initialSettings.email_notifications;
+    if (!raw) return defaultEmailNotifications;
+    try {
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      return { ...defaultEmailNotifications, ...parsed };
+    } catch {
+      return defaultEmailNotifications;
+    }
+  });
 
   // Coupons Manager States
   const [coupons, setCoupons] = useState<Coupon[]>([]);
@@ -495,7 +564,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
       if (type === 'exit_intent') setUploadingExitIntent(true);
       if (type === 'size_chart') setIsUploadingGuideImage(true);
 
-      const url = await uploadSettingsImage(file, type);
+      const url = await uploadImage(file, 'product-images');
 
       if (type === 'logo') setLogoUrl(url);
       if (type === 'favicon') setFaviconUrl(url);
@@ -677,7 +746,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
 
     try {
       setUploadingFeedImage(true);
-      const url = await uploadSettingsImage(file, 'banner' as any);
+      const url = await uploadImage(file, 'product-images');
       setTempFeedImageUrl(url);
       toast.success('Social post image uploaded successfully!');
     } catch (err: any) {
@@ -822,6 +891,10 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
         footerCol4Title: footerCol4Title.trim(),
         footerCol4Text: footerCol4Text.trim(),
         footerBottomText: footerBottomText.trim(),
+        footerShowPayments,
+        footerShowMenu,
+        footerShowNewsletter,
+        footerShowSocial,
         floatingContactsEnabled,
         floatingContactsPosition,
         floatingContactsBottomMobile: Number(floatingContactsBottomMobile),
@@ -878,7 +951,41 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
         social_feeds_desc: socialFeedsDesc.trim(),
         social_feeds_items: socialFeedsItems,
         cart_timer_message: cartTimerMessage.trim(),
-        coupon_codes_enabled: couponCodesEnabled
+        coupon_codes_enabled: couponCodesEnabled,
+
+        // Pixels & Tracking
+        meta_pixel_id: metaPixelId.trim(),
+        ga4_measurement_id: ga4MeasurementId.trim(),
+        gtm_container_id: gtmContainerId.trim(),
+        tiktok_pixel_id: tiktokPixelId.trim(),
+        twitter_pixel_id: twitterPixelId.trim(),
+        snapchat_pixel_id: snapchatPixelId.trim(),
+        pinterest_tag_id: pinterestTagId.trim(),
+
+        // Social & SEO
+        twitter_handle: twitterHandle.trim(),
+        meta_title_suffix: metaTitleSuffix.trim(),
+
+        // AI settings
+        content_provider: contentProvider.trim(),
+        content_model: contentModel.trim(),
+        content_keys: contentKeys.trim(),
+        vision_provider: visionProvider.trim(),
+        vision_model: visionModel.trim(),
+        vision_keys: visionKeys.trim(),
+        ai_tone: aiTone.trim(),
+        ai_language: aiLanguage.trim(),
+        ai_custom_instructions: aiCustomInstructions.trim(),
+        auto_content_seo: autoContentSeo,
+        auto_media_ai: autoMediaAi,
+
+        // SMTP/Email Fallback Columns
+        smtp_email: smtpEmail.trim(),
+        smtp_app_password: smtpAppPassword.trim(),
+        smtp_from_name: smtpFromName.trim(),
+        admin_notification_email: adminNotificationEmail.trim(),
+        email_notifications: emailNotifications,
+        low_stock_threshold: Number(lowStockThreshold) || 5
       };
 
       await updateSettings(payload);
@@ -1115,8 +1222,12 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
     { id: 'premium',     label: 'Premium Features',icon: Zap },
     { id: 'size_guides', label: 'Size Guides',     icon: CentralIcons.Ruler },
     { id: 'coupons',     label: 'Coupons',         icon: CreditCard },
+    { id: 'pixels',      label: 'Pixels & SEO',    icon: Globe },
+    { id: 'ai_settings', label: 'AI Settings',     icon: Zap },
+    { id: 'email',       label: 'Email & SMTP',    icon: Mail },
+    { id: 'meta_sync',   label: 'Meta Sync',       icon: Globe },
   ] as const;
-  type TabId = typeof TABS[number]['id'] | 'coupons';
+  type TabId = typeof TABS[number]['id'];
   const [activeTab, setActiveTab] = useState<TabId>('general');
 
   return (
@@ -1167,12 +1278,11 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
           enableCategoryFilter={enableCategoryFilter}
           setEnableCategoryFilter={setEnableCategoryFilter}
           logoUrl={logoUrl}
+          setLogoUrl={setLogoUrl}
           logoWidth={logoWidth}
           setLogoWidth={setLogoWidth}
           faviconUrl={faviconUrl}
-          uploadingLogo={uploadingLogo}
-          uploadingFavicon={uploadingFavicon}
-          handleFileUpload={handleFileUpload}
+          setFaviconUrl={setFaviconUrl}
           handleRemoveImage={handleRemoveImage}
         />
       )}
@@ -1306,10 +1416,6 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
           setSafeCheckoutText={setSafeCheckoutText}
           safeCheckoutMethods={safeCheckoutMethods}
           setSafeCheckoutMethods={setSafeCheckoutMethods}
-          enableTicker={enableTicker}
-          setEnableTicker={setEnableTicker}
-          tickerText={tickerText}
-          setTickerText={setTickerText}
           trustBadge1Title={trustBadge1Title}
           setTrustBadge1Title={setTrustBadge1Title}
           trustBadge1Desc={trustBadge1Desc}
@@ -1385,6 +1491,14 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
           footerBottomText={footerBottomText}
           setFooterBottomText={setFooterBottomText}
           storeName={storeName}
+          footerShowPayments={footerShowPayments}
+          setFooterShowPayments={setFooterShowPayments}
+          footerShowMenu={footerShowMenu}
+          setFooterShowMenu={setFooterShowMenu}
+          footerShowNewsletter={footerShowNewsletter}
+          setFooterShowNewsletter={setFooterShowNewsletter}
+          footerShowSocial={footerShowSocial}
+          setFooterShowSocial={setFooterShowSocial}
           socialFacebook={socialFacebook}
           setSocialFacebook={setSocialFacebook}
           socialInstagram={socialInstagram}
@@ -1513,7 +1627,6 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
           setExitIntentImageUrl={setExitIntentImageUrl}
           exitIntentDelayMobile={exitIntentDelayMobile}
           setExitIntentDelayMobile={setExitIntentDelayMobile}
-          uploadingExitIntent={uploadingExitIntent}
           cookieConsentText={cookieConsentText}
           setCookieConsentText={setCookieConsentText}
           cookieConsentButtonText={cookieConsentButtonText}
@@ -1574,11 +1687,23 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
           tempFeedCaption={tempFeedCaption}
           setTempFeedCaption={setTempFeedCaption}
           uploadingFeedImage={uploadingFeedImage}
-          handleFileUpload={handleFileUpload}
           handleRemoveImage={handleRemoveImage}
-          handleUploadSocialFeedImage={handleUploadSocialFeedImage}
           handleAddSocialFeedItem={handleAddSocialFeedItem}
           handleDeleteSocialFeedItem={handleDeleteSocialFeedItem}
+          headerShowNewsletter={headerShowNewsletter}
+          setHeaderShowNewsletter={setHeaderShowNewsletter}
+          headerNewsletterText={headerNewsletterText}
+          setHeaderNewsletterText={setHeaderNewsletterText}
+          headerShowTopBar={headerShowTopBar}
+          setHeaderShowTopBar={setHeaderShowTopBar}
+          headerTopBarPhone={headerTopBarPhone}
+          setHeaderTopBarPhone={setHeaderTopBarPhone}
+          headerTopBarEmail={headerTopBarEmail}
+          setHeaderTopBarEmail={setHeaderTopBarEmail}
+          enableTicker={enableTicker}
+          setEnableTicker={setEnableTicker}
+          tickerText={tickerText}
+          setTickerText={setTickerText}
         />
       )}
 
@@ -1595,13 +1720,11 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
           setGuideColumns={setGuideColumns}
           guideRows={guideRows}
           setGuideRows={setGuideRows}
-          isUploadingGuideImage={isUploadingGuideImage}
           isEditingGuide={isEditingGuide}
           startEditSizeGuide={startEditSizeGuide}
           handleDeleteSizeGuide={handleDeleteSizeGuide}
           handleSaveSizeGuide={handleSaveSizeGuide}
           resetSizeGuideForm={resetSizeGuideForm}
-          handleFileUpload={handleFileUpload}
           handleRemoveImage={handleRemoveImage}
         />
       )}
@@ -1629,19 +1752,95 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
           handleDeleteCoupon={handleDeleteCoupon}
         />
       )}
+
+      {/* ====== TAB: PIXELS & SEO ====== */}
+      {activeTab === 'pixels' && (
+        <PixelsTab
+          metaPixelId={metaPixelId}
+          setMetaPixelId={setMetaPixelId}
+          ga4MeasurementId={ga4MeasurementId}
+          setGa4MeasurementId={setGa4MeasurementId}
+          gtmContainerId={gtmContainerId}
+          setGtmContainerId={setGtmContainerId}
+          tiktokPixelId={tiktokPixelId}
+          setTiktokPixelId={setTiktokPixelId}
+          twitterPixelId={twitterPixelId}
+          setTwitterPixelId={setTwitterPixelId}
+          snapchatPixelId={snapchatPixelId}
+          setSnapchatPixelId={setSnapchatPixelId}
+          pinterestTagId={pinterestTagId}
+          setPinterestTagId={setPinterestTagId}
+          twitterHandle={twitterHandle}
+          setTwitterHandle={setTwitterHandle}
+          metaTitleSuffix={metaTitleSuffix}
+          setMetaTitleSuffix={setMetaTitleSuffix}
+        />
+      )}
+
+      {/* ====== TAB: AI SETTINGS ====== */}
+      {activeTab === 'ai_settings' && (
+        <AITab
+          contentProvider={contentProvider}
+          setContentProvider={setContentProvider}
+          contentModel={contentModel}
+          setContentModel={setContentModel}
+          contentKeys={contentKeys}
+          setContentKeys={setContentKeys}
+          visionProvider={visionProvider}
+          setVisionProvider={setVisionProvider}
+          visionModel={visionModel}
+          setVisionModel={setVisionModel}
+          visionKeys={visionKeys}
+          setVisionKeys={setVisionKeys}
+          aiTone={aiTone}
+          setAiTone={setAiTone}
+          aiLanguage={aiLanguage}
+          setAiLanguage={setAiLanguage}
+          aiCustomInstructions={aiCustomInstructions}
+          setAiCustomInstructions={setAiCustomInstructions}
+          autoContentSeo={autoContentSeo}
+          setAutoContentSeo={setAutoContentSeo}
+          autoMediaAi={autoMediaAi}
+          setAutoMediaAi={setAutoMediaAi}
+        />
+      )}
+
+      {/* ====== TAB: EMAIL & SMTP ====== */}
+      {activeTab === 'email' && (
+        <EmailTab
+          smtpEmail={smtpEmail}
+          setSmtpEmail={setSmtpEmail}
+          smtpAppPassword={smtpAppPassword}
+          setSmtpAppPassword={setSmtpAppPassword}
+          smtpFromName={smtpFromName}
+          setSmtpFromName={setSmtpFromName}
+          adminNotificationEmail={adminNotificationEmail}
+          setAdminNotificationEmail={setAdminNotificationEmail}
+          lowStockThreshold={lowStockThreshold}
+          setLowStockThreshold={setLowStockThreshold}
+          emailNotifications={emailNotifications}
+          setEmailNotifications={setEmailNotifications}
+        />
+      )}
+      {/* ====== TAB: META SYNC MAPPINGS ====== */}
+      {activeTab === 'meta_sync' && (
+        <MetaSyncTab />
+      )}
       {/* ====== ALWAYS VISIBLE SAVE BUTTON ====== */}
-      <div className="flex items-center justify-between gap-4 bg-white dark:bg-[#16162a] border border-gray-200 dark:border-gray-800 rounded-2xl px-6 py-4 shadow-sm sticky bottom-4 z-30">
-        <span className="text-xs text-gray-500 dark:text-gray-400 font-semibold hidden sm:block">
-          Changes apply to: <span className="text-[#e94560] font-bold capitalize">{activeTab}</span> settings
-        </span>
-        <button
-          type="submit"
-          className="flex items-center gap-2 rounded-xl bg-[#1a1a2e] dark:bg-[#e94560] hover:bg-[#e94560] dark:hover:bg-[#e94560]/90 active:scale-95 text-white px-8 py-3.5 text-sm font-bold shadow-md transition-all cursor-pointer ml-auto"
-        >
-          <Save className="h-4 w-4" />
-          <span>Save Settings</span>
-        </button>
-      </div>
+      {activeTab !== 'meta_sync' && (
+        <div className="flex items-center justify-between gap-4 bg-white dark:bg-[#16162a] border border-gray-200 dark:border-gray-800 rounded-2xl px-6 py-4 shadow-sm sticky bottom-4 z-30">
+          <span className="text-xs text-gray-500 dark:text-gray-400 font-semibold hidden sm:block">
+            Changes apply to: <span className="text-[#e94560] font-bold capitalize">{activeTab}</span> settings
+          </span>
+          <button
+            type="submit"
+            className="flex items-center gap-2 rounded-xl bg-[#1a1a2e] dark:bg-[#e94560] hover:bg-[#e94560] dark:hover:bg-[#e94560]/90 active:scale-95 text-white px-8 py-3.5 text-sm font-bold shadow-md transition-all cursor-pointer ml-auto"
+          >
+            <Save className="h-4 w-4" />
+            <span>Save Settings</span>
+          </button>
+        </div>
+      )}
     </form>
   );
 }

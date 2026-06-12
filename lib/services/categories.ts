@@ -60,6 +60,30 @@ export const getCategories = async () => {
   return cachedCategories();
 };
 
+const fetchCategoryBySlug = async (slug: string): Promise<Category | null> => {
+  const { data, error } = await staticSupabase
+    .from('categories')
+    .select('*')
+    .eq('slug', slug)
+    .eq('active', true)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data ? mapCategory(data) : null;
+};
+
+const cachedCategoryBySlug = (slug: string) => unstable_cache(
+  async () => fetchCategoryBySlug(slug),
+  [`category-by-slug-${slug}`],
+  { revalidate: 3600, tags: [`category-${slug}`, 'categories'] }
+)();
+
+export const getCategoryBySlug = async (slug: string) => {
+  if (process.env.NODE_ENV === 'development') {
+    return fetchCategoryBySlug(slug);
+  }
+  return cachedCategoryBySlug(slug);
+};
 
 export const getAllCategories = async (): Promise<Category[]> => {
   try {

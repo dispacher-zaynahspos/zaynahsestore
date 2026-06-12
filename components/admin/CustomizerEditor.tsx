@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, useTransition, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Product, Category, StoreSettings, Review, HomepageSection } from '@/lib/types';
 import { 
-  Plus, Trash2, ChevronUp, ChevronDown, Smartphone, Monitor, GripVertical, Settings, Check, RefreshCw, Eye, EyeOff, Lock
+  Plus, Trash2, ChevronUp, ChevronDown, Smartphone, Tablet, Monitor, GripVertical, Settings, Check, RefreshCw, Eye, EyeOff, Lock, ChevronLeft
 } from '@/components/common/Icons';
 import { 
   updateHomepageSection, 
@@ -11,10 +12,26 @@ import {
   addHomepageSection, 
   deleteHomepageSection 
 } from '@/lib/services/sections';
-import { uploadProductImage } from '@/lib/services/storage';
+import { updateSettings } from '@/lib/services/settings';
+import { updateProductFields } from '@/lib/services/products';
 import { toast } from 'sonner';
 import MediaSelectorModal from './MediaSelectorModal';
-import StoreFront from '@/components/store/StoreFront';
+import HeroBannerSettings from './customizer/sections/HeroBannerSettings';
+import ProductGridSettings from './customizer/sections/ProductGridSettings';
+import CategoryListSettings from './customizer/sections/CategoryListSettings';
+import CategoryGridSettings from './customizer/sections/CategoryGridSettings';
+import PromoBannerSettings from './customizer/sections/PromoBannerSettings';
+import RecentReviewsSettings from './customizer/sections/RecentReviewsSettings';
+import BrandsLogosSettings from './customizer/sections/BrandsLogosSettings';
+import SocialFeedSettings from './customizer/sections/SocialFeedSettings';
+import FlashSaleSettings from './customizer/sections/FlashSaleSettings';
+
+// New page settings tabs
+import ShopPageSettings from './customizer/pages/ShopPageSettings';
+import ProductDetailPageSettings from './customizer/pages/ProductDetailPageSettings';
+import GlobalSettings from './customizer/pages/GlobalSettings';
+import { AppearancePresetsList, AppearanceCustomizePanel } from './customizer/pages/AppearanceSettings';
+import ProductCardSettings from './customizer/pages/ProductCardSettings';
 
 interface CustomizerEditorProps {
   initialSections: HomepageSection[];
@@ -31,16 +48,46 @@ export default function CustomizerEditor({
   settings,
   reviews = []
 }: CustomizerEditorProps) {
+  const router = useRouter();
+  
+  // Customizer States
   const [sections, setSections] = useState<HomepageSection[]>(initialSections);
   const [activeSectionId, setActiveSectionId] = useState<string | null>(
     initialSections.length > 0 ? initialSections[0].id : null
   );
-  const [viewportMode, setViewportMode] = useState<'desktop' | 'mobile'>('mobile');
+  const [viewportMode, setViewportMode] = useState<'desktop' | 'tablet' | 'mobile'>('mobile');
   const [isPending, startTransition] = useTransition();
-  const [isUploading, setIsUploading] = useState<boolean>(false);
+
+  // New states for page selectors & global settings
+  const [activePage, setActivePage] = useState<'home' | 'shop' | 'product_detail' | 'product_card' | 'global' | 'appearance'>('home');
+  const [activeSubTab, setActiveSubTab] = useState<string>('');
+  const [storeSettings, setStoreSettings] = useState<StoreSettings>(settings);
+
+  // Local products state for real-time preview sync
+  const [localProducts, setLocalProducts] = useState<Product[]>(products);
+  const [editedProducts, setEditedProducts] = useState<Record<string, Partial<Product>>>({});
+  const [activeProductSlug, setActiveProductSlug] = useState<string | null>(null);
+
+  const currentProduct = useMemo(() => {
+    const defaultProduct = localProducts.find(p => p.active) || localProducts[0];
+    if (!activeProductSlug) return defaultProduct;
+    return localProducts.find(p => p.slug === activeProductSlug) || defaultProduct;
+  }, [localProducts, activeProductSlug]);
 
   const iframeRef = React.useRef<HTMLIFrameElement>(null);
 
+  // Set default active sub-tab when switching pages
+  useEffect(() => {
+    if (activePage === 'shop') {
+      setActiveSubTab('swatches');
+    } else if (activePage === 'product_detail') {
+      setActiveSubTab('layout');
+    } else if (activePage === 'global') {
+      setActiveSubTab('branding');
+    }
+  }, [activePage]);
+
+  // Sync state changes down to preview iframe
   useEffect(() => {
     const handleReady = (event: MessageEvent) => {
       if (event.data && event.data.type === 'ready') {
@@ -48,24 +95,121 @@ export default function CustomizerEditor({
           iframeRef.current.contentWindow.postMessage({
             type: 'sync',
             sections,
-            settings
+            settings: storeSettings,
+            products: localProducts,
+            activeProductSlug
+          }, '*');
+          iframeRef.current.contentWindow.postMessage({
+            type: 'change_page',
+            page: activePage
           }, '*');
         }
       }
     };
     window.addEventListener('message', handleReady);
     
-    // Also try syncing directly on change
+    // Direct sync on changes
     if (iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage({
         type: 'sync',
         sections,
-        settings
+        settings: storeSettings,
+        products: localProducts,
+        activeProductSlug
+      }, '*');
+      iframeRef.current.contentWindow.postMessage({
+        type: 'change_page',
+        page: activePage
       }, '*');
     }
 
     return () => window.removeEventListener('message', handleReady);
-  }, [sections, settings]);
+  }, [sections, storeSettings, activePage, localProducts, activeProductSlug]);
+
+  // Listen for active section selection from preview iframe clicks
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data) {
+        if (event.data.type === 'select_section') {
+          setActivePage('home');
+          setActiveSectionId(event.data.sectionId);
+        } else if (event.data.type === 'select_global_tab') {
+          setActivePage('global');
+          setActiveSubTab(event.data.subTab);
+          setActiveSectionId(null);
+        } else if (event.data.type === 'select_product_detail_tab') {
+          setActivePage('product_detail');
+          setActiveSubTab(event.data.subTab);
+          const blockMap: Record<string, string> = {
+            swatches: 'details',
+            ticker: 'ticker',
+            urgency: 'reviews',
+            delivery: 'related',
+            recently_viewed: 'recently_viewed',
+            social_feed: 'social_feed'
+          };
+          setActiveSectionId(blockMap[event.data.subTab] || null);
+        } else if (event.data.type === 'nav_to_page') {
+          const newPage = event.data.page;
+          setActivePage(newPage);
+          if (newPage === 'home') {
+            setActiveSectionId(sections[0]?.id || null);
+            setActiveSubTab('');
+          } else if (newPage === 'product_detail') {
+            if (event.data.href) {
+              const slug = event.data.href.replace('/product/', '').split('?')[0];
+              setActiveProductSlug(slug);
+            }
+            const firstBlock = (storeSettings.productPageLayout || ['details', 'ticker', 'reviews', 'related', 'recently_viewed', 'social_feed'])[0];
+            setActiveSectionId(firstBlock);
+            const tabMap: Record<string, string> = {
+              details: 'swatches',
+              ticker: 'ticker',
+              reviews: 'urgency',
+              related: 'delivery',
+              recently_viewed: 'recently_viewed',
+              social_feed: 'social_feed'
+            };
+            setActiveSubTab(tabMap[firstBlock] || 'swatches');
+          } else if (newPage === 'shop') {
+            setActiveSectionId(null);
+            setActiveSubTab('swatches');
+          }
+        }
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [sections, storeSettings.productPageLayout]);
+
+  // Send scroll command to preview iframe when active section changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (iframeRef.current?.contentWindow && activeSectionId && (activePage === 'home' || activePage === 'product_detail')) {
+        iframeRef.current.contentWindow.postMessage({
+          type: 'scroll_to_section',
+          sectionId: activeSectionId
+        }, '*');
+      }
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [activeSectionId, activePage]);
+
+  const [containerWidth, setContainerWidth] = useState<number>(1000);
+  const [containerHeight, setContainerHeight] = useState<number>(700);
+  const previewContainerRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!previewContainerRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        setContainerWidth(entry.contentRect.width);
+        setContainerHeight(entry.contentRect.height);
+      }
+    });
+    observer.observe(previewContainerRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   // Active section helper
   const activeSection = useMemo(() => {
@@ -137,7 +281,8 @@ export default function CustomizerEditor({
       promo_banner: 'Limited Time Deal',
       trust_badges: 'Our Promises',
       recent_reviews: 'Customer Reviews',
-      brands_logos: 'Our Premium Partners'
+      brands_logos: 'Our Premium Partners',
+      flash_sale: 'Super Flash Sale'
     };
 
     startTransition(async () => {
@@ -160,17 +305,36 @@ export default function CustomizerEditor({
     fieldKey: string;
     isGridItem?: boolean;
     gridIndex?: number;
+    isSlide?: boolean;
+    slideId?: string;
   } | null>(null);
 
   const handleMediaSelected = (urls: string[]) => {
     if (urls.length === 0 || !mediaUploadTarget) return;
     const url = urls[0];
-    const { sectionId, fieldPath, fieldKey, isGridItem, gridIndex } = mediaUploadTarget;
+    const { sectionId, fieldPath, fieldKey, isGridItem, gridIndex, isSlide, slideId } = mediaUploadTarget;
+
+    if (sectionId === 'global') {
+      setStoreSettings(prev => ({
+        ...prev,
+        [fieldKey]: url
+      }));
+      return;
+    }
 
     const section = sections.find(s => s.id === sectionId);
     if (!section) return;
 
-    if (isGridItem && gridIndex !== undefined) {
+    if (isSlide && slideId) {
+      const slides = section.content_data?.slides || [];
+      const updatedSlides = slides.map((s: any) => s.id === slideId ? { ...s, [fieldKey]: url } : s);
+      handleUpdateSection(sectionId, {
+        content_data: {
+          ...section.content_data,
+          slides: updatedSlides
+        }
+      });
+    } else if (isGridItem && gridIndex !== undefined) {
       const items = section.content_data?.items || [];
       const updatedItems = [...items];
       updatedItems[gridIndex] = { ...updatedItems[gridIndex], [fieldKey]: url };
@@ -186,7 +350,24 @@ export default function CustomizerEditor({
     }
   };
 
-  // Save layout state to db
+  // Update product sale settings handler
+  const handleUpdateProductSale = (productId: string, updates: Partial<Product>) => {
+    setLocalProducts(prev => prev.map(p => {
+      if (p.id === productId) {
+        return { ...p, ...updates };
+      }
+      return p;
+    }));
+    setEditedProducts(prev => ({
+      ...prev,
+      [productId]: {
+        ...(prev[productId] || {}),
+        ...updates
+      }
+    }));
+  };
+
+  // Save layout & settings state to db
   const handleSaveLayout = () => {
     startTransition(async () => {
       try {
@@ -205,26 +386,135 @@ export default function CustomizerEditor({
         );
 
         await Promise.all(updatePromises);
-        toast.success('Homepage layout saved successfully');
+
+        // 3. Save global settings
+        await updateSettings(storeSettings);
+
+        // 4. Save product sales overrides
+        const productUpdates = Object.entries(editedProducts).map(([id, updates]) =>
+          updateProductFields(id, updates)
+        );
+        await Promise.all(productUpdates);
+
+        setEditedProducts({});
+        toast.success('Customizer settings and layout saved successfully');
       } catch (err) {
-        toast.error('Failed to save layout adjustments');
+        toast.error('Failed to save layout adjustments and settings');
       }
     });
   };
 
   return (
-    <div className="flex flex-col lg:flex-row h-[calc(100vh-8rem)] gap-6 overflow-hidden">
-      {/* LEFT SIDEBAR: Sections List & Settings Panel */}
-      <div className="w-full lg:w-96 flex flex-col bg-white dark:bg-[#16162a] border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm h-full">
-        {/* Header toolbar */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between bg-gray-50/50 dark:bg-white/2 bg-surface-2">
-          <h3 className="font-extrabold text-sm tracking-wide text-gray-900 dark:text-white uppercase">
-            Customizer Sections
-          </h3>
+    <div className="fixed inset-0 z-[100] w-screen h-screen overflow-hidden flex flex-col bg-gray-50 dark:bg-[#0f0f1b] select-none text-gray-900 dark:text-gray-100">
+      
+      {/* 1. TOP HEADER BAR */}
+      <header className="h-16 bg-[#1a1a2e] text-white border-b border-white/10 flex items-center justify-between px-6 z-50 shadow-md flex-shrink-0">
+        {/* Left: Back to Dashboard & Page Selector */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => router.push('/admin/dashboard')}
+            className="flex items-center gap-1.5 text-white/80 hover:text-white px-3 py-1.5 hover:bg-white/5 rounded-xl transition-all font-bold text-xs cursor-pointer select-none"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Back to Dashboard
+          </button>
+          <div className="w-[1px] h-6 bg-white/10 hidden sm:block" />
+          <div className="hidden sm:flex flex-col items-start leading-none gap-0.5 mr-2">
+            <span className="text-xs font-black tracking-wider text-white uppercase">{storeSettings.storeName || 'Zaynahs'}</span>
+            <span className="text-[9px] font-bold text-white/50 uppercase tracking-widest">Theme Customizer</span>
+          </div>
+          <div className="w-[1px] h-6 bg-white/10 hidden sm:block" />
+          
+          {/* Page Selector dropdown */}
+          <div className="flex items-center bg-white/5 border border-white/10 px-3 py-1.5 rounded-xl gap-2 text-xs font-bold text-white">
+            <span className="text-white/60 hidden md:inline">Page:</span>
+            <select
+              value={activePage}
+              onChange={(e) => {
+                const newPage = e.target.value as 'home' | 'shop' | 'product_detail' | 'product_card' | 'global' | 'appearance';
+                setActivePage(newPage);
+                if (newPage === 'home') {
+                  setActiveSectionId(sections[0]?.id || null);
+                  setActiveSubTab('');
+                } else if (newPage === 'product_detail') {
+                  const firstBlock = (storeSettings.productPageLayout || ['details', 'ticker', 'reviews', 'related', 'recently_viewed', 'social_feed'])[0];
+                  setActiveSectionId(firstBlock);
+                  const tabMap: Record<string, string> = {
+                    details: 'swatches',
+                    ticker: 'ticker',
+                    reviews: 'urgency',
+                    related: 'delivery'
+                  };
+                  setActiveSubTab(tabMap[firstBlock] || 'swatches');
+                } else if (newPage === 'shop') {
+                  setActiveSectionId(null);
+                  setActiveSubTab('swatches');
+                } else if (newPage === 'product_card') {
+                  setActiveSectionId(null);
+                  setActiveSubTab('');
+                } else if (newPage === 'global') {
+                  setActiveSectionId(null);
+                  setActiveSubTab('branding');
+                } else if (newPage === 'appearance') {
+                  setActiveSectionId(null);
+                  setActiveSubTab('');
+                }
+              }}
+              className="bg-transparent border-none focus:ring-0 text-white font-black cursor-pointer outline-none"
+            >
+              <option value="home" className="bg-[#1a1a2e] text-white">Home Page</option>
+              <option value="shop" className="bg-[#1a1a2e] text-white">Shop Page</option>
+              <option value="product_detail" className="bg-[#1a1a2e] text-white">Product Details</option>
+              <option value="product_card" className="bg-[#1a1a2e] text-white">Product Cards</option>
+              <option value="global" className="bg-[#1a1a2e] text-white">Global Settings</option>
+              <option value="appearance" className="bg-[#1a1a2e] text-white">Appearance / Presets</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Center: Viewport Switcher */}
+        <div className="flex bg-white/5 border border-white/10 p-0.5 rounded-xl">
+          <button
+            onClick={() => setViewportMode('desktop')}
+            className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider transition-all cursor-pointer ${
+              viewportMode === 'desktop'
+                ? 'bg-[#e94560] text-white shadow-sm'
+                : 'text-white/60 hover:text-white'
+            }`}
+          >
+            <Monitor className="h-3.5 w-3.5" />
+            Desktop
+          </button>
+          <button
+            onClick={() => setViewportMode('tablet')}
+            className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider transition-all cursor-pointer ${
+              viewportMode === 'tablet'
+                ? 'bg-[#e94560] text-white shadow-sm'
+                : 'text-white/60 hover:text-white'
+            }`}
+          >
+            <Tablet className="h-3.5 w-3.5" />
+            Tablet
+          </button>
+          <button
+            onClick={() => setViewportMode('mobile')}
+            className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider transition-all cursor-pointer ${
+              viewportMode === 'mobile'
+                ? 'bg-[#e94560] text-white shadow-sm'
+                : 'text-white/60 hover:text-white'
+            }`}
+          >
+            <Smartphone className="h-3.5 w-3.5" />
+            Mobile
+          </button>
+        </div>
+
+        {/* Right: Save Button */}
+        <div className="flex items-center gap-3">
           <button
             onClick={handleSaveLayout}
             disabled={isPending}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#e94560] hover:bg-[#d83550] text-white text-xs font-bold rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50 cursor-pointer"
+            className="flex items-center gap-1.5 px-4 py-2 bg-[#e94560] hover:bg-[#d83550] text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50 cursor-pointer"
           >
             {isPending ? (
               <RefreshCw className="h-3.5 w-3.5 animate-spin" />
@@ -234,1123 +524,851 @@ export default function CustomizerEditor({
             Save Layout
           </button>
         </div>
+      </header>
 
-        {/* Section Actions & List Scroll */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-6">
-          {/* Add section widget */}
-          <div className="space-y-2.5">
-            <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest block">
-              + Add Layout Section
-            </label>
-            <div className="grid grid-cols-2 gap-1.5">
-              {[
-                { type: 'hero_banner', label: 'Promo Slider' },
-                { type: 'product_grid', label: 'Product Grid' },
-                { type: 'category_list', label: 'Category Filter' },
-                { type: 'category_grid', label: 'Category Grid' },
-                { type: 'promo_banner', label: 'Promo Banner' },
-                { type: 'trust_badges', label: 'Trust Badges' },
-                { type: 'recent_reviews', label: 'Reviews Feed' },
-                { type: 'brands_logos', label: 'Brands Slider' },
-                { type: 'social_feed', label: 'Social Feed' }
-              ].map(item => (
-                <button
-                  key={item.type}
-                  onClick={() => handleAddSection(item.type)}
-                  className="px-3 py-2 text-left bg-gray-50 dark:bg-white/5 border border-gray-150 dark:border-gray-800/80 hover:border-[#e94560] dark:hover:border-[#e94560] text-xs font-bold text-gray-700 dark:text-gray-300 rounded-xl transition-all active:scale-97 cursor-pointer"
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
+      {/* 2. THREE-COLUMN WORKSPACE */}
+      <div className="flex-grow flex flex-row overflow-hidden h-[calc(100vh-4rem)]">
+        
+        {/* LEFT COLUMN: Sections & Add Widgets */}
+        <aside className="w-80 flex-shrink-0 flex flex-col bg-white dark:bg-[#16162a] border-r border-gray-200 dark:border-gray-800 overflow-hidden h-full">
+          <div className="p-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-white/2 bg-surface-2 flex-shrink-0">
+            <h3 className="font-extrabold text-xs tracking-wider text-gray-900 dark:text-white uppercase">
+              {activePage === 'home' ? 'Sections Stack' : `${activePage.replace('_', ' ')} Properties`}
+            </h3>
           </div>
 
-          {/* Section Stack */}
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest block">
-              Section Layout Order
-            </label>
-            
-            {sections.length === 0 ? (
-              <div className="text-center py-6 border border-dashed border-gray-200 dark:border-gray-800 rounded-2xl text-xs font-semibold text-gray-400">
-                No custom sections added yet.
-              </div>
-            ) : (
+          <div className="flex-1 overflow-y-auto p-4 space-y-6">
+            {activePage === 'home' ? (
+              <>
+                {/* Add section widget */}
+                <div className="space-y-2.5">
+                  <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest block">
+                    + Add Layout Section
+                  </label>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {[
+                      { type: 'hero_banner', label: 'Promo Slider' },
+                      { type: 'product_grid', label: 'Product Grid' },
+                      { type: 'category_list', label: 'Category Filter' },
+                      { type: 'category_grid', label: 'Category Grid' },
+                      { type: 'promo_banner', label: 'Promo Banner' },
+                      { type: 'trust_badges', label: 'Trust Badges' },
+                      { type: 'recent_reviews', label: 'Reviews Feed' },
+                      { type: 'brands_logos', label: 'Brands Slider' },
+                      { type: 'social_feed', label: 'Social Feed' },
+                      { type: 'ticker', label: 'Scrolling Ticker' },
+                      { type: 'flash_sale', label: 'Flash Sale Grid' }
+                    ].map(item => (
+                      <button
+                        key={item.type}
+                        onClick={() => handleAddSection(item.type)}
+                        className="px-2.5 py-1.5 text-left bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-gray-800/80 hover:border-[#e94560] dark:hover:border-[#e94560] text-xs font-bold text-gray-700 dark:text-gray-300 rounded-xl transition-all active:scale-97 cursor-pointer"
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Announcement Bar Widget Shortcut */}
+                <div
+                  onClick={() => {
+                    setActiveSectionId('announcement_bar');
+                    setActivePage('home');
+                  }}
+                  className={`flex items-center justify-between p-3 border rounded-xl transition-all cursor-pointer mb-4 ${
+                    activeSectionId === 'announcement_bar'
+                      ? 'border-[#e94560] bg-[#e94560]/5 dark:bg-[#e94560]/10 shadow-sm'
+                      : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-[#16162a] hover:border-gray-300 dark:hover:border-gray-700'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">📢</span>
+                    <div className="min-w-0 flex-grow">
+                      <div className="text-xs font-bold text-gray-900 dark:text-white">
+                        Announcement News Bar
+                      </div>
+                      <span className="text-[9px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider">
+                        Permanent Header Banner
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section Stack */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest block">
+                    Section Layout Order
+                  </label>
+                  
+                  {sections.length === 0 ? (
+                    <div className="text-center py-6 border border-dashed border-gray-200 dark:border-gray-800 rounded-2xl text-xs font-semibold text-gray-400">
+                      No custom sections added yet.
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {sections.map((section, idx) => {
+                        const isActive = activeSectionId === section.id;
+                        return (
+                          <div
+                            key={section.id}
+                            onClick={() => setActiveSectionId(section.id)}
+                            className={`flex items-center justify-between p-3 border rounded-xl transition-all cursor-pointer ${
+                              isActive
+                                ? 'border-[#e94560] bg-[#e94560]/5 dark:bg-[#e94560]/10 shadow-sm'
+                                : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-[#16162a] hover:border-gray-300 dark:hover:border-gray-700'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <GripVertical className="h-4 w-4 text-gray-400" />
+                              <div className="min-w-0 flex-1">
+                                <div className="text-xs font-bold text-gray-900 dark:text-white truncate">
+                                  {section.title || section.section_type}
+                                </div>
+                                <span className="text-[9px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider">
+                                  {section.section_type.replace('_', ' ')}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Controls */}
+                            <div className="flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
+                              <button
+                                onClick={() => handleUpdateSection(section.id, { active: !section.active })}
+                                className={`p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 ${
+                                  section.active ? 'text-[#e94560]' : 'text-gray-400'
+                                } cursor-pointer`}
+                                title={section.active ? 'Hide layout' : 'Show layout'}
+                              >
+                                {section.active ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                              </button>
+                              <button
+                                disabled={idx === 0}
+                                onClick={() => handleMoveSection(idx, 'up')}
+                                className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-white disabled:opacity-30 cursor-pointer"
+                              >
+                                <ChevronUp className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                disabled={idx === sections.length - 1}
+                                onClick={() => handleMoveSection(idx, 'down')}
+                                className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-white disabled:opacity-30 cursor-pointer"
+                              >
+                                <ChevronDown className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteSection(section.id)}
+                                className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 cursor-pointer"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : activePage === 'shop' ? (
               <div className="space-y-2">
-                {sections.map((section, idx) => {
-                  const isActive = activeSectionId === section.id;
-                  return (
-                    <div
-                      key={section.id}
-                      onClick={() => setActiveSectionId(section.id)}
-                      className={`flex items-center justify-between p-3 border rounded-xl transition-all cursor-pointer ${
-                        isActive
+                <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest block">
+                  Shop Page Properties
+                </label>
+                <div className="space-y-1.5">
+                  {[
+                    { id: 'swatches', label: 'Color Swatches', desc: 'Display product variant colors on list cards' },
+                    { id: 'layout', label: 'Product Layout', desc: 'Grid aspect ratio, line limit, hover style' }
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveSubTab(tab.id)}
+                      className={`w-full text-left p-3 border rounded-xl transition-all cursor-pointer ${
+                        activeSubTab === tab.id
                           ? 'border-[#e94560] bg-[#e94560]/5 dark:bg-[#e94560]/10 shadow-sm'
-                          : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-[#16162a] hover:border-gray-350 dark:hover:border-gray-700'
+                          : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-[#16162a] hover:border-gray-300 dark:hover:border-gray-700'
                       }`}
                     >
-                      <div className="flex items-center gap-2">
-                        <GripVertical className="h-4 w-4 text-gray-400" />
-                        <div>
-                          <div className="text-xs font-bold text-gray-900 dark:text-white">
-                            {section.title || section.section_type}
-                          </div>
-                          <span className="text-[9px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider">
-                            {section.section_type.replace('_', ' ')}
-                          </span>
-                        </div>
+                      <div className="text-xs font-bold text-gray-900 dark:text-white">
+                        {tab.label}
                       </div>
-
-                      {/* Controls */}
-                      <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
-                        <button
-                          onClick={() => handleUpdateSection(section.id, { active: !section.active })}
-                          className={`p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 ${
-                            section.active ? 'text-[#e94560]' : 'text-gray-400'
-                          } cursor-pointer`}
-                          title={section.active ? 'Hide layout' : 'Show layout'}
-                        >
-                          {section.active ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-                        </button>
-                        <button
-                          disabled={idx === 0}
-                          onClick={() => handleMoveSection(idx, 'up')}
-                          className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-white disabled:opacity-30 cursor-pointer"
-                        >
-                          <ChevronUp className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          disabled={idx === sections.length - 1}
-                          onClick={() => handleMoveSection(idx, 'down')}
-                          className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-white disabled:opacity-30 cursor-pointer"
-                        >
-                          <ChevronDown className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteSection(section.id)}
-                          className="p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 cursor-pointer"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                      <div className="text-[10px] text-gray-400 dark:text-gray-500 font-semibold mt-0.5">
+                        {tab.desc}
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Settings Customizer inputs */}
-          {activeSection && (
-            <div className="border-t border-gray-200 dark:border-gray-800 pt-5 space-y-4">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider">
-                <Settings className="h-4 w-4 text-[#e94560]" />
-                Section Properties
-              </div>
-
-              {/* Title parameter */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-                  Section Title
-                </label>
-                <input
-                  type="text"
-                  value={activeSection.title || ''}
-                  onChange={e => handleUpdateSection(activeSection.id, { title: e.target.value })}
-                  placeholder="e.g. Featured Collection"
-                  className="w-full px-3 py-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
-                />
-              </div>
-
-              {/* Specific inputs for hero_banner */}
-              {activeSection.section_type === 'hero_banner' && (
-                <div className="space-y-4">
-                  {/* Banner Images (Desktop & Mobile) */}
-                  <div className="space-y-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-gray-800/80">
-                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#e94560] block mb-1">Images</span>
-                    
-                    {/* Desktop Image */}
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-                        Desktop Banner Image *
-                      </label>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={activeSection.content_data?.image_url || ''}
-                          onChange={e => handleUpdateSection(activeSection.id, { content_data: { image_url: e.target.value } })}
-                          placeholder="Desktop Image URL"
-                          className="flex-1 px-3 py-2 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setMediaUploadTarget({ sectionId: activeSection.id, fieldPath: 'content_data', fieldKey: 'image_url' });
-                            setIsMediaModalOpen(true);
-                          }}
-                          className="px-3 py-2 bg-gray-100 dark:bg-white/10 hover:bg-gray-200 hover:dark:bg-white/15 text-xs font-bold text-gray-700 dark:text-gray-300 rounded-xl transition-all cursor-pointer whitespace-nowrap"
-                        >
-                          Select
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Mobile Image */}
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-                        Mobile Banner Image (Optional)
-                      </label>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={activeSection.content_data?.mobile_image_url || ''}
-                          onChange={e => handleUpdateSection(activeSection.id, { content_data: { mobile_image_url: e.target.value } })}
-                          placeholder="Mobile Image URL (falls back to desktop)"
-                          className="flex-1 px-3 py-2 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setMediaUploadTarget({ sectionId: activeSection.id, fieldPath: 'content_data', fieldKey: 'mobile_image_url' });
-                            setIsMediaModalOpen(true);
-                          }}
-                          className="px-3 py-2 bg-gray-100 dark:bg-white/10 hover:bg-gray-200 hover:dark:bg-white/15 text-xs font-bold text-gray-700 dark:text-gray-300 rounded-xl transition-all cursor-pointer whitespace-nowrap"
-                        >
-                          Select
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Banner Heights & Widths */}
-                  <div className="space-y-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-gray-800/80">
-                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#e94560] block mb-1">Dimensions</span>
-                    
-                    {/* Heights */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-                          Height (Desktop)
-                        </label>
-                        <input
-                          type="text"
-                          value={activeSection.settings?.height_desktop || '450px'}
-                          onChange={e => handleUpdateSection(activeSection.id, { settings: { height_desktop: e.target.value } })}
-                          placeholder="e.g. 450px or 60vh"
-                          className="w-full px-3 py-2 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-                          Height (Mobile)
-                        </label>
-                        <input
-                          type="text"
-                          value={activeSection.settings?.height_mobile || '250px'}
-                          onChange={e => handleUpdateSection(activeSection.id, { settings: { height_mobile: e.target.value } })}
-                          placeholder="e.g. 250px or 40vh"
-                          className="w-full px-3 py-2 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Widths */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-                          Content Width (Desktop)
-                        </label>
-                        <input
-                          type="text"
-                          value={activeSection.settings?.content_width_desktop || '576px'}
-                          onChange={e => handleUpdateSection(activeSection.id, { settings: { content_width_desktop: e.target.value } })}
-                          placeholder="e.g. 576px or 50%"
-                          className="w-full px-3 py-2 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-                          Content Width (Mobile)
-                        </label>
-                        <input
-                          type="text"
-                          value={activeSection.settings?.content_width_mobile || '100%'}
-                          onChange={e => handleUpdateSection(activeSection.id, { settings: { content_width_mobile: e.target.value } })}
-                          placeholder="e.g. 100% or 320px"
-                          className="w-full px-3 py-2 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Positioning & Alignments */}
-                  <div className="space-y-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-gray-800/80">
-                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#e94560] block mb-1">Layout & Alignments</span>
-                    
-                    {/* Desktop Content Box Position */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-                          Desktop Pos (Horizontal)
-                        </label>
-                        <select
-                          value={activeSection.settings?.content_position_desktop_x || activeSection.settings?.content_position_desktop || 'center'}
-                          onChange={e => handleUpdateSection(activeSection.id, { 
-                            settings: { 
-                              content_position_desktop_x: e.target.value,
-                              content_position_desktop: e.target.value // Legacy sync
-                            } 
-                          })}
-                          className="w-full px-3 py-2 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-950 dark:text-white"
-                        >
-                          <option value="left">Left</option>
-                          <option value="center">Center</option>
-                          <option value="right">Right</option>
-                        </select>
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-                          Desktop Pos (Vertical)
-                        </label>
-                        <select
-                          value={activeSection.settings?.content_position_desktop_y || 'middle'}
-                          onChange={e => handleUpdateSection(activeSection.id, { settings: { content_position_desktop_y: e.target.value } })}
-                          className="w-full px-3 py-2 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-950 dark:text-white"
-                        >
-                          <option value="top">Top</option>
-                          <option value="middle">Middle</option>
-                          <option value="bottom">Bottom</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Mobile Content Box Position */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-                          Mobile Pos (Horizontal)
-                        </label>
-                        <select
-                          value={activeSection.settings?.content_position_mobile_x || 'center'}
-                          onChange={e => handleUpdateSection(activeSection.id, { settings: { content_position_mobile_x: e.target.value } })}
-                          className="w-full px-3 py-2 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-955 dark:text-white"
-                        >
-                          <option value="left">Left</option>
-                          <option value="center">Center</option>
-                          <option value="right">Right</option>
-                        </select>
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-                          Mobile Pos (Vertical)
-                        </label>
-                        <select
-                          value={activeSection.settings?.content_position_mobile_y || 'middle'}
-                          onChange={e => handleUpdateSection(activeSection.id, { settings: { content_position_mobile_y: e.target.value } })}
-                          className="w-full px-3 py-2 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-955 dark:text-white"
-                        >
-                          <option value="top">Top</option>
-                          <option value="middle">Middle</option>
-                          <option value="bottom">Bottom</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Text alignment options */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-                          Text Align (Desktop)
-                        </label>
-                        <select
-                          value={activeSection.settings?.text_align_desktop || 'center'}
-                          onChange={e => handleUpdateSection(activeSection.id, { settings: { text_align_desktop: e.target.value } })}
-                          className="w-full px-3 py-2 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-950 dark:text-white"
-                        >
-                          <option value="left">Left</option>
-                          <option value="center">Center</option>
-                          <option value="right">Right</option>
-                        </select>
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-                          Text Align (Mobile)
-                        </label>
-                        <select
-                          value={activeSection.settings?.text_align_mobile || 'center'}
-                          onChange={e => handleUpdateSection(activeSection.id, { settings: { text_align_mobile: e.target.value } })}
-                          className="w-full px-3 py-2 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-955 dark:text-white"
-                        >
-                          <option value="left">Left</option>
-                          <option value="center">Center</option>
-                          <option value="right">Right</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Show Backdrop Container */}
-                    <label className="flex items-center gap-2.5 cursor-pointer py-1">
-                      <input
-                        type="checkbox"
-                        checked={activeSection.settings?.show_backdrop_container ?? false}
-                        onChange={e => handleUpdateSection(activeSection.id, { settings: { show_backdrop_container: e.target.checked } })}
-                        className="rounded border-gray-300 dark:border-gray-700 text-[#e94560] focus:ring-[#e94560] h-4 w-4"
-                      />
-                      <span className="text-xs font-semibold text-gray-750 dark:text-gray-300">
-                        Show Backdrop Box on Desktop (Glassmorphism)
-                      </span>
-                    </label>
-                  </div>
-
-                  {/* Image Scaling and Focal Crop Offset Shifts (Focal Points) */}
-                  <div className="space-y-3.5 p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-gray-800/80">
-                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#e94560] block mb-1">Image Scaling & Position Shift</span>
-                    
-                    {/* Desktop Scaling & Focal Shifts */}
-                    <div className="space-y-2 pb-2 border-b border-gray-200/50 dark:border-gray-800/50">
-                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-wide">Desktop Viewport</span>
-                      
-                      {/* Desktop Scale */}
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-[11px] font-bold text-gray-500">
-                          <span>Scale (Zoom)</span>
-                          <span className="text-[#e94560]">{activeSection.settings?.image_scale_desktop ?? 100}%</span>
-                        </div>
-                        <input
-                          type="range"
-                          min="100"
-                          max="200"
-                          step="5"
-                          value={activeSection.settings?.image_scale_desktop ?? 100}
-                          onChange={e => handleUpdateSection(activeSection.id, { settings: { image_scale_desktop: parseInt(e.target.value) } })}
-                          className="w-full accent-[#e94560]"
-                        />
-                      </div>
-
-                      {/* Desktop Shift X (Left / Right) */}
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-[11px] font-bold text-gray-500">
-                          <span>Left / Right Shift (X Offset)</span>
-                          <span className="text-[#e94560]">{activeSection.settings?.image_focal_x_desktop ?? 50}%</span>
-                        </div>
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          step="5"
-                          value={activeSection.settings?.image_focal_x_desktop ?? 50}
-                          onChange={e => handleUpdateSection(activeSection.id, { settings: { image_focal_x_desktop: parseInt(e.target.value) } })}
-                          className="w-full accent-[#e94560]"
-                        />
-                      </div>
-
-                      {/* Desktop Shift Y (Up / Down) */}
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-[11px] font-bold text-gray-500">
-                          <span>Up / Down Shift (Y Offset)</span>
-                          <span className="text-[#e94560]">{activeSection.settings?.image_focal_y_desktop ?? 50}%</span>
-                        </div>
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          step="5"
-                          value={activeSection.settings?.image_focal_y_desktop ?? 50}
-                          onChange={e => handleUpdateSection(activeSection.id, { settings: { image_focal_y_desktop: parseInt(e.target.value) } })}
-                          className="w-full accent-[#e94560]"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Mobile Scaling & Focal Shifts */}
-                    <div className="space-y-2 pt-1">
-                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-wide">Mobile Viewport</span>
-                      
-                      {/* Mobile Scale */}
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-[11px] font-bold text-gray-500">
-                          <span>Scale (Zoom)</span>
-                          <span className="text-[#e94560]">{activeSection.settings?.image_scale_mobile ?? 100}%</span>
-                        </div>
-                        <input
-                          type="range"
-                          min="100"
-                          max="200"
-                          step="5"
-                          value={activeSection.settings?.image_scale_mobile ?? 100}
-                          onChange={e => handleUpdateSection(activeSection.id, { settings: { image_scale_mobile: parseInt(e.target.value) } })}
-                          className="w-full accent-[#e94560]"
-                        />
-                      </div>
-
-                      {/* Mobile Shift X (Left / Right) */}
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-[11px] font-bold text-gray-500">
-                          <span>Left / Right Shift (X Offset)</span>
-                          <span className="text-[#e94560]">{activeSection.settings?.image_focal_x_mobile ?? 50}%</span>
-                        </div>
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          step="5"
-                          value={activeSection.settings?.image_focal_x_mobile ?? 50}
-                          onChange={e => handleUpdateSection(activeSection.id, { settings: { image_focal_x_mobile: parseInt(e.target.value) } })}
-                          className="w-full accent-[#e94560]"
-                        />
-                      </div>
-
-                      {/* Mobile Shift Y (Up / Down) */}
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-[11px] font-bold text-gray-500">
-                          <span>Up / Down Shift (Y Offset)</span>
-                          <span className="text-[#e94560]">{activeSection.settings?.image_focal_y_mobile ?? 50}%</span>
-                        </div>
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          step="5"
-                          value={activeSection.settings?.image_focal_y_mobile ?? 50}
-                          onChange={e => handleUpdateSection(activeSection.id, { settings: { image_focal_y_mobile: parseInt(e.target.value) } })}
-                          className="w-full accent-[#e94560]"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Overlays & Opacity */}
-                  <div className="space-y-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-gray-800/80">
-                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#e94560] block mb-1">Visual Styling & Colors</span>
-                    
-                    {/* Overlay Color */}
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-                        Overlay Overlay Color
-                      </label>
-                      <div className="flex gap-2 items-center">
-                        <input
-                          type="color"
-                          value={activeSection.settings?.overlay_color || '#000000'}
-                          onChange={e => handleUpdateSection(activeSection.id, { settings: { overlay_color: e.target.value } })}
-                          className="h-8 w-12 rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent cursor-pointer p-0.5"
-                        />
-                        <input
-                          type="text"
-                          value={activeSection.settings?.overlay_color || '#000000'}
-                          onChange={e => handleUpdateSection(activeSection.id, { settings: { overlay_color: e.target.value } })}
-                          placeholder="#000000"
-                          className="flex-1 px-3 py-1.5 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Overlay Opacity */}
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between">
-                        <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-                          Overlay Opacity
-                        </label>
-                        <span className="text-xs font-bold text-[#e94560]">
-                          {Math.round((activeSection.settings?.overlay_opacity ?? 0.3) * 100)}%
-                        </span>
-                      </div>
-                      <input
-                        type="range"
-                        min="0"
-                        max="1"
-                        step="0.05"
-                        value={activeSection.settings?.overlay_opacity ?? 0.3}
-                        onChange={e => handleUpdateSection(activeSection.id, { settings: { overlay_opacity: parseFloat(e.target.value) } })}
-                        className="w-full accent-[#e94560]"
-                      />
-                    </div>
-
-                    {/* Heading, Tagline and Subtitle text color overrides */}
-                    <div className="grid grid-cols-2 gap-3 pt-1">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-gray-500">Heading Color</label>
-                        <input
-                          type="text"
-                          value={activeSection.settings?.heading_color || '#ffffff'}
-                          onChange={e => handleUpdateSection(activeSection.id, { settings: { heading_color: e.target.value } })}
-                          placeholder="#ffffff"
-                          className="w-full px-2.5 py-1.5 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-lg text-[11px] font-semibold text-gray-900 dark:text-white"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-gray-500">Subtitle Color</label>
-                        <input
-                          type="text"
-                          value={activeSection.settings?.subtitle_color || '#e0e0e0'}
-                          onChange={e => handleUpdateSection(activeSection.id, { settings: { subtitle_color: e.target.value } })}
-                          placeholder="#e0e0e0"
-                          className="w-full px-2.5 py-1.5 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-lg text-[11px] font-semibold text-gray-900 dark:text-white"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Texts Customizer */}
-                  <div className="space-y-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-gray-800/80">
-                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#e94560] block mb-1">Text Customizer</span>
-                    
-                    {/* Tagline / Small text */}
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-                        Tagline / Supertitle Text
-                      </label>
-                      <input
-                        type="text"
-                        value={activeSection.content_data?.tagline || ''}
-                        onChange={e => handleUpdateSection(activeSection.id, { content_data: { tagline: e.target.value } })}
-                        placeholder="e.g. SUMMER ARRIVALS"
-                        className="w-full px-3 py-2 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
-                      />
-                    </div>
-
-                    {/* Subtitle */}
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-                        Subtitle Text
-                      </label>
-                      <textarea
-                        rows={2}
-                        value={activeSection.content_data?.subtitle || ''}
-                        onChange={e => handleUpdateSection(activeSection.id, { content_data: { subtitle: e.target.value } })}
-                        placeholder="e.g. Special discounts up to 50% on all luxury clothing"
-                        className="w-full px-3 py-2 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white resize-none"
-                      />
-                    </div>
-
-                    {/* Desktop Heading Size */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-                          Heading Size (Desktop)
-                        </label>
-                        <select
-                          value={activeSection.settings?.heading_size_desktop || '5xl'}
-                          onChange={e => handleUpdateSection(activeSection.id, { settings: { heading_size_desktop: e.target.value } })}
-                          className="w-full px-3 py-2 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
-                        >
-                          <option value="2xl">Small (2xl)</option>
-                          <option value="3xl">Medium (3xl)</option>
-                          <option value="4xl">Large (4xl)</option>
-                          <option value="5xl">X-Large (5xl)</option>
-                          <option value="6xl">XX-Large (6xl)</option>
-                        </select>
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-                          Heading Size (Mobile)
-                        </label>
-                        <select
-                          value={activeSection.settings?.heading_size_mobile || '2xl'}
-                          onChange={e => handleUpdateSection(activeSection.id, { settings: { heading_size_mobile: e.target.value } })}
-                          className="w-full px-3 py-2 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
-                        >
-                          <option value="lg">Small (lg)</option>
-                          <option value="xl">Medium (xl)</option>
-                          <option value="2xl">Large (2xl)</option>
-                          <option value="3xl">X-Large (3xl)</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Action Buttons Customizer (Shopify Multi-CTA Support) */}
-                  <div className="space-y-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-gray-800/80">
-                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#e94560] block mb-1">Call to Action Buttons</span>
-                    
-                    {/* Primary Button */}
-                    <div className="space-y-2 border-b border-gray-200/50 dark:border-gray-800/50 pb-3">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Primary Button</span>
-                      <div className="grid grid-cols-2 gap-2">
-                        <input
-                          type="text"
-                          value={activeSection.content_data?.button_text || ''}
-                          onChange={e => handleUpdateSection(activeSection.id, { content_data: { button_text: e.target.value } })}
-                          placeholder="Label (Shop Now)"
-                          className="px-2.5 py-1.5 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-lg text-xs font-semibold focus:outline-none text-gray-900 dark:text-white"
-                        />
-                        <input
-                          type="text"
-                          value={activeSection.content_data?.button_link || ''}
-                          onChange={e => handleUpdateSection(activeSection.id, { content_data: { button_link: e.target.value } })}
-                          placeholder="Link (/shop)"
-                          className="px-2.5 py-1.5 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-lg text-xs font-semibold focus:outline-none text-gray-900 dark:text-white"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Secondary Button */}
-                    <div className="space-y-2 pt-1">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Secondary Button (Optional)</span>
-                      <div className="grid grid-cols-2 gap-2">
-                        <input
-                          type="text"
-                          value={activeSection.content_data?.button_secondary_text || ''}
-                          onChange={e => handleUpdateSection(activeSection.id, { content_data: { button_secondary_text: e.target.value } })}
-                          placeholder="Label (e.g. Learn More)"
-                          className="px-2.5 py-1.5 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-lg text-xs font-semibold focus:outline-none text-gray-900 dark:text-white"
-                        />
-                        <input
-                          type="text"
-                          value={activeSection.content_data?.button_secondary_link || ''}
-                          onChange={e => handleUpdateSection(activeSection.id, { content_data: { button_secondary_link: e.target.value } })}
-                          placeholder="Link (/about)"
-                          className="px-2.5 py-1.5 bg-white dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-lg text-xs font-semibold focus:outline-none text-gray-900 dark:text-white"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Specific inputs for product_grid */}
-              {activeSection.section_type === 'product_grid' && (
-                <div className="space-y-4">
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-                      Product Source
-                    </label>
-                    <select
-                      value={activeSection.settings?.source || 'all'}
-                      onChange={e => handleUpdateSection(activeSection.id, { settings: { source: e.target.value } })}
-                      className="w-full px-3 py-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
-                    >
-                      <option value="all">All Products</option>
-                      <option value="featured">Featured Products Only</option>
-                      {categories.map(cat => (
-                        <option key={cat.id} value={cat.id}>
-                          Category: {cat.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <div className="flex justify-between">
-                      <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-                        Product Limit
-                      </label>
-                      <span className="text-xs font-bold text-[#e94560]">
-                        {activeSection.settings?.limit || 8}
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min="2"
-                      max="24"
-                      step="2"
-                      value={activeSection.settings?.limit || 8}
-                      onChange={e => handleUpdateSection(activeSection.id, { settings: { limit: parseInt(e.target.value) } })}
-                      className="w-full accent-[#e94560]"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Specific inputs for category_list */}
-              {activeSection.section_type === 'category_list' && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-                      Cols Mobile
-                    </label>
-                    <select
-                      value={activeSection.settings?.columns_mobile || 3}
-                      onChange={e => handleUpdateSection(activeSection.id, { settings: { columns_mobile: parseInt(e.target.value) } })}
-                      className="w-full px-3 py-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
-                    >
-                      <option value="2">2 Columns</option>
-                      <option value="3">3 Columns</option>
-                      <option value="4">4 Columns</option>
-                    </select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-                      Cols Desktop
-                    </label>
-                    <select
-                      value={activeSection.settings?.columns_desktop || 6}
-                      onChange={e => handleUpdateSection(activeSection.id, { settings: { columns_desktop: parseInt(e.target.value) } })}
-                      className="w-full px-3 py-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
-                    >
-                      <option value="3">3 Columns</option>
-                      <option value="4">4 Columns</option>
-                      <option value="6">6 Columns</option>
-                      <option value="8">8 Columns</option>
-                    </select>
-                  </div>
-                </div>
-              )}
-
-              {/* Specific inputs for promo_banner */}
-              {activeSection.section_type === 'promo_banner' && (
-                <div className="space-y-4">
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-                      Promo Content Description
-                    </label>
-                    <textarea
-                      value={activeSection.content_data?.text || ''}
-                      onChange={e => handleUpdateSection(activeSection.id, { content_data: { text: e.target.value } })}
-                      placeholder="Add promotional lines or descriptions"
-                      rows={3}
-                      className="w-full px-3 py-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-                        BG Color
-                      </label>
-                      <div className="flex gap-2 items-center">
-                        <input
-                          type="color"
-                          value={activeSection.settings?.bg_color || '#e94560'}
-                          onChange={e => handleUpdateSection(activeSection.id, { settings: { bg_color: e.target.value } })}
-                          className="h-8 w-8 rounded-lg cursor-pointer border border-gray-200 dark:border-gray-800"
-                        />
-                        <input
-                          type="text"
-                          value={activeSection.settings?.bg_color || '#e94560'}
-                          onChange={e => handleUpdateSection(activeSection.id, { settings: { bg_color: e.target.value } })}
-                          className="w-full px-2 py-1 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-gray-800 rounded-lg text-xs"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-                        Text Color
-                      </label>
-                      <div className="flex gap-2 items-center">
-                        <input
-                          type="color"
-                          value={activeSection.settings?.text_color || '#ffffff'}
-                          onChange={e => handleUpdateSection(activeSection.id, { settings: { text_color: e.target.value } })}
-                          className="h-8 w-8 rounded-lg cursor-pointer border border-gray-200 dark:border-gray-800"
-                        />
-                        <input
-                          type="text"
-                          value={activeSection.settings?.text_color || '#ffffff'}
-                          onChange={e => handleUpdateSection(activeSection.id, { settings: { text_color: e.target.value } })}
-                          className="w-full px-2 py-1 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-gray-800 rounded-lg text-xs"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-                      Link URL
-                    </label>
-                    <input
-                      type="text"
-                      value={activeSection.content_data?.link || ''}
-                      onChange={e => handleUpdateSection(activeSection.id, { content_data: { link: e.target.value } })}
-                      placeholder="/shop"
-                      className="w-full px-3 py-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-                      Button Text
-                    </label>
-                    <input
-                      type="text"
-                      value={activeSection.content_data?.button_text || 'Shop Offer'}
-                      onChange={e => handleUpdateSection(activeSection.id, { content_data: { button_text: e.target.value } })}
-                      className="w-full px-3 py-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Specific inputs for trust_badges */}
-              {activeSection.section_type === 'trust_badges' && (
-                <div className="p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-150 dark:border-gray-800/80 text-[11px] font-bold text-gray-500 dark:text-gray-400 flex items-start gap-2">
-                  <Lock className="h-4 w-4 text-[#e94560] flex-shrink-0 mt-0.5" />
-                  <span>
-                    Individual badges, descriptions, and icons are controlled in the General Settings &gt; Premium Features tab. Customize them there.
-                  </span>
-                </div>
-              )}
-
-              {/* Specific inputs for recent_reviews */}
-              {activeSection.section_type === 'recent_reviews' && (
-                <div className="space-y-1.5">
-                  <div className="flex justify-between">
-                    <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-                      Reviews Limit
-                    </label>
-                    <span className="text-xs font-bold text-[#e94560]">
-                      {activeSection.settings?.limit || 3}
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min="1"
-                    max="9"
-                    step="1"
-                    value={activeSection.settings?.limit || 3}
-                    onChange={e => handleUpdateSection(activeSection.id, { settings: { limit: parseInt(e.target.value) } })}
-                    className="w-full accent-[#e94560]"
-                  />
-                </div>
-              )}
-
-              {/* Specific inputs for brands_logos */}
-              {activeSection.section_type === 'brands_logos' && (
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-                    Partner Logo URLs
-                  </label>
-                  <textarea
-                    value={activeSection.content_data?.logos?.join('\n') || ''}
-                    onChange={e => handleUpdateSection(activeSection.id, { content_data: { logos: e.target.value.split('\n').filter(Boolean) } })}
-                    placeholder="Enter one image URL per line"
-                    rows={4}
-                    className="w-full px-3 py-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
-                  />
-                </div>
-              )}
-
-              {activeSection.section_type === 'social_feed' && (
-                <div className="space-y-4">
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">Subtitle (Optional)</label>
-                    <input
-                      type="text"
-                      value={activeSection.content_data?.subtitle || ''}
-                      onChange={e => handleUpdateSection(activeSection.id, { content_data: { subtitle: e.target.value } })}
-                      placeholder="#ZAYNAHSVOGUE"
-                      className="w-full px-3 py-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">Description (Optional)</label>
-                    <input
-                      type="text"
-                      value={activeSection.content_data?.desc || ''}
-                      onChange={e => handleUpdateSection(activeSection.id, { content_data: { desc: e.target.value } })}
-                      placeholder="Tag us in your post..."
-                      className="w-full px-3 py-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
-                    />
-                  </div>
-                  <div className="space-y-1.5 pt-2 border-t border-gray-100 dark:border-gray-800">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">Number of Posts to Show</label>
-                      <span className="text-xs font-black text-gray-900 dark:text-white">
-                        {activeSection.settings?.limit || 8}
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min="4"
-                      max="12"
-                      step="4"
-                      value={activeSection.settings?.limit || 8}
-                      onChange={e => handleUpdateSection(activeSection.id, { settings: { limit: parseInt(e.target.value) } })}
-                      className="w-full accent-[#e94560]"
-                    />
-                  </div>
-                  <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-2">
-                    Note: To edit the actual social posts, please visit Settings -&gt; Store Configuration.
-                  </div>
-                </div>
-              )}
-
-              {activeSection.section_type === 'category_grid' && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold text-gray-800 dark:text-gray-200">Category Grid Cards</h4>
-                    <button
-                      onClick={() => {
-                        const items = activeSection.content_data?.items || [];
-                        handleUpdateSection(activeSection.id, {
-                          content_data: { items: [...items, { title: '', link: '', imageUrl: '' }] }
-                        });
-                      }}
-                      className="px-2 py-1 text-[10px] font-bold bg-gray-100 dark:bg-white/10 hover:bg-gray-200 text-gray-700 dark:text-gray-300 rounded-lg cursor-pointer"
-                    >
-                      + Add Card
                     </button>
+                  ))}
+                </div>
+              </div>
+            ) : activePage === 'product_detail' ? (
+              <div className="space-y-4">
+                {/* Product Sale Configuration Tab */}
+                <div
+                  onClick={() => {
+                    setActiveSectionId(null);
+                    setActiveSubTab('product_sale');
+                  }}
+                  className={`flex items-center justify-between p-3 border rounded-xl transition-all cursor-pointer mb-4 ${
+                    activeSubTab === 'product_sale'
+                      ? 'border-[#e94560] bg-[#e94560]/5 dark:bg-[#e94560]/10 shadow-sm'
+                      : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-[#16162a] hover:border-gray-300 dark:hover:border-gray-700'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">🏷️</span>
+                    <div className="min-w-0 flex-grow">
+                      <div className="text-xs font-bold text-gray-900 dark:text-white">
+                        Product Sale Settings
+                      </div>
+                      <span className="text-[9px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider block truncate max-w-[150px]">
+                        {currentProduct?.name || 'No Product Active'}
+                      </span>
+                    </div>
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest block">
+                    Product Detail Blocks Stack
+                  </label>
                   
-                  {(() => {
-                    const items = activeSection.content_data?.items || [];
-                    if (items.length === 0) {
-                      return <p className="text-xs text-gray-500">No cards added yet. Click "+ Add Card" to start.</p>;
-                    }
-                    return items.map((item: any, idx: number) => {
-                      const updateGridItem = (itemUpdates: any) => {
-                        const updatedItems = [...items];
-                        updatedItems[idx] = { ...item, ...itemUpdates };
-                        handleUpdateSection(activeSection.id, { content_data: { items: updatedItems } });
+                  {/* Blocks List */}
+                  <div className="space-y-2">
+                    {(storeSettings.productPageLayout || ['details', 'ticker', 'reviews', 'related', 'recently_viewed', 'social_feed']).map((blockId, idx, arr) => {
+                      const blockLabels: Record<string, string> = {
+                        details: 'Product Details Component',
+                        ticker: 'Scrolling Announcement Ticker',
+                        reviews: 'Reviews & FAQ Feed',
+                        related: 'Related Products Grid',
+                        recently_viewed: 'Recently Viewed Products',
+                        social_feed: 'Social Feed Ribbon'
                       };
-
-                      const removeGridItem = () => {
-                        const updatedItems = [...items];
-                        updatedItems.splice(idx, 1);
-                        handleUpdateSection(activeSection.id, { content_data: { items: updatedItems } });
-                      };
-
-                      const openMediaSelectorForGrid = () => {
-                        setMediaUploadTarget({
-                          sectionId: activeSection.id,
-                          fieldPath: 'content_data',
-                          fieldKey: 'imageUrl',
-                          isGridItem: true,
-                          gridIndex: idx
-                        });
-                        setIsMediaModalOpen(true);
-                      };
-
+                      const isActive = activeSectionId === blockId;
                       return (
-                        <div key={idx} className="border border-gray-200 dark:border-gray-800 p-3 rounded-xl bg-gray-50/55 dark:bg-[#0f0f1b]/55 space-y-3 relative group">
-                          <button
-                            onClick={removeGridItem}
-                            className="absolute top-2 right-2 p-1 text-gray-400 hover:text-red-500 bg-white dark:bg-gray-800 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
-                            title="Remove card"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                          
-                          <div className="flex items-center justify-between text-[10px] font-bold text-gray-500 uppercase pr-6">
-                            <span>Card {idx + 1}</span>
-                            {item.imageUrl && (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={item.imageUrl} alt="Card preview" className="w-8 h-8 object-cover rounded-lg" />
-                            )}
+                        <div
+                          key={blockId}
+                          onClick={() => {
+                            setActiveSectionId(blockId);
+                            const tabMap: Record<string, string> = {
+                              details: 'swatches',
+                              ticker: 'ticker',
+                              reviews: 'urgency',
+                              related: 'delivery',
+                              recently_viewed: 'recently_viewed',
+                              social_feed: 'social_feed'
+                            };
+                            setActiveSubTab(tabMap[blockId] || 'swatches');
+                          }}
+                          className={`flex items-center justify-between p-3 border rounded-xl transition-all cursor-pointer ${
+                            isActive
+                              ? 'border-[#e94560] bg-[#e94560]/5 dark:bg-[#e94560]/10 shadow-sm'
+                              : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-[#16162a] hover:border-gray-300 dark:hover:border-gray-700'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <GripVertical className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              <div className="text-xs font-bold text-gray-900 dark:text-white truncate">
+                                {blockLabels[blockId] || blockId}
+                              </div>
+                              <span className="text-[9px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider">
+                                {blockId}
+                              </span>
+                            </div>
                           </div>
-
-                          <div className="space-y-1">
-                            <label className="text-[10px] text-gray-400">Quick Select Category</label>
-                            <select
-                              className="w-full px-2 py-1 text-xs rounded border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#16162a] text-gray-850 dark:text-gray-100 focus:outline-none"
-                              onChange={(e) => {
-                                const catId = e.target.value;
-                                if (catId) {
-                                  const cat = categories.find(c => c.id === catId);
-                                  if (cat) {
-                                    updateGridItem({ title: cat.name, link: `/category/${cat.slug}` });
-                                  }
+                          <div className="flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
+                            <button
+                              onClick={() => {
+                                const newLayout = arr.filter(b => b !== blockId);
+                                setStoreSettings(prev => ({ ...prev, productPageLayout: newLayout }));
+                                if (activeSectionId === blockId) {
+                                  setActiveSectionId(null);
                                 }
                               }}
+                              className="p-1 text-gray-400 hover:text-red-500 dark:hover:text-red-400 cursor-pointer animate-none"
+                              title="Hide block"
                             >
-                              <option value="">-- Select Category --</option>
-                              {categories.map(c => (
-                                <option key={c.id} value={c.id}>{c.name}</option>
-                              ))}
-                            </select>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="space-y-1">
-                              <label className="text-[10px] text-gray-400">Card Label</label>
-                              <input
-                                type="text"
-                                value={item.title || ''}
-                                onChange={e => updateGridItem({ title: e.target.value })}
-                                placeholder="e.g. Girls"
-                                className="w-full px-2 py-1 text-xs rounded border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#16162a] text-gray-850 dark:text-gray-100 focus:outline-none"
-                              />
-                            </div>
-
-                            <div className="space-y-1">
-                              <label className="text-[10px] text-gray-400">Target Link</label>
-                              <input
-                                type="text"
-                                value={item.link || ''}
-                                onChange={e => updateGridItem({ link: e.target.value })}
-                                placeholder="e.g. /category/girls"
-                                className="w-full px-2 py-1 text-xs rounded border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#16162a] text-gray-850 dark:text-gray-100 focus:outline-none"
-                              />
-                            </div>
-                          </div>
-
-                          <div className="space-y-1">
-                            <label className="text-[10px] text-gray-400 block">Upload Card Image</label>
+                              <EyeOff className="h-3.5 w-3.5" />
+                            </button>
                             <button
-                              type="button"
-                              onClick={openMediaSelectorForGrid}
-                              className="w-full px-2 py-1.5 text-xs font-bold bg-gray-100 dark:bg-white/10 hover:bg-gray-200 text-gray-700 dark:text-gray-300 rounded-lg cursor-pointer transition-colors"
+                              disabled={idx === 0}
+                              onClick={() => {
+                                const newLayout = [...arr];
+                                const temp = newLayout[idx];
+                                newLayout[idx] = newLayout[idx - 1];
+                                newLayout[idx - 1] = temp;
+                                setStoreSettings(prev => ({ ...prev, productPageLayout: newLayout }));
+                              }}
+                              className="p-1 text-gray-400 hover:text-gray-650 dark:hover:text-white disabled:opacity-30 cursor-pointer animate-none"
                             >
-                              Select Image
+                              <ChevronUp className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              disabled={idx === arr.length - 1}
+                              onClick={() => {
+                                const newLayout = [...arr];
+                                const temp = newLayout[idx];
+                                newLayout[idx] = newLayout[idx + 1];
+                                newLayout[idx + 1] = temp;
+                                setStoreSettings(prev => ({ ...prev, productPageLayout: newLayout }));
+                              }}
+                              className="p-1 text-gray-400 hover:text-gray-650 dark:hover:text-white disabled:opacity-30 cursor-pointer animate-none"
+                            >
+                              <ChevronDown className="h-3.5 w-3.5" />
                             </button>
                           </div>
                         </div>
                       );
-                    });
-                  })()}
+                    })}
+                  </div>
                 </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
 
-      {/* RIGHT PREVIEW PANEL: Live simulated StoreFront view */}
-      <div className="flex-1 flex flex-col bg-white dark:bg-[#16162a] border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm h-full">
-        {/* Preview Toolbar */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between bg-gray-50/50 dark:bg-white/2 bg-surface-2">
-          <span className="text-xs font-extrabold text-gray-900 dark:text-white uppercase tracking-wider">
-            Live Preview
-          </span>
-          
-          <div className="flex bg-gray-100 dark:bg-white/10 p-0.5 rounded-lg">
-            <button
-              onClick={() => setViewportMode('desktop')}
-              className={`p-1.5 rounded-md flex items-center gap-1 text-[10px] font-bold uppercase transition-all ${
-                viewportMode === 'desktop'
-                  ? 'bg-white dark:bg-[#1a1a2e] text-[#e94560] shadow-sm'
-                  : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
-              } cursor-pointer`}
-            >
-              <Monitor className="h-3.5 w-3.5" />
-              Desktop
-            </button>
-            <button
-              onClick={() => setViewportMode('mobile')}
-              className={`p-1.5 rounded-md flex items-center gap-1 text-[10px] font-bold uppercase transition-all ${
-                viewportMode === 'mobile'
-                  ? 'bg-white dark:bg-[#1a1a2e] text-[#e94560] shadow-sm'
-                  : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
-              } cursor-pointer`}
-            >
-              <Smartphone className="h-3.5 w-3.5" />
-              Mobile
-            </button>
-          </div>
-        </div>
+                {/* Add Block Widget */}
+                {(() => {
+                  const currentLayout = storeSettings.productPageLayout || ['details', 'ticker', 'reviews', 'related', 'recently_viewed', 'social_feed'];
+                  const availableBlocks = [
+                    { id: 'details', label: 'Product Details Component' },
+                    { id: 'ticker', label: 'Scrolling Announcement Ticker' },
+                    { id: 'reviews', label: 'Reviews & FAQ Feed' },
+                    { id: 'related', label: 'Related Products Grid' },
+                    { id: 'recently_viewed', label: 'Recently Viewed Products' },
+                    { id: 'social_feed', label: 'Social Feed Ribbon' }
+                  ].filter(b => !currentLayout.includes(b.id));
 
-        {/* Viewport Frame Simulator */}
-        <div className="flex-1 bg-gray-100 dark:bg-[#0f0f1b]/50 overflow-y-auto p-6 flex justify-center items-start">
-          {viewportMode === 'mobile' ? (
-            <div className="w-[375px] h-[700px] border-[12px] border-gray-800 dark:border-gray-900 rounded-[36px] overflow-hidden shadow-2xl bg-white dark:bg-[#0f0f1b] flex flex-col relative relative scrollbar-none">
-              {/* Camera Notch decoration */}
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 h-4 w-32 bg-gray-800 dark:bg-gray-900 rounded-b-xl z-50 flex items-center justify-center">
-                <div className="h-1.5 w-1.5 bg-black rounded-full" />
+                  if (availableBlocks.length === 0) return null;
+
+                  return (
+                    <div className="space-y-1.5 pt-2 border-t border-gray-100 dark:border-gray-800">
+                      <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest block">
+                        + Add Page Block
+                      </label>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {availableBlocks.map(block => (
+                          <button
+                            key={block.id}
+                            onClick={() => {
+                              const newLayout = [...currentLayout, block.id];
+                              setStoreSettings(prev => ({ ...prev, productPageLayout: newLayout }));
+                              setActiveSectionId(block.id);
+                              const tabMap: Record<string, string> = {
+                                details: 'swatches',
+                                ticker: 'ticker',
+                                reviews: 'urgency',
+                                related: 'delivery',
+                                recently_viewed: 'recently_viewed',
+                                social_feed: 'social_feed'
+                              };
+                              setActiveSubTab(tabMap[block.id] || 'swatches');
+                            }}
+                            className="px-2.5 py-1.5 text-left bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-gray-800/80 hover:border-[#e94560] dark:hover:border-[#e94560] text-[10px] font-bold text-gray-700 dark:text-gray-300 rounded-xl transition-all cursor-pointer truncate"
+                          >
+                            {block.label.replace(' Component', '').replace(' Grid', '').replace(' Feed', '')}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
-              <iframe
-                ref={iframeRef}
-                src="/admin/settings/customizer/preview"
-                className="flex-1 w-full h-full border-none"
+            ) : activePage === 'appearance' ? (
+              <AppearancePresetsList
+                settings={storeSettings}
+                onSelectPreset={(presetId, presetConfig) => {
+                  setStoreSettings(prev => ({
+                    ...prev,
+                    theme_preset: presetId,
+                    theme_config: presetConfig
+                  }));
+                }}
               />
-            </div>
-          ) : (
-            <div className="w-full bg-white dark:bg-[#0f0f1b] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden shadow-lg h-full flex flex-col">
-              <iframe
-                ref={iframeRef}
-                src="/admin/settings/customizer/preview"
-                className="flex-1 w-full h-full border-none"
+            ) : activePage === 'product_card' ? (
+              <div className="space-y-4">
+                <div className="p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-200 dark:border-gray-800">
+                  <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider mb-2">
+                    Product Cards Design
+                  </h4>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400 font-semibold leading-relaxed">
+                    Choose templates and configure card layout preferences applied globally to all catalog grids, shop listings, and recommended sliders.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest block">
+                  Global Store Settings
+                </label>
+                <div className="space-y-1.5">
+                  {[
+                    { id: 'branding', label: 'Store Branding', desc: 'Upload store logo and favicon details' },
+                    { id: 'header', label: 'Header & Topbar', desc: 'Stickiness, newsletter banners, phone/email' },
+                    { id: 'footer', label: 'Footer & Social', desc: 'Copyright messages, social handles links' }
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveSubTab(tab.id)}
+                      className={`w-full text-left p-3 border rounded-xl transition-all cursor-pointer ${
+                        activeSubTab === tab.id
+                          ? 'border-[#e94560] bg-[#e94560]/5 dark:bg-[#e94560]/10 shadow-sm'
+                          : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-[#16162a] hover:border-gray-300 dark:hover:border-gray-700'
+                      }`}
+                    >
+                      <div className="text-xs font-bold text-gray-900 dark:text-white">
+                        {tab.label}
+                      </div>
+                      <div className="text-[10px] text-gray-400 dark:text-gray-500 font-semibold mt-0.5">
+                        {tab.desc}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </aside>
+
+        {/* CENTER COLUMN: Fluid Live Preview */}
+        <main className="flex-grow bg-gray-100 dark:bg-[#0f0f1b]/30 overflow-hidden flex flex-col h-full">
+          <div 
+            ref={previewContainerRef}
+            className="flex-1 overflow-auto p-6 flex justify-center items-center h-full"
+          >
+            {viewportMode === 'desktop' ? (
+              (() => {
+                const desktopScreenWidth = 1280;
+                const desktopScreenHeight = 800;
+                const desktopScale = Math.min(
+                  1,
+                  (containerWidth - 32) / desktopScreenWidth,
+                  (containerHeight - 32) / desktopScreenHeight
+                );
+
+                return (
+                  <div
+                    style={{
+                      width: `${desktopScreenWidth * desktopScale}px`,
+                      height: `${desktopScreenHeight * desktopScale}px`,
+                      transition: 'all 0.3s ease',
+                    }}
+                    className="relative mx-auto"
+                  >
+                    <div
+                      style={{
+                        width: `${desktopScreenWidth}px`,
+                        height: `${desktopScreenHeight}px`,
+                        transform: `scale(${desktopScale})`,
+                        transformOrigin: 'top left',
+                      }}
+                      className="absolute top-0 left-0 overflow-hidden shadow-2xl bg-white dark:bg-[#0f0f1b] rounded-2xl border border-gray-200 dark:border-gray-800 flex flex-col"
+                    >
+                      {/* Browser header bar decoration */}
+                      <div className="h-8 bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center px-4 gap-1.5 flex-shrink-0 select-none">
+                        <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-yellow-500" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
+                        <div className="ml-4 flex-1 max-w-sm bg-white dark:bg-[#0f0f1b] text-[10px] text-gray-400 rounded px-3 py-0.5 border border-gray-200 dark:border-gray-800 truncate text-center">
+                          https://{storeSettings.storeName?.toLowerCase().replace(/\s+/g, '') || 'zaynahs'}.pk
+                        </div>
+                      </div>
+                      <iframe
+                        ref={iframeRef}
+                        src="/admin/settings/customizer/preview"
+                        className="flex-grow border-none"
+                        style={{
+                          width: `${desktopScreenWidth}px`,
+                          maxWidth: 'none',
+                          height: '100%',
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })()
+            ) : viewportMode === 'mobile' ? (
+              (() => {
+                const mobileScreenWidth = 375;
+                const mobileScreenHeight = 700;
+                const mobileMockupWidth = mobileScreenWidth + 24; // 399
+                const mobileMockupHeight = mobileScreenHeight + 24; // 724
+                const mobileScale = Math.min(
+                  1,
+                  (containerWidth - 32) / mobileMockupWidth,
+                  (containerHeight - 32) / mobileMockupHeight
+                );
+
+                return (
+                  <div
+                    style={{
+                      width: `${mobileMockupWidth * mobileScale}px`,
+                      height: `${mobileMockupHeight * mobileScale}px`,
+                      transition: 'all 0.3s ease',
+                    }}
+                    className="relative mx-auto"
+                  >
+                    <div
+                      style={{
+                        width: `${mobileMockupWidth}px`,
+                        height: `${mobileMockupHeight}px`,
+                        transform: `scale(${mobileScale})`,
+                        transformOrigin: 'top left',
+                      }}
+                      className="absolute top-0 left-0 overflow-hidden shadow-2xl bg-white dark:bg-[#0f0f1b] rounded-[36px] border-[12px] border-gray-800 dark:border-gray-900 flex flex-col scrollbar-none"
+                    >
+                      {/* Camera Notch decoration */}
+                      <div className="absolute top-0 left-1/2 -translate-x-1/2 h-4 w-32 bg-gray-800 dark:bg-gray-900 rounded-b-xl z-50 flex items-center justify-center">
+                        <div className="h-1.5 w-1.5 bg-black rounded-full" />
+                      </div>
+                      <iframe
+                        ref={iframeRef}
+                        src="/admin/settings/customizer/preview"
+                        className="flex-1 border-none"
+                        style={{
+                          width: `${mobileScreenWidth}px`,
+                          maxWidth: 'none',
+                          height: '100%',
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })()
+            ) : (
+              (() => {
+                const tabletScreenWidth = 768;
+                const tabletScreenHeight = 1024;
+                const tabletMockupWidth = tabletScreenWidth + 24; // 792
+                const tabletMockupHeight = tabletScreenHeight + 24; // 1048
+                const tabletScale = Math.min(
+                  1,
+                  (containerWidth - 32) / tabletMockupWidth,
+                  (containerHeight - 32) / tabletMockupHeight
+                );
+
+                return (
+                  <div
+                    style={{
+                      width: `${tabletMockupWidth * tabletScale}px`,
+                      height: `${tabletMockupHeight * tabletScale}px`,
+                      transition: 'all 0.3s ease',
+                    }}
+                    className="relative mx-auto"
+                  >
+                    <div
+                      style={{
+                        width: `${tabletMockupWidth}px`,
+                        height: `${tabletMockupHeight}px`,
+                        transform: `scale(${tabletScale})`,
+                        transformOrigin: 'top left',
+                      }}
+                      className="absolute top-0 left-0 overflow-hidden shadow-2xl bg-white dark:bg-[#0f0f1b] rounded-[24px] border-[12px] border-gray-800 dark:border-gray-900 flex flex-col"
+                    >
+                      {/* iPad Speaker / Camera decoration */}
+                      <div className="absolute top-0 left-1/2 -translate-x-1/2 h-3 w-16 bg-gray-800 dark:bg-gray-900 rounded-b-lg z-50 flex items-center justify-center">
+                        <div className="h-1.5 w-1.5 bg-black rounded-full" />
+                      </div>
+                      <iframe
+                        ref={iframeRef}
+                        src="/admin/settings/customizer/preview"
+                        className="flex-1 border-none"
+                        style={{
+                          width: `${tabletScreenWidth}px`,
+                          maxWidth: 'none',
+                          height: '100%',
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })()
+            )}
+          </div>
+        </main>
+
+        {/* RIGHT COLUMN: Settings Adjustment Panel */}
+        <aside className="w-96 flex-shrink-0 flex flex-col bg-white dark:bg-[#16162a] border-l border-gray-200 dark:border-gray-800 overflow-hidden h-full">
+          <div className="p-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-white/2 bg-surface-2 flex-shrink-0 flex items-center gap-1.5">
+            <Settings className="h-4 w-4 text-[#e94560]" />
+            <h3 className="font-extrabold text-xs tracking-wider text-gray-900 dark:text-white uppercase">
+              {activePage === 'home' ? 'Section Settings' : `${activePage.replace('_', ' ')} Settings`}
+            </h3>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-5">
+            {activePage === 'home' ? (
+              activeSectionId === 'announcement_bar' ? (
+                <div className="space-y-6">
+                  {/* Header title */}
+                  <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-800">
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest block leading-none mb-1">Editing Section</span>
+                      <h4 className="text-sm font-black text-gray-900 dark:text-white truncate">
+                        Announcement Bar
+                      </h4>
+                    </div>
+                    <span className="text-[9px] font-black text-[#e94560] bg-[#e94560]/10 px-2.5 py-1 rounded-full uppercase tracking-wider flex-shrink-0">
+                      Top News Banner
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-800 pb-2">
+                    <span className="text-xs font-bold text-gray-700 dark:text-gray-300">Show Contacts Announcement Bar</span>
+                    <label className="relative inline-flex items-center cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={storeSettings.headerShowTopBar}
+                        onChange={(e) => setStoreSettings(prev => ({ ...prev, headerShowTopBar: e.target.checked }))}
+                        className="sr-only peer"
+                      />
+                      <div className="w-10 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#e94560]" />
+                    </label>
+                  </div>
+
+                  {storeSettings.headerShowTopBar && (
+                    <div className="space-y-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-gray-800">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-gray-500">Header Bar Phone</label>
+                        <input
+                          type="text"
+                          value={storeSettings.headerTopBarPhone || ''}
+                          onChange={(e) => setStoreSettings(prev => ({ ...prev, headerTopBarPhone: e.target.value }))}
+                          className="w-full px-2.5 py-1.5 bg-white dark:bg-[#0f0f1b] border border-gray-200 dark:border-gray-800 rounded-lg text-xs"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-gray-500">Header Bar Email</label>
+                        <input
+                          type="text"
+                          value={storeSettings.headerTopBarEmail || ''}
+                          onChange={(e) => setStoreSettings(prev => ({ ...prev, headerTopBarEmail: e.target.value }))}
+                          className="w-full px-2.5 py-1.5 bg-white dark:bg-[#0f0f1b] border border-gray-200 dark:border-gray-800 rounded-lg text-xs"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-800 pb-2">
+                    <span className="text-xs font-bold text-gray-700 dark:text-gray-300">Show Marketing Announcement Bar</span>
+                    <label className="relative inline-flex items-center cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={storeSettings.headerShowNewsletter}
+                        onChange={(e) => setStoreSettings(prev => ({ ...prev, headerShowNewsletter: e.target.checked }))}
+                        className="sr-only peer"
+                      />
+                      <div className="w-10 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#e94560]" />
+                    </label>
+                  </div>
+
+                  {storeSettings.headerShowNewsletter && (
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400 block uppercase tracking-wider">Announcement Text (one per line)</label>
+                      <textarea
+                        rows={4}
+                        value={storeSettings.headerNewsletterText || ''}
+                        onChange={(e) => setStoreSettings(prev => ({ ...prev, headerNewsletterText: e.target.value }))}
+                        className="w-full rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-[#0f0f1b] px-3 py-2 text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white resize-none"
+                      />
+                    </div>
+                  )}
+                </div>
+              ) : activeSection ? (
+                <div className="space-y-6">
+                  
+                  {/* Header title */}
+                  <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-800">
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest block leading-none mb-1">Editing Section</span>
+                      <h4 className="text-sm font-black text-gray-900 dark:text-white truncate">
+                        {activeSection.title || activeSection.section_type.replace('_', ' ')}
+                      </h4>
+                    </div>
+                    <span className="text-[9px] font-black text-[#e94560] bg-[#e94560]/10 px-2.5 py-1 rounded-full uppercase tracking-wider flex-shrink-0">
+                      {activeSection.section_type.replace('_', ' ')}
+                    </span>
+                  </div>
+
+                  {/* Section title parameter */}
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
+                      Section Title
+                    </label>
+                    <input
+                      type="text"
+                      value={activeSection.title || ''}
+                      onChange={e => handleUpdateSection(activeSection.id, { title: e.target.value })}
+                      placeholder="e.g. Featured Collection"
+                      className="w-full px-3 py-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white"
+                    />
+                  </div>
+
+                  {/* Specific settings based on section_type */}
+                  {activeSection.section_type === 'hero_banner' && (
+                    <HeroBannerSettings
+                      section={activeSection}
+                      viewportMode={viewportMode}
+                      onUpdateSection={(updates) => handleUpdateSection(activeSection.id, updates)}
+                      onSelectMedia={(fieldPath, fieldKey, isSlide, slideId) => {
+                        setMediaUploadTarget({ sectionId: activeSection.id, fieldPath, fieldKey, isSlide, slideId });
+                        setIsMediaModalOpen(true);
+                      }}
+                    />
+                  )}
+
+                  {activeSection.section_type === 'product_grid' && (
+                    <ProductGridSettings
+                      section={activeSection}
+                      categories={categories}
+                      onUpdateSection={(updates) => handleUpdateSection(activeSection.id, updates)}
+                    />
+                  )}
+
+                  {activeSection.section_type === 'category_list' && (
+                    <CategoryListSettings
+                      section={activeSection}
+                      onUpdateSection={(updates) => handleUpdateSection(activeSection.id, updates)}
+                    />
+                  )}
+
+                  {activeSection.section_type === 'category_grid' && (
+                    <CategoryGridSettings
+                      section={activeSection}
+                      categories={categories}
+                      onUpdateSection={(updates) => handleUpdateSection(activeSection.id, updates)}
+                      onSelectMedia={(fieldPath, fieldKey, isGridItem, gridIndex) => {
+                        setMediaUploadTarget({ sectionId: activeSection.id, fieldPath, fieldKey, isGridItem, gridIndex });
+                        setIsMediaModalOpen(true);
+                      }}
+                    />
+                  )}
+
+                  {activeSection.section_type === 'promo_banner' && (
+                    <PromoBannerSettings
+                      section={activeSection}
+                      onUpdateSection={(updates) => handleUpdateSection(activeSection.id, updates)}
+                    />
+                  )}
+
+                  {activeSection.section_type === 'trust_badges' && (
+                    <div className="p-3.5 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-200 dark:border-gray-800 text-[11px] font-semibold text-gray-500 dark:text-gray-400 flex items-start gap-2">
+                      <Lock className="h-4 w-4 text-[#e94560] flex-shrink-0 mt-0.5" />
+                      <span>
+                        Individual badges, descriptions, and icons are controlled in the General Settings &gt; Premium Features tab. Customize them there.
+                      </span>
+                    </div>
+                  )}
+
+                  {activeSection.section_type === 'recent_reviews' && (
+                    <RecentReviewsSettings
+                      section={activeSection}
+                      onUpdateSection={(updates) => handleUpdateSection(activeSection.id, updates)}
+                    />
+                  )}
+
+                  {activeSection.section_type === 'brands_logos' && (
+                    <BrandsLogosSettings
+                      section={activeSection}
+                      onUpdateSection={(updates) => handleUpdateSection(activeSection.id, updates)}
+                    />
+                  )}
+
+                  {activeSection.section_type === 'social_feed' && (
+                    <SocialFeedSettings
+                      section={activeSection}
+                      onUpdateSection={(updates) => handleUpdateSection(activeSection.id, updates)}
+                    />
+                  )}
+
+                  {activeSection.section_type === 'ticker' && (
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-800 pb-2">
+                        <span className="text-xs font-bold text-gray-700 dark:text-gray-300">Enable Scrolling Ticker</span>
+                        <label className="relative inline-flex items-center cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={storeSettings.enableTicker}
+                            onChange={(e) => setStoreSettings(prev => ({ ...prev, enableTicker: e.target.checked }))}
+                            className="sr-only peer"
+                          />
+                          <div className="w-10 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#e94560]" />
+                        </label>
+                      </div>
+
+                      {storeSettings.enableTicker && (
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400 block uppercase tracking-wider">Ticker Lines (One per line)</label>
+                          <textarea
+                            rows={4}
+                            value={storeSettings.tickerText || ''}
+                            onChange={(e) => setStoreSettings(prev => ({ ...prev, tickerText: e.target.value }))}
+                            className="w-full rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-[#0f0f1b] px-3 py-2 text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white resize-none"
+                            placeholder="Free returns within 30 days&#10;Unlimited delivery for only Rs. 175"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {activeSection.section_type === 'flash_sale' && (
+                    <FlashSaleSettings
+                      section={activeSection}
+                      products={products}
+                      categories={categories}
+                      onUpdateSection={(updates) => handleUpdateSection(activeSection.id, updates)}
+                    />
+                  )}
+                </div>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-4">
+                  <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-white/5 flex items-center justify-center text-gray-400 dark:text-gray-500">
+                    <Settings className="h-6 w-6 animate-pulse" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider">No Section Selected</h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold mt-1.5 max-w-[220px] leading-relaxed">
+                      Click a section in the left stack or directly on the live storefront preview to begin editing properties.
+                    </p>
+                  </div>
+                </div>
+              )
+            ) : activePage === 'shop' ? (
+              <ShopPageSettings
+                settings={storeSettings}
+                onUpdateSettings={(updates) => setStoreSettings(prev => ({ ...prev, ...updates }))}
+                subTab={activeSubTab as 'swatches' | 'layout'}
               />
-            </div>
-          )}
-        </div>
+            ) : activePage === 'product_detail' ? (
+              <ProductDetailPageSettings
+                settings={storeSettings}
+                onUpdateSettings={(updates) => setStoreSettings(prev => ({ ...prev, ...updates }))}
+                subTab={activeSubTab as any}
+                currentProduct={currentProduct}
+                onUpdateProduct={handleUpdateProductSale}
+              />
+            ) : activePage === 'appearance' ? (
+              <AppearanceCustomizePanel
+                settings={storeSettings}
+                onUpdateSettings={(updates) => setStoreSettings(prev => ({ ...prev, ...updates }))}
+              />
+            ) : activePage === 'product_card' ? (
+              <ProductCardSettings
+                settings={storeSettings}
+                onUpdateSettings={(updates) => setStoreSettings(prev => ({ ...prev, ...updates }))}
+              />
+            ) : (
+              <GlobalSettings
+                settings={storeSettings}
+                onUpdateSettings={(updates) => setStoreSettings(prev => ({ ...prev, ...updates }))}
+                subTab={activeSubTab as 'header' | 'footer' | 'branding'}
+                onSelectMedia={(fieldKey) => {
+                  setMediaUploadTarget({ sectionId: 'global', fieldPath: 'settings', fieldKey });
+                  setIsMediaModalOpen(true);
+                }}
+              />
+            )}
+          </div>
+        </aside>
+
       </div>
       
+      {/* 3. MEDIA SELECTOR MODAL CONTAINER */}
       <MediaSelectorModal
         isOpen={isMediaModalOpen}
         onClose={() => setIsMediaModalOpen(false)}

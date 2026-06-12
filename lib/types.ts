@@ -26,6 +26,8 @@ export interface ProductImage {
   alt?: string;
   sortOrder: number;
   isPrimary: boolean;
+  size?: number;
+  mimeType?: string;
   createdAt: string;
 }
 
@@ -90,6 +92,11 @@ export interface Product {
   flashSaleEnabled?: boolean;
   flashSaleStartDate?: string | null;
   flashSaleEndDate?: string;
+  flashSaleDiscountType?: 'percentage' | 'fixed';
+  flashSaleDiscountValue?: number;
+  meta_sync_status?: 'pending' | 'synced' | 'error';
+  meta_sync_error?: string | null;
+  meta_last_synced_at?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -142,6 +149,7 @@ export interface StoreSettings {
   imageHoverStyle?: 'second_image' | 'zoom' | 'none';
   imageAspectRatio?: string;
   titleLineLimit?: '1' | '2' | 'none';
+  productPageLayout?: string[];
   
   // Header options
   headerSticky?: boolean;
@@ -207,6 +215,10 @@ export interface StoreSettings {
   footerCol4Title?: string;
   footerCol4Text?: string;
   footerBottomText?: string;
+  footerShowPayments?: boolean;
+  footerShowMenu?: boolean;
+  footerShowNewsletter?: boolean;
+  footerShowSocial?: boolean;
 
   floatingContactsEnabled: boolean;
   floatingContactsPosition: 'left' | 'right';
@@ -248,6 +260,15 @@ export interface StoreSettings {
   cart_timer_enabled?: boolean;
   size_guide_enabled?: boolean;
 
+  // Product Card Customizations
+  card_style?: 'style1' | 'style2' | 'style3' | 'style4' | 'style5';
+  card_show_stars?: boolean;
+  card_show_quickview?: boolean;
+  card_show_wishlist?: boolean;
+  card_show_quickcart?: boolean;
+  card_alignment?: 'left' | 'center' | 'right';
+  card_elements_order?: string[];
+
   recent_buyers_names?: string;
   recent_buyers_cities?: string;
   recent_buyers_source?: 'simulated' | 'real';
@@ -270,8 +291,73 @@ export interface StoreSettings {
   social_feeds_items?: any;
   cart_timer_message?: string;
   coupon_codes_enabled?: boolean;
+  theme_preset?: string;
+  theme_config?: ThemeConfig;
+
+  // Pixels & Tracking
+  meta_pixel_id?: string;
+  ga4_measurement_id?: string;
+  gtm_container_id?: string;
+  tiktok_pixel_id?: string;
+  twitter_pixel_id?: string;
+  snapchat_pixel_id?: string;
+  pinterest_tag_id?: string;
+
+  // Social & SEO
+  twitter_handle?: string;
+  meta_title_suffix?: string;
+
+  // AI settings
+  content_provider?: string;
+  content_model?: string;
+  content_keys?: string;
+  vision_provider?: string;
+  vision_model?: string;
+  vision_keys?: string;
+  ai_tone?: string;
+  ai_language?: string;
+  ai_custom_instructions?: string;
+  auto_content_seo?: boolean;
+  auto_media_ai?: boolean;
+
+  // SMTP/Email Fallback Columns
+  smtp_email?: string;
+  smtp_app_password?: string;
+  smtp_from_name?: string;
+  admin_notification_email?: string;
+  email_notifications?: any;
+  low_stock_threshold?: number;
 
   updatedAt: string;
+}
+
+export interface ThemeConfig {
+  colors: {
+    primary: string;
+    secondary: string;
+    accent: string;
+    background: string;
+    surface: string;
+    textPrimary: string;
+    textSecondary: string;
+    border: string;
+  };
+  fonts: {
+    heading: string;
+    body: string;
+  };
+  typography: {
+    fontSizeBase: number;
+  };
+  buttons: {
+    borderRadius: number;
+    primaryBg: string;
+    primaryText: string;
+    primaryHover: string;
+  };
+  cards: {
+    borderRadius: number;
+  };
 }
 
 export interface RecentBuyer {
@@ -290,7 +376,7 @@ export interface SizeGuide {
 
 export interface HomepageSection {
   id: string;
-  section_type: 'hero_banner' | 'product_grid' | 'category_list' | 'promo_banner' | 'trust_badges' | 'recent_reviews' | 'brands_logos' | 'category_grid' | 'social_feed';
+  section_type: 'hero_banner' | 'product_grid' | 'category_list' | 'promo_banner' | 'trust_badges' | 'recent_reviews' | 'brands_logos' | 'category_grid' | 'social_feed' | 'ticker' | 'flash_sale';
   title?: string;
   settings: Record<string, any>;
   content_data: Record<string, any>;
@@ -304,6 +390,8 @@ export interface WhatsAppSubscriber {
   id: string;
   name?: string;
   phone: string;
+  email?: string;
+  source_type?: string;
   created_at?: string;
 }
 
@@ -324,16 +412,47 @@ export interface CartItem {
   total: number;                       // unitPrice * quantity + modifiers
 }
 
+export interface StatusLogItem {
+  id: string;
+  type: 'creation' | 'status_change' | 'staff_note';
+  message: string;
+  status?: string;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface EmailTemplate {
+  id: string;
+  emailType: string;
+  category: 'customer' | 'admin';
+  label: string;
+  description?: string;
+  enabled: boolean;
+  subject: string;
+  customHtml?: string;
+  updatedAt: string;
+}
+
 export interface Order {
   id: string;
   orderNumber: string;
   customerName?: string;
   customerPhone?: string;
+  customerId?: string;
   items: CartItem[];
   subtotal: number;
   total: number;
-  status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
+  status: 'pending' | 'placed' | 'confirmed' | 'processing' | 'shipped' | 'out_for_delivery' | 'delivered' | 'cancelled' | 'refunded';
   notes?: string;
+  staffNotes?: string;
+  statusLogs?: StatusLogItem[];
+  reviewEmailPending?: boolean;
+  deliveredAt?: string;
+  trackingNumber?: string;
+  courierName?: string;
+  trackingUrl?: string;
+  cancelReason?: string;
+  refundAmount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -389,4 +508,12 @@ export interface Coupon {
   active: boolean;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface MetaCategoryMapping {
+  id: string;
+  storeCategoryId: string;
+  metaCategory: string;
+  createdAt?: string;
+  category?: Category;
 }

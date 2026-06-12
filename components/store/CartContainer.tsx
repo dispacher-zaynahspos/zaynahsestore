@@ -13,6 +13,7 @@ import { StoreSettings, ShippingMethod } from '@/lib/types';
 import { useCartStore } from '@/store/cartStore';
 import { formatPrice, generateWhatsAppMessage, buildWhatsAppURL } from '@/lib/utils/whatsapp';
 import { createOrder } from '@/lib/services/orders';
+import { trackEvent } from '@/lib/trackEvent';
 import { toast } from 'sonner';
 import PaymentBadges from '@/components/common/PaymentBadges';
 import { validateCouponCode } from '@/lib/services/coupons';
@@ -134,6 +135,18 @@ export default function CartContainer({ settings }: CartContainerProps) {
     }
   }, []);
 
+  // Track InitiateCheckout when step is checkout
+  useEffect(() => {
+    if (view === 'checkout' && items.length > 0) {
+      trackEvent('InitiateCheckout', {
+        content_ids: items.map(item => item.product.id),
+        value: totalPrice,
+        currency: settings.currency || 'PKR',
+        num_items: items.reduce((sum, item) => sum + item.quantity, 0)
+      });
+    }
+  }, [view, items, totalPrice, settings.currency]);
+
   // Fetch shipping methods only
   useEffect(() => {
     async function fetchMethods() {
@@ -243,6 +256,7 @@ export default function CartContainer({ settings }: CartContainerProps) {
       const order = await createOrder({
         customerName: `${firstName.trim()} ${lastName.trim()}`,
         customerPhone: phone.trim(),
+        customerEmail: emailOrPhone.includes('@') ? emailOrPhone.trim() : undefined,
         items, subtotal, total: finalTotal, notes: formattedAddress
       });
 
@@ -275,6 +289,15 @@ export default function CartContainer({ settings }: CartContainerProps) {
         '',
         `• Order No: ${order.orderNumber}`
       ].filter(Boolean).join('\n');
+
+      // Track Purchase event
+      trackEvent('Purchase', {
+        transaction_id: order.orderNumber || order.id,
+        value: finalTotal,
+        currency: settings.currency || 'PKR',
+        content_ids: items.map(item => item.product.id),
+        num_items: items.reduce((sum, item) => sum + item.quantity, 0)
+      });
 
       clearCart();
       window.open(buildWhatsAppURL(settings.whatsappNumber || '923001234567', fullMsg), '_blank');

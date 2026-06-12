@@ -70,6 +70,11 @@ CREATE TABLE IF NOT EXISTS products (
   flash_sale_enabled BOOLEAN DEFAULT false,
   flash_sale_start_date TIMESTAMPTZ,
   flash_sale_end_date TIMESTAMPTZ,
+  flash_sale_discount_type TEXT DEFAULT 'fixed',
+  flash_sale_discount_value NUMERIC(10,2) DEFAULT 0,
+  meta_sync_status TEXT DEFAULT 'pending',
+  meta_sync_error TEXT,
+  meta_last_synced_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -88,6 +93,8 @@ CREATE TABLE IF NOT EXISTS product_images (
   alt TEXT,
   sort_order INTEGER DEFAULT 0,
   is_primary BOOLEAN DEFAULT false,
+  size INTEGER,
+  mime_type TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -260,6 +267,10 @@ CREATE TABLE IF NOT EXISTS store_settings (
   footer_col_4_title TEXT DEFAULT 'Newsletter',
   footer_col_4_text TEXT DEFAULT 'Subscribe to get special offers, free giveaways, and once-in-a-lifetime deals.',
   footer_bottom_text TEXT DEFAULT 'All rights reserved.',
+  footer_show_payments BOOLEAN DEFAULT true,
+  footer_show_menu BOOLEAN DEFAULT true,
+  footer_show_newsletter BOOLEAN DEFAULT true,
+  footer_show_social BOOLEAN DEFAULT true,
 
   -- Floating Contact Buttons config
   floating_contacts_enabled BOOLEAN DEFAULT true,
@@ -323,7 +334,93 @@ CREATE TABLE IF NOT EXISTS store_settings (
   social_feeds_desc TEXT DEFAULT 'Tag us in your post to get featured on our page',
   social_feeds_items JSONB DEFAULT '[]'::jsonb,
   cart_timer_message TEXT DEFAULT 'Items in your cart are reserved for {timer} minutes.',
-  coupon_codes_enabled BOOLEAN DEFAULT true,
+  product_page_layout TEXT[] DEFAULT ARRAY['details', 'ticker', 'reviews', 'related', 'recently_viewed', 'social_feed'],
+  card_style VARCHAR DEFAULT 'style1',
+  card_show_stars BOOLEAN DEFAULT true,
+  card_show_quickview BOOLEAN DEFAULT true,
+  card_show_wishlist BOOLEAN DEFAULT true,
+  card_show_quickcart BOOLEAN DEFAULT true,
+  card_alignment VARCHAR DEFAULT 'left',
+  card_elements_order TEXT[] DEFAULT ARRAY['title', 'rating', 'price', 'swatches'],
+  theme_preset TEXT DEFAULT 'classic_white',
+  theme_config JSONB DEFAULT '{
+    "colors": {
+      "primary": "#000000",
+      "secondary": "#444444",
+      "accent": "#C8A97E",
+      "background": "#FFFFFF",
+      "surface": "#F9F9F9",
+      "textPrimary": "#111111",
+      "textSecondary": "#666666",
+      "border": "#EEEEEE"
+    },
+    "fonts": {
+      "heading": "Playfair Display",
+      "body": "Inter"
+    },
+    "typography": {
+      "fontSizeBase": 16
+    },
+    "buttons": {
+      "borderRadius": 0,
+      "primaryBg": "#000000",
+      "primaryText": "#FFFFFF",
+      "primaryHover": "#333333"
+    },
+    "cards": {
+      "borderRadius": 0
+    }
+  }'::jsonb,
+
+  -- Pixels & Tracking
+  meta_pixel_id TEXT DEFAULT '',
+  ga4_measurement_id TEXT DEFAULT '',
+  gtm_container_id TEXT DEFAULT '',
+  tiktok_pixel_id TEXT DEFAULT '',
+  twitter_pixel_id TEXT DEFAULT '',
+  snapchat_pixel_id TEXT DEFAULT '',
+  pinterest_tag_id TEXT DEFAULT '',
+
+  -- Social & SEO
+  twitter_handle TEXT DEFAULT '',
+  meta_title_suffix TEXT DEFAULT '',
+
+  -- AI Settings
+  content_provider TEXT DEFAULT 'groq',
+  content_model TEXT DEFAULT 'llama-3.3-70b-versatile',
+  content_keys TEXT DEFAULT '',
+  vision_provider TEXT DEFAULT 'gemini',
+  vision_model TEXT DEFAULT 'gemini-2.0-flash',
+  vision_keys TEXT DEFAULT '',
+  ai_tone TEXT DEFAULT 'Professional',
+  ai_language TEXT DEFAULT 'English',
+  ai_custom_instructions TEXT DEFAULT '',
+  auto_content_seo BOOLEAN DEFAULT true,
+  auto_media_ai BOOLEAN DEFAULT true,
+
+  -- SMTP/Email Fallback Columns
+  smtp_email TEXT DEFAULT '',
+  smtp_app_password TEXT DEFAULT '',
+  smtp_from_name TEXT DEFAULT '',
+  admin_notification_email TEXT DEFAULT '',
+  email_notifications JSONB DEFAULT '{
+    "welcome": true,
+    "password_reset": true,
+    "password_changed": true,
+    "order_placed": true,
+    "order_confirmed": true,
+    "order_shipped": true,
+    "order_delivered": true,
+    "order_cancelled": true,
+    "order_refunded": true,
+    "review_request": true,
+    "admin_new_order": true,
+    "admin_low_stock": true,
+    "admin_new_customer": true,
+    "admin_new_review": true,
+    "admin_contact_form": true
+  }'::jsonb,
+  low_stock_threshold INTEGER DEFAULT 5,
 
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -356,6 +453,15 @@ CREATE TABLE IF NOT EXISTS orders (
   total NUMERIC(10,2) DEFAULT 0,
   status TEXT DEFAULT 'pending',            -- pending, confirmed, shipped, delivered, cancelled
   notes TEXT,
+  staff_notes TEXT,
+  status_logs JSONB DEFAULT '[]'::jsonb,
+  review_email_pending BOOLEAN DEFAULT false,
+  delivered_at TIMESTAMPTZ,
+  tracking_number TEXT,
+  courier_name TEXT,
+  tracking_url TEXT,
+  cancel_reason TEXT,
+  refund_amount NUMERIC(10,2),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -620,5 +726,107 @@ CREATE TABLE IF NOT EXISTS whatsapp_subscribers (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name TEXT,
   phone TEXT NOT NULL UNIQUE,
+  email TEXT,
+  source_type TEXT DEFAULT 'wheel',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- ============================================================
+-- EMAIL TEMPLATES
+-- ============================================================
+CREATE TABLE IF NOT EXISTS email_templates (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email_type TEXT UNIQUE NOT NULL,
+  category TEXT NOT NULL, -- 'customer' | 'admin'
+  label TEXT NOT NULL,
+  description TEXT,
+  enabled BOOLEAN DEFAULT true,
+  subject TEXT NOT NULL,
+  custom_html TEXT,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
+-- SEO & MEDIA LIBRARY (ZAYNAHS SEO + AI SYSTEM)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS seo_meta (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  entity_type TEXT NOT NULL,
+  entity_id UUID NOT NULL,
+  seo_title TEXT,
+  meta_description TEXT,
+  focus_keyword TEXT,
+  secondary_keywords TEXT,
+  lsi_tags TEXT,
+  og_title TEXT,
+  og_description TEXT,
+  twitter_title TEXT,
+  twitter_description TEXT,
+  image_alt TEXT,
+  long_description TEXT,
+  faq_schema JSONB DEFAULT '[]'::jsonb,
+  pinterest_description TEXT,
+  is_optimized BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_seo_meta_entity ON seo_meta (entity_type, entity_id);
+
+CREATE TABLE IF NOT EXISTS media_library (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  original_filename TEXT,
+  seo_filename TEXT,
+  file_url TEXT NOT NULL,
+  alt_text TEXT,
+  title TEXT,
+  description TEXT,
+  caption TEXT,
+  ai_generated BOOLEAN DEFAULT false,
+  ai_enabled BOOLEAN DEFAULT true,
+  bucket TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_media_library_url ON media_library (file_url);
+
+CREATE TABLE IF NOT EXISTS ai_settings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  content_provider TEXT DEFAULT 'groq',
+  content_model TEXT DEFAULT 'llama-3.3-70b-versatile',
+  content_keys TEXT DEFAULT '',
+  vision_provider TEXT DEFAULT 'gemini',
+  vision_model TEXT DEFAULT 'gemini-2.0-flash',
+  vision_keys TEXT DEFAULT '',
+  brand_name TEXT DEFAULT '',
+  store_type TEXT DEFAULT 'General',
+  target_market TEXT DEFAULT 'Pakistan',
+  tone TEXT DEFAULT 'Professional',
+  language TEXT DEFAULT 'English',
+  custom_instructions TEXT DEFAULT '',
+  auto_content_seo BOOLEAN DEFAULT true,
+  auto_media_ai BOOLEAN DEFAULT true,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
+-- META CATALOG CATEGORY MAPPING
+-- ============================================================
+CREATE TABLE IF NOT EXISTS meta_category_mapping (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  store_category_id UUID NOT NULL REFERENCES categories(id) ON DELETE CASCADE UNIQUE,
+  meta_category TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE meta_category_mapping ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Public read meta mappings" ON meta_category_mapping;
+CREATE POLICY "Public read meta mappings" ON meta_category_mapping
+  FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Admin all meta mappings" ON meta_category_mapping;
+CREATE POLICY "Admin all meta mappings" ON meta_category_mapping
+  FOR ALL USING (auth.role() = 'authenticated');

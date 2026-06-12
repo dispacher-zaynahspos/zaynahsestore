@@ -3,10 +3,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Trash2, Plus, Upload, Star, Bold, Italic, Underline, List, ListOrdered, Code, Eye, X, FolderOpen, Search, Check, Image as ImageIcon, ChevronDown } from 'lucide-react';
+import { Trash2, Plus, Upload, Star, Bold, Italic, Underline, List, ListOrdered, Code, Eye, X, FolderOpen, Search, Check, Image as ImageIcon, ChevronDown } from '@/components/common/Icons';
 import { Product, ProductImage, ProductVariant, ProductModifier, Category, VariantPreset, VariantPresetValue, Badge, SizeGuide } from '@/lib/types';
 import { createProduct, updateProduct } from '@/lib/services/products';
-import { uploadProductImage, deleteProductImage } from '@/lib/services/storage';
+import { deleteProductImage } from '@/lib/services/storage';
+import { uploadImage } from '@/lib/uploadImage';
 import MediaSelectorModal from './MediaSelectorModal';
 import { getVariantPresets } from '@/lib/services/variantPresets';
 import { getSizeGuides } from '@/lib/services/sizeGuides';
@@ -225,7 +226,7 @@ export default function ProductForm({ categories, initialProduct }: ProductFormP
       
       const newImages = await Promise.all(
         files.map(async (file, idx) => {
-          const url = await uploadProductImage(file, tempId);
+          const url = await uploadImage(file, 'product-images');
           return {
             url,
             alt: file.name,
@@ -419,6 +420,7 @@ export default function ProductForm({ categories, initialProduct }: ProductFormP
         reviewsCount: parseInt(reviewsCount) || 0
       };
 
+      let savedProduct;
       if (isEdit && initialProduct) {
         await updateProduct(
           initialProduct.id,
@@ -427,6 +429,7 @@ export default function ProductForm({ categories, initialProduct }: ProductFormP
           variants,
           modifiers
         );
+        savedProduct = { id: initialProduct.id, slug: productPayload.slug };
         toast.success('Product updated successfully!');
         router.refresh();
       } else {
@@ -436,10 +439,61 @@ export default function ProductForm({ categories, initialProduct }: ProductFormP
           variants,
           modifiers
         );
+        savedProduct = { id: newProduct.id, slug: newProduct.slug };
         toast.success('Product created successfully!');
         router.push(`/admin/products/${newProduct.id}`);
         router.refresh();
       }
+
+      // Fetch settings to check auto_content_seo
+      const supabase = createClient();
+      const { data: aiSettings } = await supabase
+        .from('ai_settings')
+        .select('auto_content_seo')
+        .eq('id', '00000000-0000-4000-8000-000000000002')
+        .single();
+      
+      const isAutoSeoOn = aiSettings?.auto_content_seo ?? true;
+      const productIdToOptimize = savedProduct.id;
+      const productSlugToOptimize = savedProduct.slug;
+
+      // Asynchronously trigger SEO optimization or IndexNow ping in the background
+      (async () => {
+        try {
+          if (isAutoSeoOn) {
+            toast.info('Generating AI SEO content and pinging IndexNow...');
+            const optRes = await fetch('/api/seo/optimize', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                entity_type: 'product',
+                entity_id: productIdToOptimize
+              })
+            });
+            if (optRes.ok) {
+              toast.success('AI SEO optimization complete & IndexNow notified for product!');
+            } else {
+              console.error('Auto SEO optimization failed on save for product');
+            }
+          } else {
+            // Just trigger IndexNow
+            const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://zaynahs.pk';
+            const pageUrl = `${siteUrl}/product/${productSlugToOptimize}`;
+            const pingRes = await fetch('/api/indexnow', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                urls: [pageUrl]
+              })
+            });
+            if (pingRes.ok) {
+              toast.success('IndexNow notified of updated product!');
+            }
+          }
+        } catch (bgErr) {
+          console.error('Error running background SEO tasks:', bgErr);
+        }
+      })();
     } catch (err) {
       console.error(err);
       const errMsg = err instanceof Error ? err.message : 'Failed to save product';
@@ -478,6 +532,11 @@ export default function ProductForm({ categories, initialProduct }: ProductFormP
                   onChange={(e) => setSlug(e.target.value)}
                   className="mt-1.5 w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2.5 text-sm font-medium focus:border-[#1a1a2e] focus:bg-white focus:outline-none transition-all"
                 />
+                {slug && (
+                  <p className="mt-1 text-[10px] text-gray-550 dark:text-gray-400 font-bold">
+                    Preview Path: <span className="text-[#e94560] font-mono">/product/{slug}</span>
+                  </p>
+                )}
               </div>
 
               <div>
@@ -1447,22 +1506,27 @@ export default function ProductForm({ categories, initialProduct }: ProductFormP
               </button>
             </div>
             
-            {/* File Input */}
-            <div className="relative border-2 border-dashed border-gray-200 hover:border-gray-400 rounded-xl p-6 text-center cursor-pointer transition-colors">
-              <input
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={handleImageUpload}
-                disabled={uploading}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              />
-              <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-              <span className="text-xs font-semibold text-gray-500 block">
-                {uploading ? 'Uploading...' : 'Click to upload multiple images'}
-              </span>
-              <span className="text-[10px] text-gray-400 mt-1 block">or drag and drop here</span>
-            </div>
+            {images.length === 0 ? (
+              <div 
+                onClick={() => setIsMediaModalOpen(true)}
+                className="flex flex-col items-center justify-center border border-dashed border-gray-200 hover:border-gray-400 rounded-xl p-8 text-center cursor-pointer transition-colors bg-gray-50/20 dark:bg-[#0f0f1b]/20 dark:border-gray-800"
+              >
+                <ImageIcon className="h-8 w-8 text-gray-400 mb-2" />
+                <span className="text-xs font-bold text-gray-700 dark:text-gray-300">Select Media</span>
+                <span className="text-[10px] text-gray-400 mt-1">Select images from your media library</span>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsMediaModalOpen(true)}
+                  className="flex items-center justify-center gap-2 w-full py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-white/5 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 text-xs font-bold rounded-xl cursor-pointer transition-colors"
+                >
+                  <ImageIcon className="h-4 w-4" />
+                  <span>Select Media</span>
+                </button>
+              </div>
+            )}
 
             {/* Uploaded Images preview grid */}
             {images.length > 0 && (

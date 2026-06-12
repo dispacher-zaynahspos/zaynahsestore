@@ -27,7 +27,7 @@ export default function Navbar({
   const pathname = usePathname();
   const router = useRouter();
   const totalItems = useCart((state) => state.totalItems());
-  const isAdmin = pathname?.startsWith('/admin');
+  const isAdmin = pathname?.startsWith('/admin') && pathname !== '/admin/settings/customizer/preview';
 
   // Load and fallback settings values
   const storeName = settings?.storeName ?? propStoreName;
@@ -354,7 +354,7 @@ export default function Navbar({
             >
               <Link
                 href={item.url}
-                className="flex items-center gap-1 px-3 py-2 rounded-xl text-sm font-semibold text-gray-700 dark:text-gray-200 hover:text-[#e94560] hover:bg-gray-50 dark:hover:bg-white/5 transition-all duration-150"
+                className="flex items-center gap-1 px-3 py-2 rounded-xl text-sm font-semibold text-gray-700 dark:text-gray-200 hover:text-[#e94560] hover:bg-gray-50 dark:hover:bg-white/5 transition-all duration-150 whitespace-nowrap"
                 style={customTextColorStyle}
               >
                 <span>{item.label}</span>
@@ -437,7 +437,16 @@ export default function Navbar({
       {/* Top Bar Contacts & Announcements */}
       {(showTopBar || showNewsletter) && (
         <div 
-          className="w-full text-xs py-1 md:py-2 px-4 flex flex-col md:flex-row items-center justify-between gap-2 border-b transition-colors font-semibold"
+          onClick={(e) => {
+            if (typeof window !== 'undefined' && window.self !== window.top) {
+              e.preventDefault();
+              e.stopPropagation();
+              window.parent.postMessage({ type: 'select_section', sectionId: 'announcement_bar' }, '*');
+            }
+          }}
+          className={`w-full text-xs py-1 md:py-2 px-4 flex flex-col md:flex-row items-center justify-between gap-2 border-b transition-colors font-semibold ${
+            typeof window !== 'undefined' && window.self !== window.top ? 'cursor-pointer hover:ring-2 hover:ring-[#e94560] hover:ring-offset-2' : ''
+          }`}
           style={{ 
             backgroundColor: topBarBg, 
             color: topBarTextColor,
@@ -518,7 +527,16 @@ export default function Navbar({
 
       {/* Main Header */}
       <header 
-        className={`${headerSticky ? 'sticky top-0' : 'relative'} z-40 w-full border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-[#0f0f1b]/85 backdrop-blur-md transition-colors duration-200`}
+        onClick={(e) => {
+          if (typeof window !== 'undefined' && window.self !== window.top) {
+            e.preventDefault();
+            e.stopPropagation();
+            window.parent.postMessage({ type: 'select_global_tab', subTab: 'header' }, '*');
+          }
+        }}
+        className={`${headerSticky ? 'sticky top-0' : 'relative'} z-40 w-full border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-[#0f0f1b]/85 backdrop-blur-md transition-colors duration-200 ${
+          typeof window !== 'undefined' && window.self !== window.top ? 'cursor-pointer hover:ring-2 hover:ring-[#e94560] hover:ring-offset-2' : ''
+        }`}
         style={{ 
           backgroundColor: headerBg !== '#ffffff' ? headerBg : undefined, 
           borderColor: headerBorderColor !== '#e5e7eb' ? headerBorderColor : undefined,
@@ -526,14 +544,14 @@ export default function Navbar({
         }}
       >
         {/* Desktop Header Layout */}
-        <div className="mx-auto hidden md:grid h-16 max-w-7xl grid-cols-3 items-center px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-4 justify-start">
+        <div className="mx-auto hidden md:flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8 gap-4">
+          <div className="flex items-center gap-4 justify-start shrink-0">
             {desktopLeftElements}
           </div>
-          <div className="flex items-center gap-4 justify-center">
+          <div className="flex items-center gap-4 justify-center flex-grow min-w-0">
             {desktopCenterElements}
           </div>
-          <div className="flex items-center gap-4 justify-end">
+          <div className="flex items-center gap-4 justify-end shrink-0">
             {desktopRightElements}
           </div>
         </div>

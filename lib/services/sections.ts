@@ -2,27 +2,40 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { HomepageSection, WhatsAppSubscriber } from '@/lib/types';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, unstable_cache } from 'next/cache';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder';
 const staticSupabase = createSupabaseClient(supabaseUrl, supabaseAnonKey);
 
+const fetchHomepageSections = async (onlyActive: boolean): Promise<HomepageSection[]> => {
+  let query = staticSupabase
+    .from('homepage_sections')
+    .select('*')
+    .order('sort_order', { ascending: true });
+  
+  if (onlyActive) {
+    query = query.eq('active', true);
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return data || [];
+};
+
+const cachedSections = unstable_cache(
+  async (onlyActive: boolean) => fetchHomepageSections(onlyActive),
+  ['homepage-sections'],
+  { revalidate: 3600, tags: ['homepage', 'banners', 'homepage_sections'] }
+);
+
 export const getHomepageSections = async (onlyActive = false): Promise<HomepageSection[]> => {
   try {
-    let query = staticSupabase
-      .from('homepage_sections')
-      .select('*')
-      .order('sort_order', { ascending: true });
-    
-    if (onlyActive) {
-      query = query.eq('active', true);
+    if (process.env.NODE_ENV === 'development') {
+      return await fetchHomepageSections(onlyActive);
     }
-
-    const { data, error } = await query;
-    if (error) throw error;
-    return data || [];
+    return await cachedSections(onlyActive);
   } catch (error) {
     console.error('[sections] getHomepageSections failed:', error);
     throw error;
@@ -99,6 +112,9 @@ export const addHomepageSection = async (
       settings = { height_desktop: '450px', height_mobile: '220px', overlay_opacity: 0.3 };
     } else if (sectionType === 'recent_reviews') {
       settings = { limit: 3 };
+    } else if (sectionType === 'flash_sale') {
+      settings = { startTime: '', endTime: '', viewAllText: 'View All', viewAllUrl: '/shop' };
+      content_data = { products: [] };
     }
 
     const { data, error } = await supabase
@@ -141,13 +157,15 @@ export const deleteHomepageSection = async (id: string): Promise<void> => {
 
 export const addWhatsAppSubscriber = async (
   phone: string,
-  name?: string
+  name?: string,
+  email?: string,
+  source_type?: string
 ): Promise<WhatsAppSubscriber> => {
   try {
     const supabase = await createClient();
     const { data, error } = await supabase
       .from('whatsapp_subscribers')
-      .insert({ phone, name })
+      .insert({ phone, name, email, source_type })
       .select('*')
       .single();
 
@@ -166,6 +184,22 @@ export const addWhatsAppSubscriber = async (
     return data;
   } catch (error) {
     console.error('[sections] addWhatsAppSubscriber failed:', error);
+    throw error;
+  }
+};
+
+export const getWhatsAppSubscribers = async (): Promise<WhatsAppSubscriber[]> => {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from('whatsapp_subscribers')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('[sections] getWhatsAppSubscribers failed:', error);
     throw error;
   }
 };

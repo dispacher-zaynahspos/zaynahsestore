@@ -34,6 +34,39 @@ export async function POST(request: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const inputBuffer = Buffer.from(arrayBuffer);
 
+    // Bypass Sharp for videos and upload raw buffer directly
+    const isVideo = file.type.startsWith('video/') || /\.(mp4|mov|webm|m4v|avi|mkv|ogv)$/i.test(file.name);
+    if (isVideo) {
+      const baseName = file.name.replace(/\.[^/.]+$/, '').replace(/[^a-z0-9_\-]/gi, '_');
+      const ext = file.name.split('.').pop() || 'mp4';
+      const fileName = `${folder}/${baseName}_${Date.now()}.${ext}`;
+
+      const { error: uploadError } = await supabaseAdmin.storage
+        .from('product-images')
+        .upload(fileName, inputBuffer, {
+          contentType: file.type,
+          upsert: true,
+        });
+
+      if (uploadError) {
+        console.error('[api/upload-image] Supabase video upload failed:', uploadError);
+        return NextResponse.json({ error: uploadError.message }, { status: 500 });
+      }
+
+      const { data } = supabaseAdmin.storage
+        .from('product-images')
+        .getPublicUrl(fileName);
+
+      const finalSizeKb = Math.round(inputBuffer.length / 1024);
+      console.log(`[api/upload-image] ✓ Video: ${file.name} → ${fileName} (${finalSizeKb} KB)`);
+
+      return NextResponse.json({
+        url: data.publicUrl,
+        sizeKb: finalSizeKb,
+        format: ext,
+      });
+    }
+
     // Process with Sharp — supports HEIC/HEIF natively via libvips
     let sharpInstance = sharp(inputBuffer, { failOnError: false });
 

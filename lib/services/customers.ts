@@ -166,6 +166,16 @@ export async function customerSignup(data: {
         phone: customer.phone
       });
 
+      if (customer.email) {
+        import('@/lib/email/triggers').then(({ onUserRegister }) => {
+          onUserRegister({ name: customer.name, email: customer.email }).catch(err => {
+            console.error('[Email Trigger] failed in customerSignup update:', err);
+          });
+        }).catch(err => {
+          console.error('[Email Trigger] import failed in customerSignup update:', err);
+        });
+      }
+
       return { success: true, customer };
     }
 
@@ -195,6 +205,16 @@ export async function customerSignup(data: {
       email: customer.email,
       phone: customer.phone
     });
+
+    if (customer.email) {
+      import('@/lib/email/triggers').then(({ onUserRegister }) => {
+        onUserRegister({ name: customer.name, email: customer.email }).catch(err => {
+          console.error('[Email Trigger] failed in customerSignup insert:', err);
+        });
+      }).catch(err => {
+        console.error('[Email Trigger] import failed in customerSignup insert:', err);
+      });
+    }
 
     return { success: true, customer };
   } catch (err) {

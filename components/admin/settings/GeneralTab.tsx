@@ -25,14 +25,15 @@ interface GeneralTabProps {
   enableCategoryFilter: boolean;
   setEnableCategoryFilter: (val: boolean) => void;
   logoUrl: string;
+  setLogoUrl: (val: string) => void;
   logoWidth: number;
   setLogoWidth: (val: number) => void;
   faviconUrl: string;
-  uploadingLogo: boolean;
-  uploadingFavicon: boolean;
-  handleFileUpload: (e: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'favicon') => void;
+  setFaviconUrl: (val: string) => void;
   handleRemoveImage: (type: 'logo' | 'favicon') => void;
 }
+
+import MediaSelectorModal from '../MediaSelectorModal';
 
 export default function GeneralTab({
   storeName,
@@ -56,14 +57,15 @@ export default function GeneralTab({
   enableCategoryFilter,
   setEnableCategoryFilter,
   logoUrl,
+  setLogoUrl,
   logoWidth,
   setLogoWidth,
   faviconUrl,
-  uploadingLogo,
-  uploadingFavicon,
-  handleFileUpload,
+  setFaviconUrl,
   handleRemoveImage,
 }: GeneralTabProps) {
+  const [isMediaModalOpen, setIsMediaModalOpen] = React.useState(false);
+  const [selectingType, setSelectingType] = React.useState<'logo' | 'favicon' | null>(null);
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
       
@@ -207,7 +209,7 @@ export default function GeneralTab({
                     <button
                       type="button"
                       onClick={() => handleRemoveImage('logo')}
-                      className="flex items-center gap-1 text-[11px] font-bold text-red-500 hover:text-red-600 transition-colors"
+                      className="flex items-center gap-1 text-[11px] font-bold text-red-500 hover:text-red-600 transition-colors cursor-pointer"
                     >
                       <Trash2 className="h-3 w-3" /> Remove
                     </button>
@@ -219,27 +221,18 @@ export default function GeneralTab({
                 )}
 
                 <div className="flex-1 flex flex-col items-center sm:items-start gap-2">
-                  <label className="relative flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-white/5 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 text-xs font-bold rounded-lg cursor-pointer transition-colors">
-                    {uploadingLogo ? (
-                      <>
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        <span>Uploading...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="h-3.5 w-3.5" />
-                        <span>Upload Logo</span>
-                      </>
-                    )}
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      onChange={(e) => handleFileUpload(e, 'logo')} 
-                      disabled={uploadingLogo} 
-                      className="hidden" 
-                    />
-                  </label>
-                  <span className="text-[10px] text-gray-400 dark:text-gray-500">Optimized to WebP &lt; 50 KB</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectingType('logo');
+                      setIsMediaModalOpen(true);
+                    }}
+                    className="relative flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-white/5 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 text-xs font-bold rounded-lg cursor-pointer transition-colors"
+                  >
+                    <ImageIcon className="h-3.5 w-3.5" />
+                    <span>Select Media</span>
+                  </button>
+                  <span className="text-[10px] text-gray-400 dark:text-gray-500">Select WebP &lt; 50 KB</span>
                 </div>
               </div>
 
@@ -276,7 +269,7 @@ export default function GeneralTab({
                     <button
                       type="button"
                       onClick={() => handleRemoveImage('favicon')}
-                      className="flex items-center gap-1 text-[11px] font-bold text-red-500 hover:text-red-600 transition-colors"
+                      className="flex items-center gap-1 text-[11px] font-bold text-red-500 hover:text-red-600 transition-colors cursor-pointer"
                     >
                       <Trash2 className="h-3 w-3" /> Remove
                     </button>
@@ -288,26 +281,17 @@ export default function GeneralTab({
                 )}
 
                 <div className="flex-1 flex flex-col gap-2">
-                  <label className="relative self-start flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-white/5 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 text-xs font-bold rounded-lg cursor-pointer transition-colors">
-                    {uploadingFavicon ? (
-                      <>
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        <span>Uploading...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="h-3.5 w-3.5" />
-                        <span>Upload Favicon</span>
-                      </>
-                    )}
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      onChange={(e) => handleFileUpload(e, 'favicon')} 
-                      disabled={uploadingFavicon} 
-                      className="hidden" 
-                    />
-                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectingType('favicon');
+                      setIsMediaModalOpen(true);
+                    }}
+                    className="relative self-start flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-white/5 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 text-xs font-bold rounded-lg cursor-pointer transition-colors"
+                  >
+                    <ImageIcon className="h-3.5 w-3.5" />
+                    <span>Select Media</span>
+                  </button>
                   <span className="text-[10px] text-gray-400 dark:text-gray-500">Small icon for tab headers</span>
                 </div>
               </div>
@@ -316,6 +300,25 @@ export default function GeneralTab({
         </div>
       </div>
 
+      <MediaSelectorModal
+        isOpen={isMediaModalOpen}
+        onClose={() => {
+          setIsMediaModalOpen(false);
+          setSelectingType(null);
+        }}
+        onSelect={(urls) => {
+          if (urls.length > 0) {
+            if (selectingType === 'logo') {
+              setLogoUrl(urls[0]);
+            } else if (selectingType === 'favicon') {
+              setFaviconUrl(urls[0]);
+            }
+          }
+          setIsMediaModalOpen(false);
+          setSelectingType(null);
+        }}
+        multiple={false}
+      />
     </div>
   );
 }

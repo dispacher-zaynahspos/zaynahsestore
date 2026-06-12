@@ -112,6 +112,10 @@ interface SettingsRow {
   footer_col_4_title?: string | null;
   footer_col_4_text?: string | null;
   footer_bottom_text?: string | null;
+  footer_show_payments?: boolean | null;
+  footer_show_menu?: boolean | null;
+  footer_show_newsletter?: boolean | null;
+  footer_show_social?: boolean | null;
   floating_contacts_enabled?: boolean | null;
   floating_contacts_position?: string | null;
   floating_contacts_bottom_mobile?: number | null;
@@ -172,6 +176,50 @@ interface SettingsRow {
   social_feeds_items?: any;
   cart_timer_message?: string | null;
   coupon_codes_enabled?: boolean | null;
+  product_page_layout?: string[] | null;
+  card_style?: string | null;
+  card_show_stars?: boolean | null;
+  card_show_quickview?: boolean | null;
+  card_show_wishlist?: boolean | null;
+  card_show_quickcart?: boolean | null;
+  card_alignment?: string | null;
+  card_elements_order?: string[] | null;
+  theme_preset?: string | null;
+  theme_config?: any | null;
+
+  // Pixels & Tracking
+  meta_pixel_id?: string | null;
+  ga4_measurement_id?: string | null;
+  gtm_container_id?: string | null;
+  tiktok_pixel_id?: string | null;
+  twitter_pixel_id?: string | null;
+  snapchat_pixel_id?: string | null;
+  pinterest_tag_id?: string | null;
+
+  // Social & SEO
+  twitter_handle?: string | null;
+  meta_title_suffix?: string | null;
+
+  // AI settings
+  content_provider?: string | null;
+  content_model?: string | null;
+  content_keys?: string | null;
+  vision_provider?: string | null;
+  vision_model?: string | null;
+  vision_keys?: string | null;
+  ai_tone?: string | null;
+  ai_language?: string | null;
+  ai_custom_instructions?: string | null;
+  auto_content_seo?: boolean | null;
+  auto_media_ai?: boolean | null;
+
+  // SMTP/Email Fallback Columns
+  smtp_email?: string | null;
+  smtp_app_password?: string | null;
+  smtp_from_name?: string | null;
+  admin_notification_email?: string | null;
+  email_notifications?: any | null;
+  low_stock_threshold?: number | null;
 
   updated_at: string;
 }
@@ -274,7 +322,11 @@ const mapSettings = (row: SettingsRow): StoreSettings => ({
   footerCol3Title: row.footer_col_3_title ?? 'Quick Links',
   footerCol4Title: row.footer_col_4_title ?? 'Newsletter',
   footerCol4Text: row.footer_col_4_text ?? 'Subscribe to get special offers, free giveaways, and once-in-a-lifetime deals.',
-  footerBottomText: row.footer_bottom_text ?? 'All rights reserved.',
+  footerBottomText: row.footer_bottom_text ?? '',
+  footerShowPayments: row.footer_show_payments ?? true,
+  footerShowMenu: row.footer_show_menu ?? true,
+  footerShowNewsletter: row.footer_show_newsletter ?? true,
+  footerShowSocial: row.footer_show_social ?? true,
   floatingContactsEnabled: row.floating_contacts_enabled ?? true,
   floatingContactsPosition: (row.floating_contacts_position as any) ?? 'left',
   floatingContactsBottomMobile: row.floating_contacts_bottom_mobile ?? 80,
@@ -336,7 +388,51 @@ const mapSettings = (row: SettingsRow): StoreSettings => ({
   social_feeds_items: typeof row.social_feeds_items === 'string' ? JSON.parse(row.social_feeds_items) : (row.social_feeds_items ?? []),
   cart_timer_message: row.cart_timer_message ?? 'Items in your cart are reserved for {timer} minutes.',
   coupon_codes_enabled: row.coupon_codes_enabled ?? true,
+  productPageLayout: row.product_page_layout ?? ['details', 'ticker', 'reviews', 'related', 'recently_viewed', 'social_feed'],
+  card_style: (row.card_style as any) ?? 'style1',
+  card_show_stars: row.card_show_stars ?? true,
+  card_show_quickview: row.card_show_quickview ?? true,
+  card_show_wishlist: row.card_show_wishlist ?? true,
+  card_show_quickcart: row.card_show_quickcart ?? true,
+  card_alignment: (row.card_alignment as any) ?? 'left',
+  card_elements_order: row.card_elements_order ?? ['title', 'rating', 'price', 'swatches'],
+  theme_preset: row.theme_preset ?? 'classic_white',
+  theme_config: typeof row.theme_config === 'string' ? JSON.parse(row.theme_config) : (row.theme_config ?? undefined),
   
+  // Pixels & Tracking
+  meta_pixel_id: row.meta_pixel_id ?? '',
+  ga4_measurement_id: row.ga4_measurement_id ?? '',
+  gtm_container_id: row.gtm_container_id ?? '',
+  tiktok_pixel_id: row.tiktok_pixel_id ?? '',
+  twitter_pixel_id: row.twitter_pixel_id ?? '',
+  snapchat_pixel_id: row.snapchat_pixel_id ?? '',
+  pinterest_tag_id: row.pinterest_tag_id ?? '',
+
+  // Social & SEO
+  twitter_handle: row.twitter_handle ?? '',
+  meta_title_suffix: row.meta_title_suffix ?? '',
+
+  // AI settings
+  content_provider: row.content_provider ?? 'groq',
+  content_model: row.content_model ?? 'llama-3.3-70b-versatile',
+  content_keys: row.content_keys ?? '',
+  vision_provider: row.vision_provider ?? 'gemini',
+  vision_model: row.vision_model ?? 'gemini-2.0-flash',
+  vision_keys: row.vision_keys ?? '',
+  ai_tone: row.ai_tone ?? 'Professional',
+  ai_language: row.ai_language ?? 'English',
+  ai_custom_instructions: row.ai_custom_instructions ?? '',
+  auto_content_seo: row.auto_content_seo ?? true,
+  auto_media_ai: row.auto_media_ai ?? true,
+
+  // SMTP/Email Fallback Columns
+  smtp_email: row.smtp_email ?? '',
+  smtp_app_password: row.smtp_app_password ?? '',
+  smtp_from_name: row.smtp_from_name ?? '',
+  admin_notification_email: row.admin_notification_email ?? '',
+  email_notifications: typeof row.email_notifications === 'string' ? JSON.parse(row.email_notifications) : (row.email_notifications ?? undefined),
+  low_stock_threshold: row.low_stock_threshold ?? 5,
+
   updatedAt: row.updated_at
 });
 
@@ -484,6 +580,10 @@ export const updateSettings = async (settings: Partial<StoreSettings>): Promise<
     if (settings.footerCol4Title !== undefined) updatePayload.footer_col_4_title = settings.footerCol4Title;
     if (settings.footerCol4Text !== undefined) updatePayload.footer_col_4_text = settings.footerCol4Text;
     if (settings.footerBottomText !== undefined) updatePayload.footer_bottom_text = settings.footerBottomText;
+    if (settings.footerShowPayments !== undefined) updatePayload.footer_show_payments = settings.footerShowPayments;
+    if (settings.footerShowMenu !== undefined) updatePayload.footer_show_menu = settings.footerShowMenu;
+    if (settings.footerShowNewsletter !== undefined) updatePayload.footer_show_newsletter = settings.footerShowNewsletter;
+    if (settings.footerShowSocial !== undefined) updatePayload.footer_show_social = settings.footerShowSocial;
 
     if (settings.floatingContactsEnabled !== undefined) updatePayload.floating_contacts_enabled = settings.floatingContactsEnabled;
     if (settings.floatingContactsPosition !== undefined) updatePayload.floating_contacts_position = settings.floatingContactsPosition;
@@ -545,6 +645,50 @@ export const updateSettings = async (settings: Partial<StoreSettings>): Promise<
     if (settings.social_feeds_items !== undefined) updatePayload.social_feeds_items = typeof settings.social_feeds_items === 'string' ? JSON.parse(settings.social_feeds_items) : settings.social_feeds_items;
     if (settings.cart_timer_message !== undefined) updatePayload.cart_timer_message = settings.cart_timer_message;
     if (settings.coupon_codes_enabled !== undefined) updatePayload.coupon_codes_enabled = settings.coupon_codes_enabled;
+    if (settings.productPageLayout !== undefined) updatePayload.product_page_layout = settings.productPageLayout;
+    if (settings.theme_preset !== undefined) updatePayload.theme_preset = settings.theme_preset;
+    if (settings.theme_config !== undefined) updatePayload.theme_config = settings.theme_config;
+    if (settings.card_style !== undefined) updatePayload.card_style = settings.card_style;
+    if (settings.card_show_stars !== undefined) updatePayload.card_show_stars = settings.card_show_stars;
+    if (settings.card_show_quickview !== undefined) updatePayload.card_show_quickview = settings.card_show_quickview;
+    if (settings.card_show_wishlist !== undefined) updatePayload.card_show_wishlist = settings.card_show_wishlist;
+    if (settings.card_show_quickcart !== undefined) updatePayload.card_show_quickcart = settings.card_show_quickcart;
+    if (settings.card_alignment !== undefined) updatePayload.card_alignment = settings.card_alignment;
+    if (settings.card_elements_order !== undefined) updatePayload.card_elements_order = settings.card_elements_order;
+
+    // Pixels & Tracking
+    if (settings.meta_pixel_id !== undefined) updatePayload.meta_pixel_id = settings.meta_pixel_id;
+    if (settings.ga4_measurement_id !== undefined) updatePayload.ga4_measurement_id = settings.ga4_measurement_id;
+    if (settings.gtm_container_id !== undefined) updatePayload.gtm_container_id = settings.gtm_container_id;
+    if (settings.tiktok_pixel_id !== undefined) updatePayload.tiktok_pixel_id = settings.tiktok_pixel_id;
+    if (settings.twitter_pixel_id !== undefined) updatePayload.twitter_pixel_id = settings.twitter_pixel_id;
+    if (settings.snapchat_pixel_id !== undefined) updatePayload.snapchat_pixel_id = settings.snapchat_pixel_id;
+    if (settings.pinterest_tag_id !== undefined) updatePayload.pinterest_tag_id = settings.pinterest_tag_id;
+
+    // Social & SEO
+    if (settings.twitter_handle !== undefined) updatePayload.twitter_handle = settings.twitter_handle;
+    if (settings.meta_title_suffix !== undefined) updatePayload.meta_title_suffix = settings.meta_title_suffix;
+
+    // AI settings
+    if (settings.content_provider !== undefined) updatePayload.content_provider = settings.content_provider;
+    if (settings.content_model !== undefined) updatePayload.content_model = settings.content_model;
+    if (settings.content_keys !== undefined) updatePayload.content_keys = settings.content_keys;
+    if (settings.vision_provider !== undefined) updatePayload.vision_provider = settings.vision_provider;
+    if (settings.vision_model !== undefined) updatePayload.vision_model = settings.vision_model;
+    if (settings.vision_keys !== undefined) updatePayload.vision_keys = settings.vision_keys;
+    if (settings.ai_tone !== undefined) updatePayload.ai_tone = settings.ai_tone;
+    if (settings.ai_language !== undefined) updatePayload.ai_language = settings.ai_language;
+    if (settings.ai_custom_instructions !== undefined) updatePayload.ai_custom_instructions = settings.ai_custom_instructions;
+    if (settings.auto_content_seo !== undefined) updatePayload.auto_content_seo = settings.auto_content_seo;
+    if (settings.auto_media_ai !== undefined) updatePayload.auto_media_ai = settings.auto_media_ai;
+
+    // SMTP/Email Fallback Columns
+    if (settings.smtp_email !== undefined) updatePayload.smtp_email = settings.smtp_email;
+    if (settings.smtp_app_password !== undefined) updatePayload.smtp_app_password = settings.smtp_app_password;
+    if (settings.smtp_from_name !== undefined) updatePayload.smtp_from_name = settings.smtp_from_name;
+    if (settings.admin_notification_email !== undefined) updatePayload.admin_notification_email = settings.admin_notification_email;
+    if (settings.email_notifications !== undefined) updatePayload.email_notifications = typeof settings.email_notifications === 'string' ? JSON.parse(settings.email_notifications) : settings.email_notifications;
+    if (settings.low_stock_threshold !== undefined) updatePayload.low_stock_threshold = settings.low_stock_threshold;
 
     const { data, error } = await supabase
       .from('store_settings')

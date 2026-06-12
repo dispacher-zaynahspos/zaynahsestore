@@ -18,21 +18,12 @@ export default async function AdminCustomizerPage() {
   ]);
 
   return (
-    <div className="space-y-6 min-h-screen pb-12">
-      <div className="flex flex-col gap-1.5">
-        <h1 className="text-xl font-bold text-gray-900 dark:text-white">Landing Page Section Customizer</h1>
-        <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold">
-          Drag-free section editor. Adjust section heights, image overlays, product grids and visibility in real-time.
-        </p>
-      </div>
-      
-      <CustomizerEditor
-        initialSections={sections}
-        products={products}
-        categories={categories}
-        settings={settings}
-        reviews={reviews}
-      />
-    </div>
+    <CustomizerEditor
+      initialSections={sections}
+      products={products}
+      categories={categories}
+      settings={settings}
+      reviews={reviews}
+    />
   );
 }

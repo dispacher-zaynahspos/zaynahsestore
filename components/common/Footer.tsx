@@ -125,12 +125,41 @@ export default function Footer({ settings }: FooterProps) {
 
   const navigationMenu = settings?.navigationMenu ?? [];
 
+  // Footer toggles with defaults to TRUE
+  const showMenu = settings.footerShowMenu ?? true;
+  const showSocial = settings.footerShowSocial ?? true;
+  const showNewsletter = settings.footerShowNewsletter ?? true;
+  const showPayments = settings.footerShowPayments ?? true;
+
+  // Calculate dynamic grid columns
+  const showCol3 = showMenu;
+  const showCol4 = showNewsletter || (showSocial && hasSocialLinks);
+  
+  let gridColsClass = "grid-cols-1 sm:grid-cols-2 md:grid-cols-4";
+  const activeCols = 2 + (showCol3 ? 1 : 0) + (showCol4 ? 1 : 0);
+  if (activeCols === 2) {
+    gridColsClass = "grid-cols-1 sm:grid-cols-2 md:grid-cols-2 max-w-4xl";
+  } else if (activeCols === 3) {
+    gridColsClass = "grid-cols-1 sm:grid-cols-2 md:grid-cols-3";
+  }
+
   return (
-    <footer className="w-full bg-white dark:bg-[#0f0f1b] border-t border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-400 select-none transition-colors duration-200">
+    <footer
+      onClick={(e) => {
+        if (typeof window !== 'undefined' && window.self !== window.top) {
+          e.preventDefault();
+          e.stopPropagation();
+          window.parent.postMessage({ type: 'select_global_tab', subTab: 'footer' }, '*');
+        }
+      }}
+      className={`w-full bg-white dark:bg-[#0f0f1b] border-t border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-400 select-none transition-colors duration-200 ${
+        typeof window !== 'undefined' && window.self !== window.top ? 'cursor-pointer hover:ring-2 hover:ring-[#e94560] hover:ring-offset-2' : ''
+      }`}
+    >
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         
-        {/* Footer Top - Shopify 4-Column Responsive Grid */}
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-4 pb-10">
+        {/* Footer Top - Shopify Dynamic Responsive Grid */}
+        <div className={`grid gap-8 pb-10 ${gridColsClass}`}>
           
           {/* Column 1: Brand & About */}
           <div className="space-y-4">
@@ -165,172 +194,180 @@ export default function Footer({ settings }: FooterProps) {
           </div>
 
           {/* Column 3: Quick Links navigation */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-extrabold text-gray-900 dark:text-white uppercase tracking-wider">
-              {settings.footerCol3Title || 'Quick Links'}
-            </h3>
-            {navigationMenu.length > 0 ? (
-              <ul className="space-y-2.5 text-sm font-semibold">
-                {navigationMenu.map((item) => (
-                  <li key={item.id}>
-                    <Link href={item.url} className="text-gray-500 hover:text-[#e94560] dark:text-gray-400 dark:hover:text-white transition-colors cursor-pointer block">
-                      {item.label}
+          {showCol3 && (
+            <div className="space-y-4">
+              <h3 className="text-sm font-extrabold text-gray-900 dark:text-white uppercase tracking-wider">
+                {settings.footerCol3Title || 'Quick Links'}
+              </h3>
+              {navigationMenu.length > 0 ? (
+                <ul className="space-y-2.5 text-sm font-semibold">
+                  {navigationMenu.map((item) => (
+                    <li key={item.id}>
+                      <Link href={item.url} className="text-gray-500 hover:text-[#e94560] dark:text-gray-400 dark:hover:text-white transition-colors cursor-pointer block">
+                        {item.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <ul className="space-y-2.5 text-sm font-semibold">
+                  <li>
+                    <Link href="/" className="text-gray-500 hover:text-[#e94560] dark:text-gray-400 dark:hover:text-white transition-colors block">
+                      Home
                     </Link>
                   </li>
-                ))}
-              </ul>
-            ) : (
-              <ul className="space-y-2.5 text-sm font-semibold">
-                <li>
-                  <Link href="/" className="text-gray-500 hover:text-[#e94560] dark:text-gray-400 dark:hover:text-white transition-colors block">
-                    Home
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/cart" className="text-gray-500 hover:text-[#e94560] dark:text-gray-400 dark:hover:text-white transition-colors block">
-                    Cart
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/account" className="text-gray-500 hover:text-[#e94560] dark:text-gray-400 dark:hover:text-white transition-colors block">
-                    My Account
-                  </Link>
-                </li>
-              </ul>
-            )}
-          </div>
+                  <li>
+                    <Link href="/cart" className="text-gray-500 hover:text-[#e94560] dark:text-gray-400 dark:hover:text-white transition-colors block">
+                      Cart
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/account" className="text-gray-500 hover:text-[#e94560] dark:text-gray-400 dark:hover:text-white transition-colors block">
+                      My Account
+                    </Link>
+                  </li>
+                </ul>
+              )}
+            </div>
+          )}
 
           {/* Column 4: Newsletter & Connect */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-extrabold text-gray-900 dark:text-white uppercase tracking-wider">
-              {settings.footerCol4Title || 'Newsletter'}
-            </h3>
-            <p className="text-sm font-semibold leading-relaxed text-gray-500 dark:text-gray-400">
-              {settings.footerCol4Text || 'Subscribe to get special offers, free giveaways, and once-in-a-lifetime deals.'}
-            </p>
-            
-            {/* Newsletter Subscription Form */}
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              const emailInput = e.currentTarget.elements.namedItem('email') as HTMLInputElement;
-              if (emailInput && emailInput.value) {
-                toast.success('Thank you for subscribing to our newsletter!');
-                emailInput.value = '';
-              }
-            }} className="mt-3 flex gap-2">
-              <input
-                type="email"
-                name="email"
-                required
-                placeholder="Your email address"
-                className="flex-grow rounded-xl border border-gray-250 dark:border-gray-800 bg-gray-55/50 dark:bg-[#16162a]/50 px-3.5 py-2 text-sm font-semibold text-gray-900 dark:text-white placeholder-gray-450 dark:placeholder-gray-550 focus:outline-none focus:border-[#e94560] focus:bg-white dark:focus:bg-[#16162a]"
-              />
-              <button
-                type="submit"
-                className="rounded-xl bg-[#e94560] px-4 py-2 text-xs font-bold text-white hover:bg-[#d8344f] transition-all cursor-pointer shrink-0"
-              >
-                Subscribe
-              </button>
-            </form>
+          {showCol4 && (
+            <div className="space-y-4">
+              {showNewsletter && (
+                <>
+                  <h3 className="text-sm font-extrabold text-gray-900 dark:text-white uppercase tracking-wider">
+                    {settings.footerCol4Title || 'Newsletter'}
+                  </h3>
+                  <p className="text-sm font-semibold leading-relaxed text-gray-500 dark:text-gray-400">
+                    {settings.footerCol4Text || 'Subscribe to get special offers, free giveaways, and once-in-a-lifetime deals.'}
+                  </p>
+                  
+                  {/* Newsletter Subscription Form */}
+                  <form onSubmit={(e) => {
+                    e.preventDefault();
+                    const emailInput = e.currentTarget.elements.namedItem('email') as HTMLInputElement;
+                    if (emailInput && emailInput.value) {
+                      toast.success('Thank you for subscribing to our newsletter!');
+                      emailInput.value = '';
+                    }
+                  }} className="mt-3 flex gap-2">
+                    <input
+                      type="email"
+                      name="email"
+                      required
+                      placeholder="Your email address"
+                      className="flex-grow rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-100/50 dark:bg-[#16162a]/50 px-3.5 py-2 text-sm font-semibold text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-[#e94560] focus:bg-white dark:focus:bg-[#16162a]"
+                    />
+                    <button
+                      type="submit"
+                      className="rounded-xl bg-[#e94560] px-4 py-2 text-xs font-bold text-white hover:bg-[#d8344f] transition-all cursor-pointer shrink-0"
+                    >
+                      Subscribe
+                    </button>
+                  </form>
+                </>
+              )}
 
-            {/* Social Icons row (including TikTok, Snapchat, Twitter) */}
-            {hasSocialLinks && (
-              <div className="pt-2 flex flex-wrap gap-2">
-                {settings.socialFacebook && (
-                  <a
-                    href={settings.socialFacebook}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-55 dark:bg-[#16162a] border border-gray-200 dark:border-gray-850 text-gray-500 dark:text-gray-300 hover:bg-[#e94560] hover:text-white dark:hover:bg-[#e94560] dark:hover:text-white transition-all cursor-pointer"
-                    title="Facebook"
-                  >
-                    <FacebookIcon className="h-4.5 w-4.5" />
-                  </a>
-                )}
+              {/* Social Icons row (including TikTok, Snapchat, Twitter) */}
+              {showSocial && hasSocialLinks && (
+                <div className="pt-2 flex flex-wrap gap-2">
+                  {settings.socialFacebook && (
+                    <a
+                      href={settings.socialFacebook}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-100 dark:bg-[#16162a] border border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-300 hover:bg-[#e94560] hover:text-white dark:hover:bg-[#e94560] dark:hover:text-white transition-all cursor-pointer"
+                      title="Facebook"
+                    >
+                      <FacebookIcon className="h-4.5 w-4.5" />
+                    </a>
+                  )}
 
-                {settings.socialInstagram && (
-                  <a
-                    href={settings.socialInstagram}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-55 dark:bg-[#16162a] border border-gray-200 dark:border-gray-850 text-gray-500 dark:text-gray-300 hover:bg-[#e94560] hover:text-white dark:hover:bg-[#e94560] dark:hover:text-white transition-all cursor-pointer"
-                    title="Instagram"
-                  >
-                    <InstagramIcon className="h-4.5 w-4.5" />
-                  </a>
-                )}
+                  {settings.socialInstagram && (
+                    <a
+                      href={settings.socialInstagram}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-100 dark:bg-[#16162a] border border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-300 hover:bg-[#e94560] hover:text-white dark:hover:bg-[#e94560] dark:hover:text-white transition-all cursor-pointer"
+                      title="Instagram"
+                    >
+                      <InstagramIcon className="h-4.5 w-4.5" />
+                    </a>
+                  )}
 
-                {settings.socialTiktok && (
-                  <a
-                    href={settings.socialTiktok}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-55 dark:bg-[#16162a] border border-gray-200 dark:border-gray-850 text-gray-500 dark:text-gray-300 hover:bg-[#e94560] hover:text-white dark:hover:bg-[#e94560] dark:hover:text-white transition-all cursor-pointer"
-                    title="TikTok"
-                  >
-                    <TiktokIcon className="h-4.5 w-4.5" />
-                  </a>
-                )}
+                  {settings.socialTiktok && (
+                    <a
+                      href={settings.socialTiktok}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-100 dark:bg-[#16162a] border border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-300 hover:bg-[#e94560] hover:text-white dark:hover:bg-[#e94560] dark:hover:text-white transition-all cursor-pointer"
+                      title="TikTok"
+                    >
+                      <TiktokIcon className="h-4.5 w-4.5" />
+                    </a>
+                  )}
 
-                {settings.socialSnapchat && (
-                  <a
-                    href={settings.socialSnapchat}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-55 dark:bg-[#16162a] border border-gray-200 dark:border-gray-850 text-gray-500 dark:text-gray-300 hover:bg-[#e94560] hover:text-white dark:hover:bg-[#e94560] dark:hover:text-white transition-all cursor-pointer"
-                    title="Snapchat"
-                  >
-                    <SnapchatIcon className="h-4.5 w-4.5" />
-                  </a>
-                )}
+                  {settings.socialSnapchat && (
+                    <a
+                      href={settings.socialSnapchat}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-100 dark:bg-[#16162a] border border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-300 hover:bg-[#e94560] hover:text-white dark:hover:bg-[#e94560] dark:hover:text-white transition-all cursor-pointer"
+                      title="Snapchat"
+                    >
+                      <SnapchatIcon className="h-4.5 w-4.5" />
+                    </a>
+                  )}
 
-                {settings.socialTwitter && (
-                  <a
-                    href={settings.socialTwitter}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-55 dark:bg-[#16162a] border border-gray-200 dark:border-gray-850 text-gray-500 dark:text-gray-300 hover:bg-[#e94560] hover:text-white dark:hover:bg-[#e94560] dark:hover:text-white transition-all cursor-pointer"
-                    title="Twitter (X)"
-                  >
-                    <TwitterIcon className="h-4.5 w-4.5" />
-                  </a>
-                )}
+                  {settings.socialTwitter && (
+                    <a
+                      href={settings.socialTwitter}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-100 dark:bg-[#16162a] border border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-300 hover:bg-[#e94560] hover:text-white dark:hover:bg-[#e94560] dark:hover:text-white transition-all cursor-pointer"
+                      title="Twitter (X)"
+                    >
+                      <TwitterIcon className="h-4.5 w-4.5" />
+                    </a>
+                  )}
 
-                {settings.socialYoutube && (
-                  <a
-                    href={settings.socialYoutube}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-55 dark:bg-[#16162a] border border-gray-200 dark:border-gray-850 text-gray-500 dark:text-gray-300 hover:bg-[#e94560] hover:text-white dark:hover:bg-[#e94560] dark:hover:text-white transition-all cursor-pointer"
-                    title="YouTube"
-                  >
-                    <YoutubeIcon className="h-4.5 w-4.5" />
-                  </a>
-                )}
+                  {settings.socialYoutube && (
+                    <a
+                      href={settings.socialYoutube}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-100 dark:bg-[#16162a] border border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-300 hover:bg-[#e94560] hover:text-white dark:hover:bg-[#e94560] dark:hover:text-white transition-all cursor-pointer"
+                      title="YouTube"
+                    >
+                      <YoutubeIcon className="h-4.5 w-4.5" />
+                    </a>
+                  )}
 
-                {settings.socialWhatsapp && (
-                  <a
-                    href={`https://wa.me/${settings.socialWhatsapp.replace(/\D/g, '')}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-55 dark:bg-[#16162a] border border-gray-200 dark:border-gray-850 text-gray-500 dark:text-gray-300 hover:bg-[#10b981] hover:text-white dark:hover:bg-[#10b981] dark:hover:text-white transition-all cursor-pointer"
-                    title="WhatsApp"
-                  >
-                    <WhatsAppIcon className="h-4.5 w-4.5" />
-                  </a>
-                )}
-              </div>
-            )}
-          </div>
+                  {settings.socialWhatsapp && (
+                    <a
+                      href={`https://wa.me/${settings.socialWhatsapp.replace(/\D/g, '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-100 dark:bg-[#16162a] border border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-300 hover:bg-[#10b981] hover:text-white dark:hover:bg-[#10b981] dark:hover:text-white transition-all cursor-pointer"
+                      title="WhatsApp"
+                    >
+                      <WhatsAppIcon className="h-4.5 w-4.5" />
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
         </div>
 
         {/* Footer Bottom (Divider & Copyright) */}
         <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">
-            &copy; {currentYear} {settings.storeName}. {settings.footerBottomText || 'All rights reserved.'}
+            {settings.footerBottomText ? settings.footerBottomText : `© ${currentYear} ${settings.storeName || 'Zaynahs E-Store'}. All rights reserved.`}
           </p>
-          {settings.enableTrustBadges && settings.safeCheckoutMethods && settings.safeCheckoutMethods.length > 0 && (
+          {showPayments && settings.enableTrustBadges && settings.safeCheckoutMethods && settings.safeCheckoutMethods.length > 0 && (
             <PaymentBadges methods={settings.safeCheckoutMethods} className="flex flex-wrap items-center gap-1.5 justify-end" />
           )}
         </div>

@@ -1,11 +1,12 @@
 import React from 'react';
 import Link from 'next/link';
-import { ShoppingBag, FolderOpen, ClipboardList, TrendingUp } from 'lucide-react';
+import { ShoppingBag, FolderOpen, ClipboardList, TrendingUp } from '@/components/common/Icons';
 import { getProducts } from '@/lib/services/products';
 import { getCategories } from '@/lib/services/categories';
 import { getOrders } from '@/lib/services/orders';
 import { getSettings } from '@/lib/services/settings';
 import { formatPrice } from '@/lib/utils/whatsapp';
+import ReportingDashboard from '@/components/admin/ReportingDashboard';
 
 export const revalidate = 0; // Dynamic server component
 
@@ -25,7 +26,7 @@ export default async function DashboardPage() {
     { label: 'Total Products', value: products.length, icon: ShoppingBag, color: 'bg-blue-500/10 text-blue-600', href: '/admin/products' },
     { label: 'Total Categories', value: categories.length, icon: FolderOpen, color: 'bg-amber-500/10 text-amber-600', href: '/admin/categories' },
     { label: 'Total Orders Logged', value: orders.length, icon: ClipboardList, color: 'bg-emerald-500/10 text-emerald-600', href: '/admin/orders' },
-    { label: 'Total Sales', value: formatPrice(totalSales, settings.currencySymbol), icon: TrendingUp, color: 'bg-indigo-500/10 text-indigo-600', href: '/admin/orders' },
+    { label: 'Total Sales (All Time)', value: formatPrice(totalSales, settings.currencySymbol), icon: TrendingUp, color: 'bg-indigo-500/10 text-indigo-600', href: '/admin/orders' },
   ];
 
   return (
@@ -54,6 +55,9 @@ export default async function DashboardPage() {
         })}
       </div>
 
+      {/* Financial Reporting Section (Shopify Style) */}
+      <ReportingDashboard orders={orders} settings={settings} isEmbed={true} />
+
       {/* Recent Orders log */}
       <div className="bg-white dark:bg-[#16162a] rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-6 space-y-4 text-gray-900 dark:text-white transition-colors">
         <div className="flex items-center justify-between">
@@ -69,8 +73,8 @@ export default async function DashboardPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-gray-700">
-              <thead className="text-xs font-bold text-gray-400 uppercase border-b border-gray-100">
+            <table className="w-full text-left text-sm text-gray-750 dark:text-gray-300">
+              <thead className="text-xs font-bold text-gray-400 uppercase border-b border-gray-100 dark:border-gray-800 bg-gray-50/20 dark:bg-white/5">
                 <tr>
                   <th className="py-3 px-4">Order No.</th>
                   <th className="py-3 px-4">Customer</th>
@@ -88,11 +92,11 @@ export default async function DashboardPage() {
                     <td className="py-3 px-4 text-xs font-medium text-gray-500 dark:text-gray-400">{order.customerPhone || 'N/A'}</td>
                     <td className="py-3 px-4 font-bold">{formatPrice(order.total, settings.currencySymbol)}</td>
                     <td className="py-3 px-4">
-                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-bold uppercase ${
-                        order.status === 'delivered' ? 'bg-emerald-50 text-emerald-600' :
-                        order.status === 'pending' ? 'bg-amber-50 text-amber-600' :
-                        order.status === 'cancelled' ? 'bg-red-50 text-red-600' :
-                        'bg-blue-50 text-blue-600'
+                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
+                        order.status === 'delivered' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
+                        order.status === 'pending' ? 'bg-amber-50 text-amber-600 border-amber-200' :
+                        order.status === 'cancelled' ? 'bg-red-50 text-red-600 border-red-200' :
+                        'bg-blue-50 text-blue-600 border-blue-200'
                       }`}>
                         {order.status}
                       </span>

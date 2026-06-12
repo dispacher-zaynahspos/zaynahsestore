@@ -17,6 +17,8 @@ interface DBProductImage {
   alt?: string | null;
   sort_order?: number | null;
   is_primary?: boolean | null;
+  size?: number | null;
+  mime_type?: string | null;
   created_at: string;
 }
 
@@ -93,6 +95,11 @@ interface DBProductRow {
   flash_sale_enabled?: boolean | null;
   flash_sale_start_date?: string | null;
   flash_sale_end_date?: string | null;
+  flash_sale_discount_type?: string | null;
+  flash_sale_discount_value?: number | string | null;
+  meta_sync_status?: string | null;
+  meta_sync_error?: string | null;
+  meta_last_synced_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -105,6 +112,8 @@ const mapProduct = (row: DBProductRow): Product => {
     alt: img.alt || undefined,
     sortOrder: img.sort_order || 0,
     isPrimary: img.is_primary ?? false,
+    size: img.size || undefined,
+    mimeType: img.mime_type || undefined,
     createdAt: img.created_at
   })).sort((a: ProductImage, b: ProductImage) => a.sortOrder - b.sortOrder);
 
@@ -185,15 +194,195 @@ const mapProduct = (row: DBProductRow): Product => {
     flashSaleEnabled: row.flash_sale_enabled ?? false,
     flashSaleStartDate: row.flash_sale_start_date || undefined,
     flashSaleEndDate: row.flash_sale_end_date || undefined,
+    flashSaleDiscountType: (row.flash_sale_discount_type as any) || 'fixed',
+    flashSaleDiscountValue: row.flash_sale_discount_value ? parseFloat(row.flash_sale_discount_value.toString()) : 0,
     tags: row.tags ?? [],
     images,
     variants,
     modifiers,
     rating: row.rating ? parseFloat(row.rating.toString()) : undefined,
     reviewsCount: row.reviews_count !== null && row.reviews_count !== undefined ? row.reviews_count : undefined,
+    meta_sync_status: row.meta_sync_status as any || 'pending',
+    meta_sync_error: row.meta_sync_error || undefined,
+    meta_last_synced_at: row.meta_last_synced_at || undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };
+};
+
+const applyFlashSaleDiscounts = async (products: Product[]): Promise<Product[]> => {
+  try {
+    const { data: sections, error } = await staticSupabase
+      .from('homepage_sections')
+      .select('*')
+      .eq('section_type', 'flash_sale')
+      .eq('active', true);
+    
+    const now = Date.now();
+    
+    // Check if any homepage flash sale section is active (including infinite if dates are empty)
+    const activeFlashSales = (sections || []).filter(sec => {
+      const startStr = sec.settings?.startTime;
+      const endStr = sec.settings?.endTime;
+      
+      if (!startStr && !endStr) {
+        return true;
+      }
+      
+      const start = startStr ? new Date(startStr).getTime() : 0;
+      const end = endStr ? new Date(endStr).getTime() : 0;
+      
+      const isStarted = !startStr || start <= now;
+      const isEnded = endStr && end < now;
+      return isStarted && !isEnded;
+    });
+
+    return products.map(product => {
+      // 1. Homepage manual products overrides (highest priority)
+      for (const fs of activeFlashSales) {
+        const fsProducts = fs.content_data?.products || [];
+        const fsProd = fsProducts.find((p: any) => p?.productId === product.id);
+        
+        if (fsProd) {
+          const basePrice = product.comparePrice || product.price;
+          const discountPrice = fsProd.discountValue ? parseFloat(fsProd.discountValue.toString()) : product.price;
+          
+          if (discountPrice < basePrice) {
+            const ratio = discountPrice / basePrice;
+            const updatedVariants = product.variants.map(v => {
+              if (v.price) {
+                const varBasePrice = v.comparePrice || (product.comparePrice ? Math.round(product.comparePrice * (v.price / product.price)) : v.price);
+                const newVarPrice = Math.round(varBasePrice * ratio);
+                return {
+                  ...v,
+                  price: newVarPrice,
+                  comparePrice: varBasePrice
+                };
+              }
+              return v;
+            });
+
+            return {
+              ...product,
+              price: discountPrice,
+              comparePrice: basePrice,
+              variants: updatedVariants,
+              flashSaleEnabled: true,
+              flashSaleEndDate: fs.settings?.endTime || undefined,
+              flashSaleStartDate: fs.settings?.startTime || undefined
+            };
+          }
+        }
+      }
+
+      // 2. Product-level Sale Settings (medium priority)
+      if (product.flashSaleEnabled) {
+        const pStartStr = product.flashSaleStartDate;
+        const pEndStr = product.flashSaleEndDate;
+        
+        // Active if infinite (no dates selected) or inside selected timeframe
+        const isStarted = !pStartStr || new Date(pStartStr).getTime() <= now;
+        const isEnded = pEndStr && new Date(pEndStr).getTime() < now;
+        
+        if (isStarted && !isEnded) {
+          const discountType = product.flashSaleDiscountType || 'fixed';
+          const discountVal = product.flashSaleDiscountValue || 0;
+          
+          const basePrice = product.comparePrice || product.price;
+          let discountPrice = product.price;
+
+          if (discountType === 'percentage') {
+            discountPrice = Math.round(basePrice * (1 - discountVal / 100));
+          } else if (discountType === 'fixed') {
+            discountPrice = Math.max(0, basePrice - discountVal);
+          }
+
+          if (discountPrice < basePrice) {
+            const updatedVariants = product.variants.map(v => {
+              if (v.price) {
+                const varBasePrice = v.comparePrice || (product.comparePrice ? Math.round(product.comparePrice * (v.price / product.price)) : v.price);
+                let varDiscountPrice = v.price;
+                if (discountType === 'percentage') {
+                  varDiscountPrice = Math.round(varBasePrice * (1 - discountVal / 100));
+                } else if (discountType === 'fixed') {
+                  varDiscountPrice = Math.max(0, varBasePrice - discountVal);
+                }
+                return {
+                  ...v,
+                  price: varDiscountPrice,
+                  comparePrice: varBasePrice
+                };
+              }
+              return v;
+            });
+
+            return {
+              ...product,
+              price: discountPrice,
+              comparePrice: basePrice,
+              variants: updatedVariants,
+              flashSaleEnabled: true,
+              flashSaleEndDate: product.flashSaleEndDate || undefined,
+              flashSaleStartDate: product.flashSaleStartDate || undefined
+            };
+          }
+        }
+      }
+
+      // 3. Homepage Category Discounts (lowest priority)
+      for (const fs of activeFlashSales) {
+        const categoryDiscounts = fs.content_data?.categoryDiscounts || [];
+        const fsCat = categoryDiscounts.find((c: any) => c?.categoryId === product.categoryId);
+
+        if (fsCat) {
+          const basePrice = product.comparePrice || product.price;
+          const discountVal = parseFloat(fsCat.discountValue) || 0;
+          let discountPrice = product.price;
+
+          if (fsCat.discountType === 'percentage') {
+            discountPrice = Math.round(basePrice * (1 - discountVal / 100));
+          } else if (fsCat.discountType === 'fixed') {
+            discountPrice = Math.max(0, basePrice - discountVal);
+          }
+
+          if (discountPrice < basePrice) {
+            const updatedVariants = product.variants.map(v => {
+              if (v.price) {
+                const varBasePrice = v.comparePrice || (product.comparePrice ? Math.round(product.comparePrice * (v.price / product.price)) : v.price);
+                let varDiscountPrice = v.price;
+                if (fsCat.discountType === 'percentage') {
+                  varDiscountPrice = Math.round(varBasePrice * (1 - discountVal / 100));
+                } else if (fsCat.discountType === 'fixed') {
+                  varDiscountPrice = Math.max(0, varBasePrice - discountVal);
+                }
+                return {
+                  ...v,
+                  price: varDiscountPrice,
+                  comparePrice: varBasePrice
+                };
+              }
+              return v;
+            });
+
+            return {
+              ...product,
+              price: discountPrice,
+              comparePrice: basePrice,
+              variants: updatedVariants,
+              flashSaleEnabled: true,
+              flashSaleEndDate: fs.settings?.endTime || undefined,
+              flashSaleStartDate: fs.settings?.startTime || undefined
+            };
+          }
+        }
+      }
+
+      return product;
+    });
+  } catch (err) {
+    console.error('Error applying flash sale discounts:', err);
+    return products;
+  }
 };
 
 const fetchProducts = async (categoryId?: string): Promise<Product[]> => {
@@ -211,7 +400,8 @@ const fetchProducts = async (categoryId?: string): Promise<Product[]> => {
     .order('created_at', { ascending: false });
 
   if (error) throw error;
-  return (data ?? []).map(mapProduct);
+  const products = (data ?? []).map(mapProduct);
+  return applyFlashSaleDiscounts(products);
 };
 
 const cachedProducts = unstable_cache(
@@ -236,14 +426,17 @@ const fetchProductBySlug = async (slug: string): Promise<Product | null> => {
     .maybeSingle();
 
   if (error) throw error;
-  return data ? mapProduct(data) : null;
+  if (!data) return null;
+  const product = mapProduct(data);
+  const discounted = await applyFlashSaleDiscounts([product]);
+  return discounted[0] || null;
 };
 
-const cachedProductBySlug = unstable_cache(
-  async (slug: string) => fetchProductBySlug(slug),
-  ['product-by-slug'],
-  { revalidate: 3600, tags: ['products'] }
-);
+const cachedProductBySlug = (slug: string) => unstable_cache(
+  async () => fetchProductBySlug(slug),
+  [`product-by-slug-${slug}`],
+  { revalidate: 3600, tags: [`product-${slug}`, 'products'] }
+)();
 
 export const getProductBySlug = async (slug: string) => {
   if (process.env.NODE_ENV === 'development') {
@@ -428,6 +621,8 @@ export const updateProduct = async (
     if (product.flashSaleEnabled !== undefined) updatePayload.flash_sale_enabled = product.flashSaleEnabled;
     if (product.flashSaleStartDate !== undefined) updatePayload.flash_sale_start_date = product.flashSaleStartDate || null;
     if (product.flashSaleEndDate !== undefined) updatePayload.flash_sale_end_date = product.flashSaleEndDate || null;
+    if (product.flashSaleDiscountType !== undefined) updatePayload.flash_sale_discount_type = product.flashSaleDiscountType;
+    if (product.flashSaleDiscountValue !== undefined) updatePayload.flash_sale_discount_value = product.flashSaleDiscountValue;
     if (product.tags !== undefined) updatePayload.tags = product.tags;
     if (product.rating !== undefined) updatePayload.rating = product.rating;
     if (product.reviewsCount !== undefined) updatePayload.reviews_count = product.reviewsCount;
@@ -515,6 +710,55 @@ export const updateProduct = async (
     return updatedProduct;
   } catch (error) {
     console.error('[products] updateProduct failed:', error);
+    throw error;
+  }
+};
+
+export const updateProductFields = async (
+  id: string,
+  fields: Partial<Product>
+): Promise<void> => {
+  try {
+    const supabase = await createClient();
+    const updatePayload: Record<string, any> = {};
+    if (fields.name !== undefined) updatePayload.name = fields.name;
+    if (fields.slug !== undefined) updatePayload.slug = fields.slug;
+    if (fields.description !== undefined) updatePayload.description = fields.description;
+    if (fields.shortDescription !== undefined) updatePayload.short_description = fields.shortDescription;
+    if (fields.price !== undefined) updatePayload.price = fields.price;
+    if (fields.comparePrice !== undefined) updatePayload.compare_price = fields.comparePrice;
+    if (fields.cost !== undefined) updatePayload.cost = fields.cost;
+    if (fields.sku !== undefined) updatePayload.sku = fields.sku;
+    if (fields.categoryId !== undefined) updatePayload.category_id = fields.categoryId;
+    if (fields.stock !== undefined) updatePayload.stock = fields.stock;
+    if (fields.hasVariants !== undefined) updatePayload.has_variants = fields.hasVariants;
+    if (fields.isService !== undefined) updatePayload.is_service = fields.isService;
+    if (fields.isFeatured !== undefined) updatePayload.is_featured = fields.isFeatured;
+    if (fields.active !== undefined) updatePayload.active = fields.active;
+    if (fields.enableSwatches !== undefined) updatePayload.enable_swatches = fields.enableSwatches;
+    if (fields.showSwatchesOnArchive !== undefined) updatePayload.show_swatches_on_archive = fields.showSwatchesOnArchive;
+    if (fields.customBadgeId !== undefined) updatePayload.custom_badge_id = fields.customBadgeId || null;
+    if (fields.badgeEnabled !== undefined) updatePayload.badge_enabled = fields.badgeEnabled;
+    if (fields.sizeGuideId !== undefined) updatePayload.size_guide_id = fields.sizeGuideId || null;
+    if (fields.frequentlyBoughtTogetherIds !== undefined) updatePayload.frequently_bought_together_ids = fields.frequentlyBoughtTogetherIds;
+    if (fields.flashSaleEnabled !== undefined) updatePayload.flash_sale_enabled = fields.flashSaleEnabled;
+    if (fields.flashSaleStartDate !== undefined) updatePayload.flash_sale_start_date = fields.flashSaleStartDate || null;
+    if (fields.flashSaleEndDate !== undefined) updatePayload.flash_sale_end_date = fields.flashSaleEndDate || null;
+    if (fields.flashSaleDiscountType !== undefined) updatePayload.flash_sale_discount_type = fields.flashSaleDiscountType;
+    if (fields.flashSaleDiscountValue !== undefined) updatePayload.flash_sale_discount_value = fields.flashSaleDiscountValue;
+    if (fields.tags !== undefined) updatePayload.tags = fields.tags;
+    if (fields.rating !== undefined) updatePayload.rating = fields.rating;
+    if (fields.reviewsCount !== undefined) updatePayload.reviews_count = fields.reviewsCount;
+
+    const { error } = await supabase
+      .from('products')
+      .update(updatePayload)
+      .eq('id', id);
+
+    if (error) throw error;
+    revalidateTag('products', 'max');
+  } catch (error) {
+    console.error('[products] updateProductFields failed:', error);
     throw error;
   }
 };

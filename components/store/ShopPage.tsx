@@ -11,6 +11,7 @@ import EmptyState from '../common/EmptyState';
 import { formatPrice } from '@/lib/utils/whatsapp';
 import { useCartStore } from '@/store/cartStore';
 import { toast } from 'sonner';
+import { trackEvent } from '@/lib/trackEvent';
 
 interface ShopPageProps {
   initialProducts: Product[];
@@ -75,8 +76,8 @@ function ShopProductListCard({ product, settings, addItem }: ShopProductListCard
         {/* Badge */}
         <div className="absolute top-2 left-2 flex flex-col gap-1 z-10">
           {initialComparePrice && initialComparePrice > initialPrice && (
-            <span className="rounded-md bg-[#e94560] px-2 py-0.5 text-[9px] font-extrabold text-white tracking-wide shadow-sm">
-              SALE
+            <span className="rounded-md bg-[#e94560] px-2 py-0.5 text-[9px] font-extrabold text-white tracking-wide shadow-sm animate-none">
+              -{Math.round(((initialComparePrice - initialPrice) / initialComparePrice) * 100)}%
             </span>
           )}
           {product.isFeatured && (
@@ -231,6 +232,11 @@ export default function ShopPage({
 
   useEffect(() => {
     setSearchQuery(urlSearchQuery);
+    if (urlSearchQuery) {
+      trackEvent('Search', {
+        search_string: urlSearchQuery
+      });
+    }
   }, [urlSearchQuery]);
 
   // Sync URL parameters when category or search changes

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Upload, Trash2, Image as ImageIcon, Loader2, Plus, Search, Zap } from 'lucide-react';
+import { Upload, Trash2, Image as ImageIcon, Loader2, Plus, Search, Zap } from '@/components/common/Icons';
 import { Product, StoreSettings } from '@/lib/types';
 import MediaSelectorModal from '../MediaSelectorModal';
 
@@ -49,7 +49,6 @@ interface PremiumTabProps {
   setExitIntentImageUrl: (v: string) => void;
   exitIntentDelayMobile: number;
   setExitIntentDelayMobile: (v: number) => void;
-  uploadingExitIntent: boolean;
 
   // Cookie Consent Banner
   cookieConsentText: string;
@@ -124,11 +123,26 @@ interface PremiumTabProps {
   uploadingFeedImage: boolean;
 
   // Image Upload Handlers
-  handleFileUpload: (e: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'favicon' | 'banner' | 'exit_intent' | 'size_chart') => void;
   handleRemoveImage: (type: 'logo' | 'favicon' | 'banner' | 'exit_intent' | 'size_chart') => void;
-  handleUploadSocialFeedImage: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleAddSocialFeedItem: () => void;
   handleDeleteSocialFeedItem: (id: string) => void;
+
+  // Announcement Bar properties
+  headerShowNewsletter: boolean;
+  setHeaderShowNewsletter: (v: boolean) => void;
+  headerNewsletterText: string;
+  setHeaderNewsletterText: (v: string) => void;
+  headerShowTopBar: boolean;
+  setHeaderShowTopBar: (v: boolean) => void;
+  headerTopBarPhone: string;
+  setHeaderTopBarPhone: (v: string) => void;
+  headerTopBarEmail: string;
+  setHeaderTopBarEmail: (v: string) => void;
+
+  enableTicker: boolean;
+  setEnableTicker: (v: boolean) => void;
+  tickerText: string;
+  setTickerText: (v: string) => void;
 }
 
 export default function PremiumTab({
@@ -171,7 +185,6 @@ export default function PremiumTab({
   setExitIntentImageUrl,
   exitIntentDelayMobile,
   setExitIntentDelayMobile,
-  uploadingExitIntent,
   cookieConsentText,
   setCookieConsentText,
   cookieConsentButtonText,
@@ -232,13 +245,28 @@ export default function PremiumTab({
   tempFeedCaption,
   setTempFeedCaption,
   uploadingFeedImage,
-  handleFileUpload,
   handleRemoveImage,
-  handleUploadSocialFeedImage,
   handleAddSocialFeedItem,
-  handleDeleteSocialFeedItem
+  handleDeleteSocialFeedItem,
+  
+  headerShowNewsletter,
+  setHeaderShowNewsletter,
+  headerNewsletterText,
+  setHeaderNewsletterText,
+  headerShowTopBar,
+  setHeaderShowTopBar,
+  headerTopBarPhone,
+  setHeaderTopBarPhone,
+  headerTopBarEmail,
+  setHeaderTopBarEmail,
+
+  enableTicker,
+  setEnableTicker,
+  tickerText,
+  setTickerText
 }: PremiumTabProps) {
   const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
+  const [selectingType, setSelectingType] = useState<'exit_intent' | 'social_feed' | null>(null);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -394,6 +422,117 @@ export default function PremiumTab({
         <p className="text-[10px] text-gray-500 mt-1">Configure when the flash sale begins and ends. When active, it automatically shows a countdown timer to customers.</p>
       </div>
 
+      {/* Header Announcement & News Bar */}
+      <div className="bg-white dark:bg-[#16162a] border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm space-y-4 col-span-1 md:col-span-2">
+        <h3 className="text-sm font-extrabold text-[#e94560] uppercase tracking-wider">📢 Header Announcement News Bar</h3>
+        <p className="text-xs text-gray-500 dark:text-gray-400">Configure global news bar lines and store contacts displayed at the top of the header.</p>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+          {/* Left Sub-card: Marketing News */}
+          <div className="space-y-4 p-4 rounded-xl border border-gray-100 dark:border-gray-850 bg-gray-50/50 dark:bg-white/5">
+            <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-800">
+              <span className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider">Marketing Announcement Slider</span>
+              <label className="relative inline-flex items-center cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={headerShowNewsletter}
+                  onChange={(e) => setHeaderShowNewsletter(e.target.checked)}
+                  className="rounded border-gray-300 text-[#e94560] focus:ring-[#e94560] h-4 w-4"
+                />
+              </label>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block">Announcement Line Items (One per line)</label>
+              <textarea
+                value={headerNewsletterText}
+                onChange={(e) => setHeaderNewsletterText(e.target.value)}
+                disabled={!headerShowNewsletter}
+                rows={4}
+                className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#0f0f1b] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#e94560] disabled:opacity-50"
+                placeholder="Summer sale discount off 50%. Shop Sale&#10;Free shipping on orders above Rs. 2,000"
+              />
+              <span className="text-[10px] text-gray-400">Add multiple lines to automatically rotate them at the top of the storefront.</span>
+            </div>
+          </div>
+
+          {/* Right Sub-card: Contacts top-bar */}
+          <div className="space-y-4 p-4 rounded-xl border border-gray-100 dark:border-gray-850 bg-gray-50/50 dark:bg-white/5">
+            <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-800">
+              <span className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider">Store Contacts Topbar</span>
+              <label className="relative inline-flex items-center cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={headerShowTopBar}
+                  onChange={(e) => setHeaderShowTopBar(e.target.checked)}
+                  className="rounded border-gray-300 text-[#e94560] focus:ring-[#e94560] h-4 w-4"
+                />
+              </label>
+            </div>
+
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-gray-500 uppercase block">Topbar Phone Number</label>
+                <input
+                  type="text"
+                  value={headerTopBarPhone}
+                  onChange={(e) => setHeaderTopBarPhone(e.target.value)}
+                  disabled={!headerShowTopBar}
+                  className="w-full px-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#16162a] text-gray-900 dark:text-white focus:outline-none disabled:opacity-50"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-gray-500 uppercase block">Topbar Email Address</label>
+                <input
+                  type="text"
+                  value={headerTopBarEmail}
+                  onChange={(e) => setHeaderTopBarEmail(e.target.value)}
+                  disabled={!headerShowTopBar}
+                  className="w-full px-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#16162a] text-gray-900 dark:text-white focus:outline-none disabled:opacity-50"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Scrolling Announcement Ticker */}
+      <div className="bg-white dark:bg-[#16162a] border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm space-y-4">
+        <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800/80 pb-3">
+          <div>
+            <h3 className="text-sm font-extrabold text-[#e94560] uppercase tracking-wider">Scrolling Announcement Ticker</h3>
+            <span className="text-[10px] text-gray-400 dark:text-gray-500 font-semibold block mt-0.5">Show an infinite scrolling ticker banner on storefront</span>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={enableTicker}
+              onChange={(e) => setEnableTicker(e.target.checked)}
+              className="sr-only peer"
+            />
+            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#e94560]" />
+          </label>
+        </div>
+
+        {enableTicker && (
+          <div className="space-y-3 pt-1 animate-fade-in">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-gray-500 uppercase block">Ticker Text lines (one per line)</label>
+              <textarea
+                value={tickerText}
+                onChange={(e) => setTickerText(e.target.value)}
+                rows={4}
+                placeholder="Free returns within 30 days&#10;Unlimited delivery for only Rs. 175"
+                className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-[#0f0f1b]/50 px-3 py-2 text-xs font-semibold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white resize-none"
+              />
+              <p className="text-[10px] text-gray-400 dark:text-gray-500 font-semibold leading-relaxed">
+                Write one announcement per line. They will scroll in a continuous loop separated by star glyphs.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Cart Timer Settings */}
       <div className="bg-white dark:bg-[#16162a] border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm space-y-4">
         <h3 className="text-sm font-extrabold text-[#e94560] uppercase tracking-wider">Exit Intent Popup (WhatsApp)</h3>
@@ -456,26 +595,17 @@ export default function PremiumTab({
             )}
             <div className="flex-1 flex flex-col gap-2 w-full">
               <div className="flex items-center gap-2">
-                <label className="relative flex items-center gap-2 px-3 py-1.5 bg-gray-150 hover:bg-gray-200 dark:bg-white/5 dark:hover:bg-white/10 text-gray-750 dark:text-gray-300 text-xs font-bold rounded-lg cursor-pointer transition-colors">
-                  {uploadingExitIntent ? (
-                    <>
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      <span>Uploading...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="h-3 w-3" />
-                      <span>Upload Image</span>
-                    </>
-                  )}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleFileUpload(e, 'exit_intent')}
-                    disabled={uploadingExitIntent}
-                    className="hidden"
-                  />
-                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectingType('exit_intent');
+                    setIsMediaModalOpen(true);
+                  }}
+                  className="relative flex items-center gap-2 px-3 py-1.5 bg-gray-150 hover:bg-gray-200 dark:bg-white/5 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 text-xs font-bold rounded-lg cursor-pointer transition-colors"
+                >
+                  <ImageIcon className="h-3 w-3" />
+                  <span>Select Media</span>
+                </button>
                 <span className="text-[10px] text-gray-400">or paste URL below</span>
               </div>
               <input
@@ -503,6 +633,65 @@ export default function PremiumTab({
             className="w-full h-2 bg-gray-200 dark:bg-gray-800 rounded-lg appearance-none cursor-pointer accent-[#e94560]"
           />
         </div>
+        
+        {/* Live Preview Container */}
+        {exitIntentEnabled && (
+          <div className="mt-6 pt-6 border-t border-gray-150 dark:border-gray-800 space-y-3">
+            <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider block">Live Preview Mockup</span>
+            <div className="p-5 bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-gray-200 dark:border-gray-800 flex flex-col items-center text-center relative max-w-sm mx-auto shadow-sm">
+              {/* Close Button mockup */}
+              <div className="absolute top-3 right-3 text-gray-400 dark:text-gray-600">
+                <span className="text-lg font-bold">×</span>
+              </div>
+              
+              {exitIntentImageUrl ? (
+                <div className="w-full h-24 mb-3 rounded-xl overflow-hidden bg-white dark:bg-[#16162a] border border-gray-150 dark:border-gray-850 flex-shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={exitIntentImageUrl} alt="Preview banner" className="object-contain w-full h-full" />
+                </div>
+              ) : (
+                <div className="w-10 h-10 bg-amber-50 dark:bg-amber-950/40 rounded-full flex items-center justify-center mb-3">
+                  <span className="text-amber-500 font-bold">🏷️</span>
+                </div>
+              )}
+              
+              <h4 className="text-sm font-bold text-gray-900 dark:text-white font-serif max-w-[90%] truncate">
+                {exitIntentTitle || 'Claim Your Discount!'}
+              </h4>
+              <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1 max-w-[90%] line-clamp-2">
+                {exitIntentText || 'Subscribe to get your coupon code.'}
+              </p>
+              
+              <div className="w-full space-y-1.5 mt-4">
+                <input
+                  type="text"
+                  placeholder="Your Name (Optional)"
+                  disabled
+                  className="w-full px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#16162a] text-[10px] text-gray-400 focus:outline-none"
+                />
+                <input
+                  type="email"
+                  placeholder="Email Address (Optional)"
+                  disabled
+                  className="w-full px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#16162a] text-[10px] text-gray-400 focus:outline-none"
+                />
+                <input
+                  type="tel"
+                  placeholder="WhatsApp Number"
+                  disabled
+                  className="w-full px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#16162a] text-[10px] text-gray-400 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  disabled
+                  className="w-full py-1.5 bg-[#1a1a2e] dark:bg-amber-600 text-white font-semibold rounded-lg text-[10px] shadow-sm opacity-90 cursor-not-allowed"
+                >
+                  Claim Coupon Now
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Cookie Consent Banner Config */}
@@ -560,6 +749,92 @@ export default function PremiumTab({
             className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#0f0f1b] text-gray-955 dark:text-gray-50 focus:outline-none focus:ring-2 focus:ring-[#e94560]"
           />
         </div>
+
+        {/* Live Preview Container */}
+        {spinWheelEnabled && (
+          <div className="mt-6 pt-6 border-t border-gray-150 dark:border-gray-800 space-y-3">
+            <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider block">Live Preview Mockup</span>
+            <div className="p-5 bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-gray-200 dark:border-gray-800 flex flex-col items-center text-center relative max-w-sm mx-auto shadow-sm space-y-4">
+              {/* Pointer indicator */}
+              <div className="relative flex justify-center">
+                <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 z-10 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] border-t-amber-500 drop-shadow" />
+                <svg viewBox="0 0 200 200" className="w-32 h-32 drop-shadow-md">
+                  {spinWheelSegments.map((seg, idx) => {
+                    const num = spinWheelSegments.length || 6;
+                    const startAngle = (idx * 360) / num - 90;
+                    const endAngle = ((idx + 1) * 360) / num - 90;
+                    const startRad = (startAngle * Math.PI) / 180;
+                    const endRad = (endAngle * Math.PI) / 180;
+                    const radius = 90;
+                    const cx = 100;
+                    const cy = 100;
+                    const x1 = cx + radius * Math.cos(startRad);
+                    const y1 = cy + radius * Math.sin(startRad);
+                    const x2 = cx + radius * Math.cos(endRad);
+                    const y2 = cy + radius * Math.sin(endRad);
+                    
+                    const largeArcFlag = 360 / num > 180 ? 1 : 0;
+                    const d = `M ${cx} ${cy} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2} Z`;
+                    const fill = idx % 2 === 0 ? '#1a1a2e' : '#e94560';
+                    
+                    const textAngle = startAngle + (360 / num) / 2;
+                    const textRad = (textAngle * Math.PI) / 180;
+                    const tx = cx + (radius * 0.65) * Math.cos(textRad);
+                    const ty = cy + (radius * 0.65) * Math.sin(textRad);
+                    
+                    return (
+                      <g key={idx}>
+                        <path d={d} fill={fill} stroke="#ffffff" strokeWidth="1" />
+                        <text
+                          x={tx}
+                          y={ty}
+                          fill="#ffffff"
+                          fontSize="7"
+                          fontWeight="bold"
+                          textAnchor="middle"
+                          dominantBaseline="middle"
+                          transform={`rotate(${textAngle + (textAngle > 90 && textAngle < 270 ? 180 : 0)}, ${tx}, ${ty})`}
+                        >
+                          {seg.length > 8 ? seg.slice(0, 7) + '..' : seg}
+                        </text>
+                      </g>
+                    );
+                  })}
+                  <circle cx="100" cy="100" r="10" fill="#ffffff" stroke="#d97706" strokeWidth="1.5" />
+                  <circle cx="100" cy="100" r="90" fill="none" stroke="#d97706" strokeWidth="3" />
+                </svg>
+              </div>
+
+              <div className="w-full space-y-1.5">
+                <input
+                  type="text"
+                  placeholder="Your Name (Optional)"
+                  disabled
+                  className="w-full px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#16162a] text-[10px] text-gray-400 focus:outline-none"
+                />
+                <input
+                  type="email"
+                  placeholder="Email Address (Optional)"
+                  disabled
+                  className="w-full px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#16162a] text-[10px] text-gray-400 focus:outline-none"
+                />
+                <input
+                  type="tel"
+                  placeholder="WhatsApp Number"
+                  disabled
+                  className="w-full px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#16162a] text-[10px] text-gray-400 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  disabled
+                  className="w-full py-1.5 bg-[#e94560] text-white font-semibold rounded-lg text-[10px] shadow-sm opacity-90 cursor-not-allowed"
+                >
+                  Spin the Wheel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Urgency & Shipping Thresholds */}
@@ -911,10 +1186,13 @@ export default function PremiumTab({
                 ) : (
                   <button
                     type="button"
-                    onClick={() => setIsMediaModalOpen(true)}
-                    className="flex flex-col items-center justify-center w-16 h-16 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700 hover:border-[#e94560] cursor-pointer transition-colors bg-white dark:bg-[#16162a]"
+                    onClick={() => {
+                      setSelectingType('social_feed');
+                      setIsMediaModalOpen(true);
+                    }}
+                    className="flex flex-col items-center justify-center w-16 h-16 rounded-lg border border-dashed border-gray-300 dark:border-gray-700 hover:border-[#e94560] cursor-pointer transition-colors bg-white dark:bg-[#16162a]"
                   >
-                    <Search className="h-4 w-4 text-gray-400" />
+                    <ImageIcon className="h-6 w-6 text-gray-400" />
                   </button>
                 )}
                 <span className="text-[10px] text-gray-400">Select an existing image or upload a new one.</span>
@@ -997,13 +1275,22 @@ export default function PremiumTab({
       </div>
       <MediaSelectorModal
         isOpen={isMediaModalOpen}
-        onClose={() => setIsMediaModalOpen(false)}
+        onClose={() => {
+          setIsMediaModalOpen(false);
+          setSelectingType(null);
+        }}
         onSelect={(urls) => {
           if (urls.length > 0) {
-            setTempFeedImageUrl(urls[0]);
+            if (selectingType === 'exit_intent') {
+              setExitIntentImageUrl(urls[0]);
+            } else if (selectingType === 'social_feed') {
+              setTempFeedImageUrl(urls[0]);
+            }
           }
           setIsMediaModalOpen(false);
+          setSelectingType(null);
         }}
+        multiple={false}
       />
     </div>
   );

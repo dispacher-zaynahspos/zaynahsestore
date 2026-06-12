@@ -108,7 +108,28 @@ export const submitReview = async (review: {
     revalidateTag('reviews', 'max');
     revalidateTag('products', 'max');
     
-    return mapReview(data);
+    const savedReview = mapReview(data);
+
+    // Asynchronously fetch product details and trigger admin email alert
+    import('@/lib/services/products').then(({ getProductById }) => {
+      getProductById(review.productId).then(product => {
+        if (product) {
+          import('@/lib/email/triggers').then(({ onNewReview }) => {
+            onNewReview(savedReview, product).catch(err => {
+              console.error('[Email Trigger] failed in submitReview:', err);
+            });
+          }).catch(err => {
+            console.error('[Email Trigger] dynamic triggers import failed in submitReview:', err);
+          });
+        }
+      }).catch(err => {
+        console.error('[Email Trigger] getProductById failed in submitReview:', err);
+      });
+    }).catch(err => {
+      console.error('[Email Trigger] dynamic products service import failed in submitReview:', err);
+    });
+    
+    return savedReview;
   } catch (error) {
     console.error('[reviews] submitReview failed:', error);
     throw error;

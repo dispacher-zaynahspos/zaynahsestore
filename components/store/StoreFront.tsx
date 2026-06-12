@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import useEmblaCarousel from 'embla-carousel-react';
+import Autoplay from 'embla-carousel-autoplay';
 import { Product, Category, StoreSettings, Review, HomepageSection } from '@/lib/types';
 import CategoryFilter from './CategoryFilter';
 import ProductGrid from './ProductGrid';
@@ -19,6 +21,864 @@ interface StoreFrontProps {
   settings: StoreSettings;
   reviews?: (Review & { productName?: string; productSlug?: string })[];
   sections?: HomepageSection[];
+  isPreview?: boolean;
+}
+
+interface FlashSaleSectionProps {
+  section: HomepageSection;
+  products: Product[];
+  currencySymbol: string;
+  settings: StoreSettings;
+}
+
+function FlashSaleSection({ section, products, currencySymbol, settings }: FlashSaleSectionProps) {
+  const startTimeStr = section.settings?.startTime;
+  const endTimeStr = section.settings?.endTime;
+
+  const [timeLeft, setTimeLeft] = useState({ hours: 0, minutes: 0, seconds: 0, expired: true, isIncoming: false, isInfinite: false });
+
+  useEffect(() => {
+    if (!startTimeStr && !endTimeStr) {
+      setTimeLeft({ hours: 0, minutes: 0, seconds: 0, expired: false, isIncoming: false, isInfinite: true });
+      return;
+    }
+
+    const updateTime = () => {
+      const now = Date.now();
+      const start = startTimeStr ? new Date(startTimeStr).getTime() : 0;
+      const end = endTimeStr ? new Date(endTimeStr).getTime() : 0;
+
+      const isStarted = !startTimeStr || start <= now;
+      const isEnded = endTimeStr && end < now;
+
+      if (!isStarted) {
+        const diff = start - now;
+        if (diff <= 0) {
+          setTimeLeft({ hours: 0, minutes: 0, seconds: 0, expired: false, isIncoming: false, isInfinite: false });
+        } else {
+          const hours = Math.floor(diff / (1000 * 60 * 60));
+          const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+          const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+          setTimeLeft({ hours, minutes, seconds, expired: false, isIncoming: true, isInfinite: false });
+        }
+      } else if (isStarted && !isEnded) {
+        let targetTime = end;
+        if (!endTimeStr) {
+          const midnight = new Date();
+          midnight.setHours(23, 59, 59, 999);
+          targetTime = midnight.getTime();
+        }
+        
+        const diff = targetTime - now;
+        if (diff <= 0) {
+          setTimeLeft({ hours: 0, minutes: 0, seconds: 0, expired: true, isIncoming: false, isInfinite: false });
+        } else {
+          const hours = Math.floor(diff / (1000 * 60 * 60));
+          const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+          const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+          setTimeLeft({ hours, minutes, seconds, expired: false, isIncoming: false, isInfinite: false });
+        }
+      } else {
+        setTimeLeft({ hours: 0, minutes: 0, seconds: 0, expired: true, isIncoming: false, isInfinite: false });
+      }
+    };
+
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, [startTimeStr, endTimeStr]);
+
+  if (timeLeft.expired) return null;
+
+  const fsProducts = section.content_data?.products || [];
+  const categoryDiscounts = section.content_data?.categoryDiscounts || [];
+  const displayProducts = products
+    .filter(p => 
+      fsProducts.some((fsp: any) => fsp.productId === p.id) ||
+      categoryDiscounts.some((cd: any) => cd.categoryId === p.categoryId)
+    )
+    .sort((a, b) => {
+      const idxA = fsProducts.findIndex((fsp: any) => fsp.productId === a.id);
+      const idxB = fsProducts.findIndex((fsp: any) => fsp.productId === b.id);
+      if (idxA !== -1 && idxB !== -1) {
+        return idxA - idxB;
+      }
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return (b.createdAt || '').localeCompare(a.createdAt || '');
+    });
+
+  if (displayProducts.length === 0) return null;
+
+  const viewAllLink = section.settings?.viewAllUrl || '/shop';
+  const viewAllText = section.settings?.viewAllText || 'View All';
+
+  return (
+    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 bg-[#1a1a2e]/5 dark:bg-[#16162a]/30 rounded-3xl border border-gray-200 dark:border-gray-800 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-gray-200 dark:border-gray-800 pb-4 mb-6 gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${timeLeft.isIncoming ? 'bg-amber-400' : 'bg-red-400'}`}></span>
+              <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${timeLeft.isIncoming ? 'bg-amber-500' : 'bg-red-500'}`}></span>
+            </span>
+            <h2 className="text-lg font-black uppercase tracking-wider text-gray-900 dark:text-white">
+              {section.title || 'Flash Sale'}
+            </h2>
+          </div>
+          <p className="text-xs text-gray-500 font-semibold">
+            {timeLeft.isIncoming ? 'Sale starts in:' : 'Special discounted prices for a limited time!'}
+          </p>
+        </div>
+
+        {!timeLeft.isInfinite ? (
+          <div className="flex items-center gap-1.5 self-start sm:self-center">
+            <div className="flex flex-col items-center justify-center bg-white dark:bg-gray-800 font-extrabold w-11 py-1 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 text-gray-900 dark:text-white">
+              <span className="text-xs font-mono">{String(timeLeft.hours).padStart(2, '0')}</span>
+              <span className="text-[7px] text-gray-400 font-normal">HRS</span>
+            </div>
+            <span className="font-extrabold text-gray-400">:</span>
+            <div className="flex flex-col items-center justify-center bg-white dark:bg-gray-800 font-extrabold w-11 py-1 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 text-gray-900 dark:text-white">
+              <span className="text-xs font-mono">{String(timeLeft.minutes).padStart(2, '0')}</span>
+              <span className="text-[7px] text-gray-400 font-normal">MIN</span>
+            </div>
+            <span className="font-extrabold text-gray-400">:</span>
+            <div className="flex flex-col items-center justify-center bg-white dark:bg-gray-800 font-extrabold w-11 py-1 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 text-gray-900 dark:text-white">
+              <span className="text-xs font-mono">{String(timeLeft.seconds).padStart(2, '0')}</span>
+              <span className="text-[7px] text-gray-400 font-normal">SEC</span>
+            </div>
+
+            <Link href={viewAllLink} className="ml-4 text-xs font-bold text-[#e94560] hover:underline uppercase tracking-wider">
+              {viewAllText}
+            </Link>
+          </div>
+        ) : (
+          <div className="flex items-center gap-4 self-start sm:self-center">
+            <span className="text-xs font-extrabold text-rose-500 bg-rose-50 dark:bg-rose-950/20 px-3 py-1 rounded-full uppercase tracking-wider">
+              Special Discount Active
+            </span>
+            <Link href={viewAllLink} className="text-xs font-bold text-[#e94560] hover:underline uppercase tracking-wider">
+              {viewAllText}
+            </Link>
+          </div>
+        )}
+      </div>
+
+      <ProductGrid 
+        products={displayProducts} 
+        currencySymbol={currencySymbol} 
+        settings={settings} 
+      />
+    </div>
+  );
+}
+
+interface HeroSlide {
+  id: string;
+  image_url: string;
+  mobile_image_url?: string;
+  tablet_image_url?: string;
+  video_url?: string;
+  mobile_video_url?: string;
+  tablet_video_url?: string;
+  video_autoplay?: boolean;
+  mobile_video_autoplay?: boolean;
+  tablet_video_autoplay?: boolean;
+  video_muted?: boolean;
+  mobile_video_muted?: boolean;
+  tablet_video_muted?: boolean;
+  tagline?: string;
+  title?: string;
+  subtitle?: string;
+  button_text?: string;
+  button_link?: string;
+  button_secondary_text?: string;
+  button_secondary_link?: string;
+  mobile_tagline?: string;
+  mobile_title?: string;
+  mobile_subtitle?: string;
+  mobile_button_text?: string;
+  mobile_button_link?: string;
+  mobile_button_secondary_text?: string;
+  mobile_button_secondary_link?: string;
+  tablet_tagline?: string;
+  tablet_title?: string;
+  tablet_subtitle?: string;
+  tablet_button_text?: string;
+  tablet_button_link?: string;
+  tablet_button_secondary_text?: string;
+  tablet_button_secondary_link?: string;
+}
+
+interface HeroBannerSectionProps {
+  section: HomepageSection;
+  settings: StoreSettings;
+}
+
+function HeroBannerSection({ section, settings }: HeroBannerSectionProps) {
+  const heightDesktop = section.settings?.height_desktop ?? '450px';
+  const heightMobile = section.settings?.height_mobile ?? '250px';
+  const opacity = section.settings?.overlay_opacity ?? 0.3;
+  const overlayColor = section.settings?.overlay_color ?? '#000000';
+  
+  // Carousel options
+  const isAutoplay = section.settings?.autoplay ?? true;
+  const autoplaySpeed = section.settings?.autoplay_speed ?? 5000;
+
+  // Extract slides list with backward compatibility
+  const slides: HeroSlide[] = React.useMemo(() => {
+    const contentData = section.content_data || {};
+    if (contentData.slides && contentData.slides.length > 0) {
+      return contentData.slides;
+    }
+    return [{
+      id: 'default',
+      image_url: contentData.image_url || settings.bannerUrl || '',
+      mobile_image_url: contentData.mobile_image_url || contentData.image_url || settings.bannerUrl || '',
+      tablet_image_url: contentData.tablet_image_url || contentData.image_url || settings.bannerUrl || '',
+      video_url: contentData.video_url,
+      mobile_video_url: contentData.mobile_video_url,
+      tablet_video_url: contentData.tablet_video_url,
+      video_autoplay: contentData.video_autoplay,
+      mobile_video_autoplay: contentData.mobile_video_autoplay,
+      tablet_video_autoplay: contentData.tablet_video_autoplay,
+      tagline: contentData.tagline || settings.tagline,
+      title: section.title || '',
+      subtitle: contentData.subtitle || '',
+      button_text: contentData.button_text,
+      button_link: contentData.button_link || '/shop',
+      button_secondary_text: contentData.button_secondary_text,
+      button_secondary_link: contentData.button_secondary_link,
+      mobile_tagline: contentData.mobile_tagline || contentData.tagline || settings.tagline,
+      mobile_title: contentData.mobile_title || section.title || '',
+      mobile_subtitle: contentData.mobile_subtitle || contentData.subtitle || '',
+      mobile_button_text: contentData.mobile_button_text || contentData.button_text,
+      mobile_button_link: contentData.mobile_button_link || contentData.button_link || '/shop',
+      mobile_button_secondary_text: contentData.mobile_button_secondary_text || contentData.button_secondary_text,
+      mobile_button_secondary_link: contentData.mobile_button_secondary_link || contentData.button_secondary_link,
+      tablet_tagline: contentData.tablet_tagline || contentData.tagline || settings.tagline,
+      tablet_title: contentData.tablet_title || section.title || '',
+      tablet_subtitle: contentData.tablet_subtitle || contentData.subtitle || '',
+      tablet_button_text: contentData.tablet_button_text || contentData.button_text,
+      tablet_button_link: contentData.tablet_button_link || contentData.button_link || '/shop',
+      tablet_button_secondary_text: contentData.tablet_button_secondary_text || contentData.button_secondary_text,
+      tablet_button_secondary_link: contentData.tablet_button_secondary_link || contentData.button_secondary_link
+    }];
+  }, [section, settings]);
+
+  const autoplayPlugin = React.useRef(
+    Autoplay({ delay: autoplaySpeed, stopOnInteraction: false })
+  );
+
+  const [emblaRef, emblaApi] = useEmblaCarousel(
+    { loop: slides.length > 1, align: 'center', skipSnaps: false },
+    slides.length > 1 && isAutoplay ? [autoplayPlugin.current] : []
+  );
+
+  const [activeIndex, setActiveIndex] = React.useState(0);
+  const [loadedMedia, setLoadedMedia] = React.useState<Record<string, boolean>>({});
+
+  React.useEffect(() => {
+    if (!emblaApi) return;
+    const onSelect = () => {
+      setActiveIndex(emblaApi.selectedScrollSnap());
+    };
+    emblaApi.on('select', onSelect);
+    onSelect();
+  }, [emblaApi]);
+
+  // Handle updates to speed/autoplay
+  React.useEffect(() => {
+    if (!emblaApi) return;
+    const autoplay = emblaApi.plugins().autoplay;
+    if (!autoplay) return;
+
+    if (isAutoplay && slides.length > 1) {
+      autoplay.play();
+    } else {
+      autoplay.stop();
+    }
+  }, [emblaApi, isAutoplay, slides.length]);
+
+  const carouselKey = `${section.id}_${slides.length}_${isAutoplay}_${autoplaySpeed}`;
+
+  // Global settings
+  const showBackdrop = section.settings?.show_backdrop_container ?? false;
+  const backdropClass = showBackdrop 
+    ? 'backdrop-blur-md bg-black/35 border border-white/10 p-5 md:p-8 rounded-2xl shadow-xl' 
+    : 'bg-transparent border-none p-0';
+
+  // Desktop alignments
+  const contentPosDesktopX = section.settings?.content_position_desktop_x || section.settings?.content_position_desktop || 'center';
+  let containerJustifyDesktop = 'md:justify-center';
+  if (contentPosDesktopX === 'left') containerJustifyDesktop = 'md:justify-start';
+  if (contentPosDesktopX === 'right') containerJustifyDesktop = 'md:justify-end';
+
+  const contentPosDesktopY = section.settings?.content_position_desktop_y || 'middle';
+  let containerAlignDesktop = 'md:items-center';
+  if (contentPosDesktopY === 'top') containerAlignDesktop = 'md:items-start';
+  if (contentPosDesktopY === 'bottom') containerAlignDesktop = 'md:items-end';
+
+  // Mobile alignments
+  const contentPosMobileX = section.settings?.content_position_mobile_x || 'center';
+  let containerJustifyMobile = 'justify-center';
+  if (contentPosMobileX === 'left') containerJustifyMobile = 'justify-start';
+  if (contentPosMobileX === 'right') containerJustifyMobile = 'justify-end';
+
+  const contentPosMobileY = section.settings?.content_position_mobile_y || 'middle';
+  let containerAlignMobile = 'items-center';
+  if (contentPosMobileY === 'top') containerAlignMobile = 'items-start';
+  if (contentPosMobileY === 'bottom') containerAlignMobile = 'items-end';
+
+  // Desktop text align
+  const textAlignDesktop = section.settings?.text_align_desktop || 'center';
+  let textColAlignDesktop = 'md:text-center md:items-center';
+  if (textAlignDesktop === 'left') textColAlignDesktop = 'md:text-left md:items-start';
+  if (textAlignDesktop === 'right') textColAlignDesktop = 'md:text-right md:items-end';
+
+  // Mobile text align
+  const textAlignMobile = section.settings?.text_align_mobile || 'center';
+  let textColAlignMobile = 'text-center items-center';
+  if (textAlignMobile === 'left') textColAlignMobile = 'text-left items-start';
+  if (textAlignMobile === 'right') textColAlignMobile = 'text-right items-end';
+
+  // Heading size classes
+  const headingSizeDesktop = section.settings?.heading_size_desktop || '5xl';
+  const headingSizeMobile = section.settings?.heading_size_mobile || '2xl';
+
+  let headingDesktopClass = 'md:text-5xl';
+  if (headingSizeDesktop === '2xl') headingDesktopClass = 'md:text-2xl';
+  if (headingSizeDesktop === '3xl') headingDesktopClass = 'md:text-3xl';
+  if (headingSizeDesktop === '4xl') headingDesktopClass = 'md:text-4xl';
+  if (headingSizeDesktop === '6xl') headingDesktopClass = 'md:text-6xl';
+
+  let headingMobileClass = 'text-2xl';
+  if (headingSizeMobile === 'lg') headingMobileClass = 'text-lg';
+  if (headingSizeMobile === 'xl') headingMobileClass = 'text-xl';
+  if (headingSizeMobile === '3xl') headingMobileClass = 'text-3xl';
+
+  // Image focal points and zoom
+  const imageScaleDesktop = section.settings?.image_scale_desktop ?? 100;
+  const imageFocalXDesktop = section.settings?.image_focal_x_desktop ?? 50;
+  const imageFocalYDesktop = section.settings?.image_focal_y_desktop ?? 50;
+
+  const imageScaleMobile = section.settings?.image_scale_mobile ?? 100;
+  const imageFocalXMobile = section.settings?.image_focal_x_mobile ?? 50;
+  const imageFocalYMobile = section.settings?.image_focal_y_mobile ?? 50;
+
+  const contentWidthDesktop = section.settings?.content_width_desktop || '576px';
+  const contentWidthMobile = section.settings?.content_width_mobile || '100%';
+
+  const taglineColor = section.settings?.tagline_color || '#ffffff';
+  const headingColor = section.settings?.heading_color || '#ffffff';
+  const subtitleColor = section.settings?.subtitle_color || '#e0e0e0';
+
+  const primaryButtonBg = section.settings?.btn_bg_color || '#e94560';
+  const primaryButtonTextColor = section.settings?.btn_text_color || '#ffffff';
+  const secondaryButtonBg = section.settings?.sec_btn_bg_color || 'transparent';
+  const secondaryButtonTextColor = section.settings?.sec_btn_text_color || '#ffffff';
+
+  return (
+    <div 
+      key={carouselKey}
+      style={{ 
+        '--height-desktop': heightDesktop,
+        '--height-mobile': heightMobile
+      } as React.CSSProperties}
+      className="relative h-[var(--height-mobile)] md:h-[var(--height-desktop)] w-full bg-[#1a1a2e] overflow-hidden group"
+    >
+      {/* Embla Viewport wrapper */}
+      <div className="overflow-hidden h-full w-full" ref={emblaRef}>
+        <div className="flex h-full w-full">
+          {slides.map((slide, idx) => {
+            const isSlideActive = idx === activeIndex;
+            const hasDesktopVideo = !!slide.video_url;
+            const hasTabletVideo = !!slide.tablet_video_url;
+            const hasMobileVideo = !!slide.mobile_video_url;
+            const slideDesktopImage = slide.image_url || settings.bannerUrl || '';
+            const slideTabletImage = slide.tablet_image_url || slide.image_url || settings.bannerUrl || '';
+            const slideMobileImage = slide.mobile_image_url || slide.image_url || settings.bannerUrl || '';
+
+            const desktopAutoplay = slide.video_autoplay !== false;
+            const desktopMuted = slide.video_muted !== false;
+            const tabletAutoplay = slide.tablet_video_autoplay !== false;
+            const tabletMuted = slide.tablet_video_muted !== false;
+            const mobileAutoplay = slide.mobile_video_autoplay !== false;
+            const mobileMuted = slide.mobile_video_muted !== false;
+
+            return (
+              <div key={slide.id} className="relative flex-grow-0 flex-shrink-0 w-full h-full overflow-hidden select-none">
+                {/* Desktop Media View */}
+                <div className="absolute inset-0 hidden lg:block overflow-hidden">
+                  {slideDesktopImage && (
+                    <img
+                      src={slideDesktopImage}
+                      alt={slide.title || section.title || settings.storeName}
+                      className={`w-full h-full object-cover select-none pointer-events-none absolute inset-0 transition-opacity duration-700 z-0 ${
+                        hasDesktopVideo && loadedMedia[`${slide.id}_desktop`] ? 'opacity-0' : 'opacity-100'
+                      }`}
+                      style={{
+                        objectPosition: `${imageFocalXDesktop}% ${imageFocalYDesktop}%`,
+                        transform: `scale(${imageScaleDesktop / 100})`,
+                        transformOrigin: `${imageFocalXDesktop}% ${imageFocalYDesktop}%`,
+                        transition: 'transform 0.3s ease, object-position 0.3s ease, opacity 0.7s ease'
+                      }}
+                      loading={idx === 0 ? "eager" : "lazy"}
+                    />
+                  )}
+                  {hasDesktopVideo && (
+                    <div className={`absolute inset-0 transition-opacity duration-700 z-10 ${
+                      loadedMedia[`${slide.id}_desktop`] ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                    }`}>
+                      {(() => {
+                        const videoInfo = parseVideoUrl(slide.video_url, desktopAutoplay, desktopMuted);
+                        const handleLoaded = () => {
+                          setLoadedMedia(prev => ({ ...prev, [`${slide.id}_desktop`]: true }));
+                        };
+                        if (videoInfo.type === 'youtube' || videoInfo.type === 'vimeo') {
+                          return (
+                            <iframe
+                              src={videoInfo.embedUrl}
+                              onLoad={handleLoaded}
+                              className={`w-full h-full border-0 absolute inset-0 ${desktopAutoplay ? 'pointer-events-none' : 'pointer-events-auto'}`}
+                              allow="autoplay; encrypted-media; picture-in-picture"
+                              allowFullScreen
+                              style={{
+                                transform: `scale(${imageScaleDesktop / 100})`,
+                                transformOrigin: `${imageFocalXDesktop}% ${imageFocalYDesktop}%`,
+                                transition: 'transform 0.3s ease'
+                              }}
+                            />
+                          );
+                        }
+                        return (
+                          <video
+                            src={slide.video_url}
+                            onLoadedData={handleLoaded}
+                            onCanPlay={handleLoaded}
+                            onPlaying={handleLoaded}
+                            className="w-full h-full object-cover"
+                            style={{
+                              transform: `scale(${imageScaleDesktop / 100})`,
+                              transformOrigin: `${imageFocalXDesktop}% ${imageFocalYDesktop}%`,
+                              transition: 'transform 0.3s ease'
+                            }}
+                            autoPlay={desktopAutoplay}
+                            muted={desktopMuted}
+                            loop={desktopAutoplay}
+                            controls={!desktopAutoplay}
+                            playsInline
+                            ref={el => {
+                              if (el) {
+                                if (isSlideActive && desktopAutoplay) {
+                                  el.play().catch(() => {});
+                                } else {
+                                  el.pause();
+                                }
+                              }
+                            }}
+                          />
+                        );
+                      })()}
+                    </div>
+                  )}
+                </div>
+
+                {/* Tablet Media View */}
+                <div className="absolute inset-0 hidden md:block lg:hidden overflow-hidden">
+                  {slideTabletImage && (
+                    <img
+                      src={slideTabletImage}
+                      alt={slide.tablet_title || slide.title || section.title || settings.storeName}
+                      className={`w-full h-full object-cover select-none pointer-events-none absolute inset-0 transition-opacity duration-700 z-0 ${
+                        hasTabletVideo && loadedMedia[`${slide.id}_tablet`] ? 'opacity-0' : 'opacity-100'
+                      }`}
+                      style={{
+                        objectPosition: `${imageFocalXDesktop}% ${imageFocalYDesktop}%`,
+                        transform: `scale(${imageScaleDesktop / 100})`,
+                        transformOrigin: `${imageFocalXDesktop}% ${imageFocalYDesktop}%`,
+                        transition: 'transform 0.3s ease, object-position 0.3s ease, opacity 0.7s ease'
+                      }}
+                      loading={idx === 0 ? "eager" : "lazy"}
+                    />
+                  )}
+                  {hasTabletVideo && (
+                    <div className={`absolute inset-0 transition-opacity duration-700 z-10 ${
+                      loadedMedia[`${slide.id}_tablet`] ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                    }`}>
+                      {(() => {
+                        const videoInfo = parseVideoUrl(slide.tablet_video_url, tabletAutoplay, tabletMuted);
+                        const handleLoaded = () => {
+                          setLoadedMedia(prev => ({ ...prev, [`${slide.id}_tablet`]: true }));
+                        };
+                        if (videoInfo.type === 'youtube' || videoInfo.type === 'vimeo') {
+                          return (
+                            <iframe
+                              src={videoInfo.embedUrl}
+                              onLoad={handleLoaded}
+                              className={`w-full h-full border-0 absolute inset-0 ${tabletAutoplay ? 'pointer-events-none' : 'pointer-events-auto'}`}
+                              allow="autoplay; encrypted-media; picture-in-picture"
+                              allowFullScreen
+                              style={{
+                                transform: `scale(${imageScaleDesktop / 100})`,
+                                transformOrigin: `${imageFocalXDesktop}% ${imageFocalYDesktop}%`,
+                                transition: 'transform 0.3s ease'
+                              }}
+                            />
+                          );
+                        }
+                        return (
+                          <video
+                            src={slide.tablet_video_url}
+                            onLoadedData={handleLoaded}
+                            onCanPlay={handleLoaded}
+                            onPlaying={handleLoaded}
+                            className="w-full h-full object-cover"
+                            style={{
+                              transform: `scale(${imageScaleDesktop / 100})`,
+                              transformOrigin: `${imageFocalXDesktop}% ${imageFocalYDesktop}%`,
+                              transition: 'transform 0.3s ease'
+                            }}
+                            autoPlay={tabletAutoplay}
+                            muted={tabletMuted}
+                            loop={tabletAutoplay}
+                            controls={!tabletAutoplay}
+                            playsInline
+                            ref={el => {
+                              if (el) {
+                                if (isSlideActive && tabletAutoplay) {
+                                  el.play().catch(() => {});
+                                } else {
+                                  el.pause();
+                                }
+                              }
+                            }}
+                          />
+                        );
+                      })()}
+                    </div>
+                  )}
+                </div>
+
+                {/* Mobile Media View */}
+                <div className="absolute inset-0 block md:hidden overflow-hidden">
+                  {slideMobileImage && (
+                    <img
+                      src={slideMobileImage}
+                      alt={slide.mobile_title || slide.title || section.title || settings.storeName}
+                      className={`w-full h-full object-cover select-none pointer-events-none absolute inset-0 transition-opacity duration-700 z-0 ${
+                        hasMobileVideo && loadedMedia[`${slide.id}_mobile`] ? 'opacity-0' : 'opacity-100'
+                      }`}
+                      style={{
+                        objectPosition: `${imageFocalXMobile}% ${imageFocalYMobile}%`,
+                        transform: `scale(${imageScaleMobile / 100})`,
+                        transformOrigin: `${imageFocalXMobile}% ${imageFocalYMobile}%`,
+                        transition: 'transform 0.3s ease, object-position 0.3s ease, opacity 0.7s ease'
+                      }}
+                      loading={idx === 0 ? "eager" : "lazy"}
+                    />
+                  )}
+                  {hasMobileVideo && (
+                    <div className={`absolute inset-0 transition-opacity duration-700 z-10 ${
+                      loadedMedia[`${slide.id}_mobile`] ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                    }`}>
+                      {(() => {
+                        const videoInfo = parseVideoUrl(slide.mobile_video_url, mobileAutoplay, mobileMuted);
+                        const handleLoaded = () => {
+                          setLoadedMedia(prev => ({ ...prev, [`${slide.id}_mobile`]: true }));
+                        };
+                        if (videoInfo.type === 'youtube' || videoInfo.type === 'vimeo') {
+                          return (
+                            <iframe
+                              src={videoInfo.embedUrl}
+                              onLoad={handleLoaded}
+                              className={`w-full h-full border-0 absolute inset-0 ${mobileAutoplay ? 'pointer-events-none' : 'pointer-events-auto'}`}
+                              allow="autoplay; encrypted-media; picture-in-picture"
+                              allowFullScreen
+                              style={{
+                                transform: `scale(${imageScaleMobile / 100})`,
+                                transformOrigin: `${imageFocalXMobile}% ${imageFocalYMobile}%`,
+                                transition: 'transform 0.3s ease'
+                              }}
+                            />
+                          );
+                        }
+                        return (
+                          <video
+                            src={slide.mobile_video_url}
+                            onLoadedData={handleLoaded}
+                            onCanPlay={handleLoaded}
+                            onPlaying={handleLoaded}
+                            className="w-full h-full object-cover"
+                            style={{
+                              transform: `scale(${imageScaleMobile / 100})`,
+                              transformOrigin: `${imageFocalXMobile}% ${imageFocalYMobile}%`,
+                              transition: 'transform 0.3s ease'
+                            }}
+                            autoPlay={mobileAutoplay}
+                            muted={mobileMuted}
+                            loop={mobileAutoplay}
+                            controls={!mobileAutoplay}
+                            playsInline
+                            ref={el => {
+                              if (el) {
+                                if (isSlideActive && mobileAutoplay) {
+                                  el.play().catch(() => {});
+                                } else {
+                                  el.pause();
+                                }
+                              }
+                            }}
+                          />
+                        );
+                      })()}
+                    </div>
+                  )}
+                </div>
+
+                {/* Dark overlay backdrop */}
+                <div 
+                  className="absolute inset-0 transition-colors duration-300" 
+                  style={{ backgroundColor: overlayColor, opacity }} 
+                />
+
+                {/* Desktop Content Container */}
+                <div className={`absolute inset-0 hidden lg:flex p-16 z-10 bg-gradient-to-t from-black/40 via-transparent to-transparent ${containerJustifyDesktop} ${containerAlignDesktop}`}>
+                  <div 
+                    style={{
+                      '--content-width-desktop': contentWidthDesktop
+                    } as React.CSSProperties}
+                    className={`flex flex-col w-[var(--content-width-desktop)] max-w-full transition-all duration-300 ${textColAlignDesktop} ${backdropClass}`}
+                  >
+                    {slide.tagline && (
+                      <p 
+                        style={{ color: taglineColor }}
+                        className="text-xs font-extrabold uppercase tracking-widest mb-2"
+                      >
+                        {slide.tagline}
+                      </p>
+                    )}
+                    
+                    {slide.title && (
+                      <h1 
+                        style={{ color: headingColor }}
+                        className={`font-black tracking-tight font-serif leading-tight ${headingDesktopClass}`}
+                      >
+                        {slide.title}
+                      </h1>
+                    )}
+                    
+                    {slide.subtitle && (
+                      <p 
+                        style={{ color: subtitleColor }}
+                        className="text-xs sm:text-sm mt-3 font-medium opacity-90 leading-relaxed"
+                      >
+                        {slide.subtitle}
+                      </p>
+                    )}
+                    
+                    {/* CTA Buttons */}
+                    {(slide.button_text || slide.button_secondary_text) && (
+                      <div className="mt-6 flex flex-wrap gap-3 items-center">
+                        {slide.button_text && (
+                          <Link 
+                            href={slide.button_link || '/shop'}
+                            style={{ backgroundColor: primaryButtonBg, color: primaryButtonTextColor }}
+                            className="px-6 py-2.5 text-xs font-extrabold uppercase rounded-xl transition-all shadow-md hover:brightness-110 active:scale-95 cursor-pointer"
+                          >
+                            {slide.button_text}
+                          </Link>
+                        )}
+                        {slide.button_secondary_text && (
+                          <Link 
+                            href={slide.button_secondary_link || '/'}
+                            style={{ 
+                              backgroundColor: secondaryButtonBg, 
+                              color: secondaryButtonTextColor,
+                              borderColor: secondaryButtonBg === 'transparent' ? secondaryButtonTextColor : 'transparent'
+                            }}
+                            className="px-6 py-2.5 text-xs font-extrabold uppercase rounded-xl border transition-all shadow-md hover:brightness-110 active:scale-95 cursor-pointer"
+                          >
+                            {slide.button_secondary_text}
+                          </Link>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Tablet Content Container */}
+                <div className={`absolute inset-0 hidden md:flex lg:hidden p-12 z-10 bg-gradient-to-t from-black/40 via-transparent to-transparent ${containerJustifyDesktop} ${containerAlignDesktop}`}>
+                  <div 
+                    style={{
+                      '--content-width-desktop': contentWidthDesktop
+                    } as React.CSSProperties}
+                    className={`flex flex-col w-[var(--content-width-desktop)] max-w-full transition-all duration-300 ${textColAlignDesktop} ${backdropClass}`}
+                  >
+                    {slide.tablet_tagline && (
+                      <p 
+                        style={{ color: taglineColor }}
+                        className="text-xs font-extrabold uppercase tracking-widest mb-2"
+                      >
+                        {slide.tablet_tagline}
+                      </p>
+                    )}
+                    
+                    {slide.tablet_title && (
+                      <h1 
+                        style={{ color: headingColor }}
+                        className={`font-black tracking-tight font-serif leading-tight ${headingDesktopClass}`}
+                      >
+                        {slide.tablet_title}
+                      </h1>
+                    )}
+                    
+                    {slide.tablet_subtitle && (
+                      <p 
+                        style={{ color: subtitleColor }}
+                        className="text-xs sm:text-sm mt-3 font-medium opacity-90 leading-relaxed"
+                      >
+                        {slide.tablet_subtitle}
+                      </p>
+                    )}
+                    
+                    {/* CTA Buttons */}
+                    {(slide.tablet_button_text || slide.tablet_button_secondary_text) && (
+                      <div className="mt-6 flex flex-wrap gap-3 items-center">
+                        {slide.tablet_button_text && (
+                          <Link 
+                            href={slide.tablet_button_link || '/shop'}
+                            style={{ backgroundColor: primaryButtonBg, color: primaryButtonTextColor }}
+                            className="px-6 py-2.5 text-xs font-extrabold uppercase rounded-xl transition-all shadow-md hover:brightness-110 active:scale-95 cursor-pointer"
+                          >
+                            {slide.tablet_button_text}
+                          </Link>
+                        )}
+                        {slide.tablet_button_secondary_text && (
+                          <Link 
+                            href={slide.tablet_button_secondary_link || '/'}
+                            style={{ 
+                              backgroundColor: secondaryButtonBg, 
+                              color: secondaryButtonTextColor,
+                              borderColor: secondaryButtonBg === 'transparent' ? secondaryButtonTextColor : 'transparent'
+                            }}
+                            className="px-6 py-2.5 text-xs font-extrabold uppercase rounded-xl border transition-all shadow-md hover:brightness-110 active:scale-95 cursor-pointer"
+                          >
+                            {slide.tablet_button_secondary_text}
+                          </Link>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Mobile Content Container */}
+                <div className={`absolute inset-0 flex md:hidden p-6 z-10 bg-gradient-to-t from-black/40 via-transparent to-transparent ${containerJustifyMobile} ${containerAlignMobile}`}>
+                  <div 
+                    style={{
+                      '--content-width-mobile': contentWidthMobile
+                    } as React.CSSProperties}
+                    className={`flex flex-col w-[var(--content-width-mobile)] max-w-full transition-all duration-300 ${textColAlignMobile} ${backdropClass}`}
+                  >
+                    {slide.mobile_tagline && (
+                      <p 
+                        style={{ color: taglineColor }}
+                        className="text-xs font-extrabold uppercase tracking-widest mb-2"
+                      >
+                        {slide.mobile_tagline}
+                      </p>
+                    )}
+                    
+                    {slide.mobile_title && (
+                      <h1 
+                        style={{ color: headingColor }}
+                        className={`font-black tracking-tight font-serif leading-tight ${headingMobileClass}`}
+                      >
+                        {slide.mobile_title}
+                      </h1>
+                    )}
+                    
+                    {slide.mobile_subtitle && (
+                      <p 
+                        style={{ color: subtitleColor }}
+                        className="text-xs sm:text-sm mt-3 font-medium opacity-90 leading-relaxed"
+                      >
+                        {slide.mobile_subtitle}
+                      </p>
+                    )}
+                    
+                    {/* CTA Buttons */}
+                    {(slide.mobile_button_text || slide.mobile_button_secondary_text) && (
+                      <div className="mt-6 flex flex-wrap gap-3 items-center">
+                        {slide.mobile_button_text && (
+                          <Link 
+                            href={slide.mobile_button_link || '/shop'}
+                            style={{ backgroundColor: primaryButtonBg, color: primaryButtonTextColor }}
+                            className="px-6 py-2.5 text-xs font-extrabold uppercase rounded-xl transition-all shadow-md hover:brightness-110 active:scale-95 cursor-pointer"
+                          >
+                            {slide.mobile_button_text}
+                          </Link>
+                        )}
+                        {slide.mobile_button_secondary_text && (
+                          <Link 
+                            href={slide.mobile_button_secondary_link || '/'}
+                            style={{ 
+                              backgroundColor: secondaryButtonBg, 
+                              color: secondaryButtonTextColor,
+                              borderColor: secondaryButtonBg === 'transparent' ? secondaryButtonTextColor : 'transparent'
+                            }}
+                            className="px-6 py-2.5 text-xs font-extrabold uppercase rounded-xl border transition-all shadow-md hover:brightness-110 active:scale-95 cursor-pointer"
+                          >
+                            {slide.mobile_button_secondary_text}
+                          </Link>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Nav dots */}
+      {slides.length > 1 && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-20">
+          {slides.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => emblaApi && emblaApi.scrollTo(idx)}
+              className={`h-1.5 rounded-full transition-all duration-300 ${
+                idx === activeIndex ? 'w-5 bg-[#e94560]' : 'w-1.5 bg-white/40 hover:bg-white/60'
+              } cursor-pointer`}
+              aria-label={`Go to slide ${idx + 1}`}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Desktop Navigation Arrows */}
+      {slides.length > 1 && (
+        <>
+          <button
+            onClick={() => emblaApi && emblaApi.scrollPrev()}
+            className="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-black/30 hover:bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all active:scale-90 cursor-pointer hidden md:flex"
+            aria-label="Previous slide"
+          >
+            ❮
+          </button>
+          <button
+            onClick={() => emblaApi && emblaApi.scrollNext()}
+            className="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-black/30 hover:bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all active:scale-90 cursor-pointer hidden md:flex"
+            aria-label="Next slide"
+          >
+            ❯
+          </button>
+        </>
+      )}
+    </div>
+  );
 }
 
 export default function StoreFront({
@@ -26,7 +886,8 @@ export default function StoreFront({
   categories,
   settings,
   reviews = [],
-  sections = []
+  sections = [],
+  isPreview = false
 }: StoreFrontProps) {
   const searchQuery = useSearchStore((state) => state.searchQuery);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | undefined>(undefined);
@@ -136,224 +997,7 @@ export default function StoreFront({
   };
 
   const renderHeroBanner = (section: HomepageSection) => {
-    const heightDesktop = section.settings?.height_desktop ?? '450px';
-    const heightMobile = section.settings?.height_mobile ?? '250px';
-    const opacity = section.settings?.overlay_opacity ?? 0.3;
-    const overlayColor = section.settings?.overlay_color ?? '#000000';
-    
-    // Images
-    const desktopBannerUrl = section.content_data?.image_url || settings.bannerUrl;
-    const mobileBannerUrl = section.content_data?.mobile_image_url || desktopBannerUrl;
-    
-    // Content box position (desktop horizontal and vertical)
-    const contentPosDesktopX = section.settings?.content_position_desktop_x || section.settings?.content_position_desktop || 'center';
-    let containerJustifyDesktop = 'md:justify-center';
-    if (contentPosDesktopX === 'left') containerJustifyDesktop = 'md:justify-start';
-    if (contentPosDesktopX === 'right') containerJustifyDesktop = 'md:justify-end';
-
-    const contentPosDesktopY = section.settings?.content_position_desktop_y || 'middle';
-    let containerAlignDesktop = 'md:items-center';
-    if (contentPosDesktopY === 'top') containerAlignDesktop = 'md:items-start';
-    if (contentPosDesktopY === 'bottom') containerAlignDesktop = 'md:items-end';
-
-    // Content box position (mobile horizontal and vertical)
-    const contentPosMobileX = section.settings?.content_position_mobile_x || 'center';
-    let containerJustifyMobile = 'justify-center';
-    if (contentPosMobileX === 'left') containerJustifyMobile = 'justify-start';
-    if (contentPosMobileX === 'right') containerJustifyMobile = 'justify-end';
-
-    const contentPosMobileY = section.settings?.content_position_mobile_y || 'middle';
-    let containerAlignMobile = 'items-center';
-    if (contentPosMobileY === 'top') containerAlignMobile = 'items-start';
-    if (contentPosMobileY === 'bottom') containerAlignMobile = 'items-end';
-
-    // Desktop text align
-    const textAlignDesktop = section.settings?.text_align_desktop || 'center';
-    let textColAlignDesktop = 'md:text-center md:items-center';
-    if (textAlignDesktop === 'left') textColAlignDesktop = 'md:text-left md:items-start';
-    if (textAlignDesktop === 'right') textColAlignDesktop = 'md:text-right md:items-end';
-
-    // Mobile text align
-    const textAlignMobile = section.settings?.text_align_mobile || 'center';
-    let textColAlignMobile = 'text-center items-center';
-    if (textAlignMobile === 'left') textColAlignMobile = 'text-left items-start';
-    if (textAlignMobile === 'right') textColAlignMobile = 'text-right items-end';
-
-    // Glass backdrop container styling on desktop
-    const showBackdrop = section.settings?.show_backdrop_container ?? false;
-    const backdropClass = showBackdrop 
-      ? 'md:backdrop-blur-md md:bg-black/35 md:border md:border-white/10 md:p-8 md:rounded-2xl shadow-xl' 
-      : 'md:bg-transparent md:border-none md:p-0';
-
-    // Image Scaling and Focal Points
-    const imageScaleDesktop = section.settings?.image_scale_desktop ?? 100;
-    const imageFocalXDesktop = section.settings?.image_focal_x_desktop ?? 50;
-    const imageFocalYDesktop = section.settings?.image_focal_y_desktop ?? 50;
-
-    const imageScaleMobile = section.settings?.image_scale_mobile ?? 100;
-    const imageFocalXMobile = section.settings?.image_focal_x_mobile ?? 50;
-    const imageFocalYMobile = section.settings?.image_focal_y_mobile ?? 50;
-
-    // Content box widths
-    const contentWidthDesktop = section.settings?.content_width_desktop || '576px';
-    const contentWidthMobile = section.settings?.content_width_mobile || '100%';
-
-    // Supertitle / Tagline
-    const taglineText = section.content_data?.tagline || settings.tagline;
-    const taglineColor = section.settings?.tagline_color || '#ffffff';
-
-    // Heading custom sizes and colors
-    const headingSizeDesktop = section.settings?.heading_size_desktop || '5xl';
-    const headingSizeMobile = section.settings?.heading_size_mobile || '2xl';
-    
-    let headingDesktopClass = 'md:text-5xl';
-    if (headingSizeDesktop === '2xl') headingDesktopClass = 'md:text-2xl';
-    if (headingSizeDesktop === '3xl') headingDesktopClass = 'md:text-3xl';
-    if (headingSizeDesktop === '4xl') headingDesktopClass = 'md:text-4xl';
-    if (headingSizeDesktop === '6xl') headingDesktopClass = 'md:text-6xl';
-
-    let headingMobileClass = 'text-2xl';
-    if (headingSizeMobile === 'lg') headingMobileClass = 'text-lg';
-    if (headingSizeMobile === 'xl') headingMobileClass = 'text-xl';
-    if (headingSizeMobile === '3xl') headingMobileClass = 'text-3xl';
-
-    const headingColor = section.settings?.heading_color || '#ffffff';
-
-    // Subtitle
-    const subtitleColor = section.settings?.subtitle_color || '#e0e0e0';
-
-    // Buttons
-    const primaryButtonText = section.content_data?.button_text || '';
-    const primaryButtonLink = section.content_data?.button_link || '/shop';
-    const primaryButtonBg = section.settings?.btn_bg_color || '#e94560';
-    const primaryButtonTextColor = section.settings?.btn_text_color || '#ffffff';
-
-    const secondaryButtonText = section.content_data?.button_secondary_text || '';
-    const secondaryButtonLink = section.content_data?.button_secondary_link || '';
-    const secondaryButtonBg = section.settings?.sec_btn_bg_color || 'transparent';
-    const secondaryButtonTextColor = section.settings?.sec_btn_text_color || '#ffffff';
-
-    return (
-      <div 
-        key={section.id} 
-        style={{ 
-          height: heightMobile,
-          '--height-desktop': heightDesktop,
-          '--height-mobile': heightMobile
-        } as React.CSSProperties}
-        className="relative md:h-[var(--height-desktop)] w-full bg-[#1a1a2e] overflow-hidden"
-      >
-        {desktopBannerUrl ? (
-          <>
-            {/* Desktop Image */}
-            <div className="absolute inset-0 hidden md:block overflow-hidden">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={desktopBannerUrl}
-                alt={section.title || settings.storeName}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  objectPosition: `${imageFocalXDesktop}% ${imageFocalYDesktop}%`,
-                  transform: `scale(${imageScaleDesktop / 100})`,
-                  transformOrigin: `${imageFocalXDesktop}% ${imageFocalYDesktop}%`,
-                  transition: 'transform 0.3s ease, transform-origin 0.3s ease, object-position 0.3s ease'
-                }}
-              />
-            </div>
-            {/* Mobile Image */}
-            <div className="absolute inset-0 block md:hidden overflow-hidden">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={mobileBannerUrl}
-                alt={section.title || settings.storeName}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  objectPosition: `${imageFocalXMobile}% ${imageFocalYMobile}%`,
-                  transform: `scale(${imageScaleMobile / 100})`,
-                  transformOrigin: `${imageFocalXMobile}% ${imageFocalYMobile}%`,
-                  transition: 'transform 0.3s ease, transform-origin 0.3s ease, object-position 0.3s ease'
-                }}
-              />
-            </div>
-            <div 
-              className="absolute inset-0 transition-colors duration-300" 
-              style={{ backgroundColor: overlayColor, opacity }} 
-            />
-          </>
-        ) : (
-          <div className="absolute inset-0 bg-gradient-to-r from-[#1a1a2e] to-[#e94560]" />
-        )}
-        
-        {/* Banner content layout container */}
-        <div className={`absolute inset-0 flex p-6 md:p-16 z-10 bg-gradient-to-t from-black/40 via-transparent to-transparent ${containerJustifyMobile} ${containerAlignMobile} ${containerJustifyDesktop} ${containerAlignDesktop}`}>
-          <div 
-            style={{
-              '--content-width-desktop': contentWidthDesktop,
-              '--content-width-mobile': contentWidthMobile
-            } as React.CSSProperties}
-            className={`flex flex-col w-[var(--content-width-mobile)] md:w-[var(--content-width-desktop)] max-w-full transition-all duration-300 ${textColAlignMobile} ${textColAlignDesktop} ${backdropClass}`}
-          >
-            
-            {taglineText && (
-              <p 
-                style={{ color: taglineColor }}
-                className="text-xs font-extrabold uppercase tracking-widest mb-2"
-              >
-                {taglineText}
-              </p>
-            )}
-            
-            <h1 
-              style={{ color: headingColor }}
-              className={`font-black tracking-tight font-serif leading-tight ${headingMobileClass} ${headingDesktopClass}`}
-            >
-              {section.title || settings.storeName}
-            </h1>
-            
-            {section.content_data?.subtitle && (
-              <p 
-                style={{ color: subtitleColor }}
-                className="text-xs sm:text-sm mt-3 font-medium opacity-90 leading-relaxed"
-              >
-                {section.content_data.subtitle}
-              </p>
-            )}
-            
-            {/* CTA Buttons */}
-            {(primaryButtonText || secondaryButtonText) && (
-              <div className="mt-6 flex flex-wrap gap-3 items-center">
-                {primaryButtonText && (
-                  <Link 
-                    href={primaryButtonLink}
-                    style={{ backgroundColor: primaryButtonBg, color: primaryButtonTextColor }}
-                    className="px-6 py-2.5 text-xs font-extrabold uppercase rounded-xl transition-all shadow-md hover:brightness-110 active:scale-95 cursor-pointer"
-                  >
-                    {primaryButtonText}
-                  </Link>
-                )}
-                {secondaryButtonText && (
-                  <Link 
-                    href={secondaryButtonLink}
-                    style={{ 
-                      backgroundColor: secondaryButtonBg, 
-                      color: secondaryButtonTextColor,
-                      borderColor: secondaryButtonBg === 'transparent' ? secondaryButtonTextColor : 'transparent'
-                    }}
-                    className="px-6 py-2.5 text-xs font-extrabold uppercase rounded-xl border transition-all shadow-md hover:brightness-110 active:scale-95 cursor-pointer"
-                  >
-                    {secondaryButtonText}
-                  </Link>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
+    return <HeroBannerSection section={section} settings={settings} />;
   };
 
   const renderCategoryList = (section: HomepageSection) => {
@@ -392,6 +1036,19 @@ export default function StoreFront({
       return prodList.slice(0, limit);
     })();
 
+    const viewAllLink = (() => {
+      if (section.settings?.viewAllUrl) {
+        return section.settings.viewAllUrl;
+      }
+      if (source !== 'all' && source !== 'featured') {
+        const cat = categories.find(c => c.id === source || c.slug === source);
+        if (cat) {
+          return `/shop?category=${cat.slug}`;
+        }
+      }
+      return '/shop';
+    })();
+
     return (
       <div key={section.id} className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
         {section.title && !selectedCategoryId && (
@@ -399,8 +1056,8 @@ export default function StoreFront({
             <h2 className="text-base font-black uppercase tracking-wider text-gray-900 dark:text-white">
               {section.title}
             </h2>
-            <Link href="/shop" className="text-xs font-bold text-[#e94560] hover:underline">
-              View All
+            <Link href={viewAllLink} className="text-xs font-bold text-[#e94560] hover:underline">
+              {section.settings?.viewAllText || 'View All'}
             </Link>
           </div>
         )}
@@ -623,6 +1280,13 @@ export default function StoreFront({
     else if (displayItems.length === 3) gridCols = "grid-cols-2 md:grid-cols-3 max-w-4xl mx-auto";
     else if (displayItems.length > 4) gridCols = "grid-cols-2 md:grid-cols-4 lg:grid-cols-5";
 
+    const aspectRatio = section.settings?.aspect_ratio || 'recommended';
+    const aspectClass = aspectRatio === '1by1' 
+      ? 'aspect-square' 
+      : aspectRatio === 'auto' 
+      ? 'h-64 md:h-80' 
+      : 'aspect-[3/4]';
+
     return (
       <div key={section.id} className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
         {section.title && (
@@ -637,7 +1301,7 @@ export default function StoreFront({
             <Link 
               key={idx} 
               href={item.link || '/shop'}
-              className="group relative block aspect-[3/4] overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm cursor-pointer bg-gray-100 dark:bg-gray-900"
+              className={`group relative block overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm cursor-pointer bg-gray-100 dark:bg-gray-900 ${aspectClass}`}
             >
               <Image
                 src={item.imageUrl}
@@ -718,6 +1382,37 @@ export default function StoreFront({
     );
   };
 
+  const renderTickerSection = (section: HomepageSection) => {
+    if (!settings.enableTicker || !settings.tickerText) return null;
+    return (
+      <div key={section.id} className="w-full overflow-hidden bg-white dark:bg-white/5 border-y border-gray-200 dark:border-gray-800 py-3.5 select-none">
+        <style>{`
+          @keyframes marquee {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+          }
+          .animate-marquee-infinite {
+            display: flex;
+            width: max-content;
+            animation: marquee 30s linear infinite;
+          }
+        `}</style>
+        <div className="animate-marquee-infinite flex items-center whitespace-nowrap gap-8">
+          {[...Array(4)].map((_, loopIdx) => (
+            <div key={loopIdx} className="flex items-center gap-8">
+              {settings.tickerText.split('\n').filter(Boolean).map((item, itemIdx) => (
+                <div key={itemIdx} className="flex items-center gap-8 text-sm font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider">
+                  <span>{item}</span>
+                  <span className="text-gray-400 dark:text-gray-600 font-normal">✦</span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   // If there is an active search query, bypass the section customization view
   if (searchQuery) {
     return (
@@ -733,30 +1428,148 @@ export default function StoreFront({
   return (
     <div className="pb-12 min-h-screen bg-gray-50 dark:bg-[#0f0f1b] text-gray-900 dark:text-gray-100 transition-colors duration-200 space-y-6">
       {activeSections.map((section) => {
+        let content = null;
         switch (section.section_type) {
           case 'hero_banner':
-            return renderHeroBanner(section);
+            content = renderHeroBanner(section);
+            break;
           case 'category_list':
-            return renderCategoryList(section);
+            content = renderCategoryList(section);
+            break;
           case 'product_grid':
-            return renderProductGrid(section);
+            content = renderProductGrid(section);
+            break;
           case 'category_grid':
-            return renderCategoryGrid(section);
+            content = renderCategoryGrid(section);
+            break;
           case 'trust_badges':
-            return renderTrustBadges(section);
+            content = renderTrustBadges(section);
+            break;
           case 'recent_reviews':
-            return renderRecentReviews(section);
+            content = renderRecentReviews(section);
+            break;
           case 'promo_banner':
-            return renderPromoBanner(section);
+            content = renderPromoBanner(section);
+            break;
           case 'brands_logos':
-            return renderBrandsLogos(section);
+            content = renderBrandsLogos(section);
+            break;
           case 'social_feed':
-            return renderSocialFeed(section);
+            content = renderSocialFeed(section);
+            break;
+          case 'ticker':
+            content = renderTickerSection(section);
+            break;
+          case 'flash_sale':
+            content = (
+              <FlashSaleSection
+                section={section}
+                products={filteredProducts}
+                currencySymbol={settings.currencySymbol}
+                settings={settings}
+              />
+            );
+            break;
           default:
-            return null;
+            content = null;
         }
-      })}
 
+        if (!content) return null;
+
+        if (isPreview) {
+          return (
+            <div
+              key={section.id}
+              id={section.id}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                window.parent.postMessage({ type: 'select_section', sectionId: section.id }, '*');
+              }}
+              className="relative cursor-pointer transition-all duration-200 hover:ring-2 hover:ring-[#e94560] hover:ring-offset-2 group/preview-section"
+            >
+              {/* Tooltip for section name */}
+              <div className="absolute top-2 left-2 z-[60] bg-[#e94560] text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-md uppercase opacity-0 group-hover/preview-section:opacity-100 transition-opacity duration-200 pointer-events-none">
+                {section.title || section.section_type.replace('_', ' ')}
+              </div>
+              {content}
+            </div>
+          );
+        }
+
+        return (
+          <div key={section.id} id={section.id}>
+            {content}
+          </div>
+        );
+      })}
     </div>
   );
+}
+
+interface ParsedVideo {
+  type: 'youtube' | 'vimeo' | 'direct' | null;
+  embedUrl?: string;
+  directUrl?: string;
+}
+
+function parseVideoUrl(url: string | undefined, autoplay: boolean, muted: boolean): ParsedVideo {
+  if (!url) return { type: null };
+
+  const ytRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/ ]{11})/;
+  const ytMatch = url.match(ytRegex);
+  if (ytMatch && ytMatch[1]) {
+    const videoId = ytMatch[1];
+    const params = new URLSearchParams();
+    params.set('enablejsapi', '1');
+    if (autoplay) {
+      params.set('autoplay', '1');
+      params.set('loop', '1');
+      params.set('playlist', videoId);
+      params.set('controls', '0');
+    } else {
+      params.set('autoplay', '0');
+      params.set('controls', '1');
+    }
+    if (muted) {
+      params.set('mute', '1');
+    } else {
+      params.set('mute', '0');
+    }
+    params.set('playsinline', '1');
+    
+    return {
+      type: 'youtube',
+      embedUrl: `https://www.youtube.com/embed/${videoId}?${params.toString()}`
+    };
+  }
+
+  const vimeoRegex = /vimeo\.com\/(?:video\/)?(\d+)/;
+  const vimeoMatch = url.match(vimeoRegex);
+  if (vimeoMatch && vimeoMatch[1]) {
+    const videoId = vimeoMatch[1];
+    const params = new URLSearchParams();
+    if (autoplay) {
+      params.set('autoplay', '1');
+      params.set('loop', '1');
+      params.set('background', '1');
+    } else {
+      params.set('autoplay', '0');
+    }
+    if (muted) {
+      params.set('muted', '1');
+    } else {
+      params.set('muted', '0');
+    }
+    params.set('playsinline', '1');
+    return {
+      type: 'vimeo',
+      embedUrl: `https://player.vimeo.com/video/${videoId}?${params.toString()}`
+    };
+  }
+
+  return {
+    type: 'direct',
+    directUrl: url
+  };
 }

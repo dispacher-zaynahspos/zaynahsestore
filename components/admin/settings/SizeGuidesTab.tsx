@@ -1,8 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Edit2, Trash2, Upload, Loader2, Plus, Check } from 'lucide-react';
-import { Ruler } from '@/components/common/Icons';
+import { Edit2, Trash2, Plus, Check, Ruler, Image as ImageIcon } from '@/components/common/Icons';
 import { SizeGuide } from '@/lib/types';
 
 interface SizeGuidesTabProps {
@@ -16,16 +15,16 @@ interface SizeGuidesTabProps {
   setGuideColumns: (v: string) => void;
   guideRows: Array<Record<string, string>>;
   setGuideRows: React.Dispatch<React.SetStateAction<Array<Record<string, string>>>>;
-  isUploadingGuideImage: boolean;
   isEditingGuide: boolean;
 
   startEditSizeGuide: (guide: SizeGuide) => void;
   handleDeleteSizeGuide: (id: string) => void;
   handleSaveSizeGuide: (e: React.FormEvent) => void;
   resetSizeGuideForm: () => void;
-  handleFileUpload: (e: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'favicon' | 'banner' | 'exit_intent' | 'size_chart') => void;
   handleRemoveImage: (type: 'logo' | 'favicon' | 'banner' | 'exit_intent' | 'size_chart') => void;
 }
+
+import MediaSelectorModal from '../MediaSelectorModal';
 
 export default function SizeGuidesTab({
   sizeGuides,
@@ -38,15 +37,14 @@ export default function SizeGuidesTab({
   setGuideColumns,
   guideRows,
   setGuideRows,
-  isUploadingGuideImage,
   isEditingGuide,
   startEditSizeGuide,
   handleDeleteSizeGuide,
   handleSaveSizeGuide,
   resetSizeGuideForm,
-  handleFileUpload,
   handleRemoveImage
 }: SizeGuidesTabProps) {
+  const [isMediaModalOpen, setIsMediaModalOpen] = React.useState(false);
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
       {/* List of existing presets */}
@@ -155,7 +153,7 @@ export default function SizeGuidesTab({
                       className="w-full h-full object-cover"
                     />
                   </div>
-                  <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">Image uploaded</span>
+                  <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">Image selected</span>
                 </div>
                 <button
                   type="button"
@@ -167,27 +165,22 @@ export default function SizeGuidesTab({
                 </button>
               </div>
             ) : (
-              <label className="flex flex-col items-center justify-center border border-dashed border-gray-200 dark:border-gray-800 rounded-xl p-6 bg-gray-50/50 dark:bg-white/5 hover:bg-gray-100/50 dark:hover:bg-white/10 transition-colors cursor-pointer select-none">
-                {isUploadingGuideImage ? (
-                  <div className="flex flex-col items-center">
-                    <Loader2 className="h-6 w-6 text-[#e94560] animate-spin" />
-                    <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 mt-2">Uploading & Compressing...</span>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center">
-                    <Upload className="h-6 w-6 text-gray-400" />
-                    <span className="text-xs font-bold text-gray-700 dark:text-gray-300 mt-2">Click to Upload Image</span>
-                    <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">Supports PNG, JPG, WEBP, HEIC (Auto-optimized)</span>
-                  </div>
-                )}
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => handleFileUpload(e, 'size_chart')}
-                  disabled={isUploadingGuideImage}
-                  className="hidden"
-                />
-              </label>
+              <div className="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-xl border border-dashed border-gray-200 dark:border-gray-800 bg-gray-50/20 dark:bg-[#0f0f1b]/20">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100 dark:bg-white/5 text-gray-400">
+                  <ImageIcon className="h-6 w-6" />
+                </div>
+                <div className="flex-1 flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsMediaModalOpen(true)}
+                    className="relative self-start flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-white/5 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 text-xs font-bold rounded-lg cursor-pointer transition-colors"
+                  >
+                    <ImageIcon className="h-3.5 w-3.5" />
+                    <span>Select Media</span>
+                  </button>
+                  <span className="text-[10px] text-gray-400 dark:text-gray-500">Select size guide chart image</span>
+                </div>
+              </div>
             )}
           </div>
 
@@ -338,6 +331,17 @@ export default function SizeGuidesTab({
 
         </div>
       </div>
+      <MediaSelectorModal
+        isOpen={isMediaModalOpen}
+        onClose={() => setIsMediaModalOpen(false)}
+        onSelect={(urls) => {
+          if (urls.length > 0) {
+            setGuideImageUrl(urls[0]);
+          }
+          setIsMediaModalOpen(false);
+        }}
+        multiple={false}
+      />
     </div>
   );
 }

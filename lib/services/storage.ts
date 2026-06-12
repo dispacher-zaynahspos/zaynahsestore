@@ -32,11 +32,15 @@ async function uploadViaServer(file: File, folder: string): Promise<string> {
  */
 async function uploadViaClient(file: File, fileName: string): Promise<string> {
   const supabase = createClient();
-  const compressed = await compressImage(file, 50);
+  const isVideo = file.type.startsWith('video/') || /\.(mp4|mov|webm|m4v|avi|mkv|ogv)$/i.test(file.name);
+  const rawOrCompressed = isVideo ? file : await compressImage(file, 50);
 
   const { error } = await supabase.storage
     .from('product-images')
-    .upload(fileName, compressed, { upsert: true });
+    .upload(fileName, rawOrCompressed, { 
+      contentType: file.type || (isVideo ? 'video/mp4' : 'image/webp'),
+      upsert: true 
+    });
 
   if (error) throw error;
 
@@ -57,7 +61,9 @@ export const uploadProductImage = async (
     console.warn('[storage] Server upload failed, trying client fallback:', serverErr);
     try {
       const baseName = file.name.replace(/\.[^/.]+$/, '').replace(/[^a-z0-9_\-]/gi, '_');
-      const fileName = `products/${productId}/${baseName}_${Date.now()}.webp`;
+      const isVideo = file.type.startsWith('video/') || /\.(mp4|mov|webm|m4v|avi|mkv|ogv)$/i.test(file.name);
+      const ext = isVideo ? (file.name.split('.').pop() || 'mp4') : 'webp';
+      const fileName = `products/${productId}/${baseName}_${Date.now()}.${ext}`;
       return await uploadViaClient(file, fileName);
     } catch (clientErr) {
       console.error('[storage] uploadProductImage failed:', clientErr);
@@ -77,7 +83,9 @@ export const uploadSettingsImage = async (
     console.warn('[storage] Server upload failed, trying client fallback:', serverErr);
     try {
       const baseName = file.name.replace(/\.[^/.]+$/, '').replace(/[^a-z0-9_\-]/gi, '_');
-      const fileName = `settings/${type}_${baseName}_${Date.now()}.webp`;
+      const isVideo = file.type.startsWith('video/') || /\.(mp4|mov|webm|m4v|avi|mkv|ogv)$/i.test(file.name);
+      const ext = isVideo ? (file.name.split('.').pop() || 'mp4') : 'webp';
+      const fileName = `settings/${type}_${baseName}_${Date.now()}.${ext}`;
       return await uploadViaClient(file, fileName);
     } catch (clientErr) {
       console.error('[storage] uploadSettingsImage failed:', clientErr);

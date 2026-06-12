@@ -26,12 +26,14 @@ export default function PremiumFeaturesProvider({ settings }: PremiumFeaturesPro
   const [showExitIntent, setShowExitIntent] = useState(false);
   const [exitPhone, setExitPhone] = useState('');
   const [exitName, setExitName] = useState('');
+  const [exitEmail, setExitEmail] = useState('');
   const [exitSubscribed, setExitSubscribed] = useState(false);
 
   // Spin to Win state
   const [showSpinWheel, setShowSpinWheel] = useState(false);
   const [spinPhone, setSpinPhone] = useState('');
   const [spinName, setSpinName] = useState('');
+  const [spinEmail, setSpinEmail] = useState('');
   const [isSpinning, setIsSpinning] = useState(false);
   const [spinResult, setSpinResult] = useState<string | null>(null);
   const [hasSpun, setHasSpun] = useState(false);
@@ -325,7 +327,7 @@ export default function PremiumFeaturesProvider({ settings }: PremiumFeaturesPro
     try {
       setIsSpinning(true);
       // Register WhatsApp subscriber first
-      await addWhatsAppSubscriber(spinPhone, spinName || undefined);
+      await addWhatsAppSubscriber(spinPhone, spinName || undefined, spinEmail || undefined, 'wheel');
     } catch (err) {
       console.error(err);
       toast.error('Could not save WhatsApp subscriber. Please try again.');
@@ -398,7 +400,7 @@ export default function PremiumFeaturesProvider({ settings }: PremiumFeaturesPro
     }
 
     try {
-      await addWhatsAppSubscriber(exitPhone, exitName || undefined);
+      await addWhatsAppSubscriber(exitPhone, exitName || undefined, exitEmail || undefined, 'exit_intent');
       setExitSubscribed(true);
       toast.success('Successfully subscribed! Enjoy your discount.');
     } catch (err) {
@@ -418,6 +420,25 @@ export default function PremiumFeaturesProvider({ settings }: PremiumFeaturesPro
     toast.success('Coupon code copied to clipboard!');
   };
 
+  const getCouponCodeForSegment = (prize: string | null) => {
+    if (!prize) return settings.exit_intent_coupon || 'WELCOME10';
+    const clean = prize.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    
+    if (clean.length >= 3 && !['TRYAGAIN', 'FREESHIPPING', 'FREEDELIVERY', '5OFF', '10OFF'].includes(clean)) {
+      return clean;
+    }
+    
+    if (prize.includes('5%')) return '5OFF';
+    if (prize.includes('10%')) return '10OFF';
+    if (prize.includes('15%')) return '15OFF';
+    if (prize.includes('20%')) return '20OFF';
+    if (prize.toLowerCase().includes('free shipping') || prize.toLowerCase().includes('free delivery')) {
+      return 'FREESHIP';
+    }
+    
+    return settings.exit_intent_coupon || 'WELCOME10';
+  };
+
   return (
     <>
       {/* 1. EXIT INTENT POPUP */}
@@ -433,9 +454,9 @@ export default function PremiumFeaturesProvider({ settings }: PremiumFeaturesPro
 
             <div className="text-center mt-3">
               {settings.exit_intent_image_url ? (
-                <div className="relative w-full h-36 mb-4 rounded-2xl overflow-hidden bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-gray-800">
+                <div className="relative w-full h-44 sm:h-52 mb-4 rounded-2xl overflow-hidden bg-gray-50/50 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-800">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={settings.exit_intent_image_url} alt="Promo banner" className="object-cover w-full h-full" />
+                  <img src={settings.exit_intent_image_url} alt="Promo banner" className="object-contain w-full h-full" />
                 </div>
               ) : (
                 <div className="inline-flex items-center justify-center w-14 h-14 bg-amber-50 dark:bg-amber-950/40 rounded-full mb-4">
@@ -449,7 +470,6 @@ export default function PremiumFeaturesProvider({ settings }: PremiumFeaturesPro
                 {settings.exit_intent_text}
               </p>
             </div>
-
             <form onSubmit={handleExitSubmit} className="mt-6 space-y-4">
               <div>
                 <input
@@ -457,6 +477,15 @@ export default function PremiumFeaturesProvider({ settings }: PremiumFeaturesPro
                   placeholder="Your Name (Optional)"
                   value={exitName}
                   onChange={(e) => setExitName(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 text-gray-950 dark:text-gray-50"
+                />
+              </div>
+              <div>
+                <input
+                  type="email"
+                  placeholder="Email Address (Optional)"
+                  value={exitEmail}
+                  onChange={(e) => setExitEmail(e.target.value)}
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 text-gray-950 dark:text-gray-50"
                 />
               </div>
@@ -585,6 +614,16 @@ export default function PremiumFeaturesProvider({ settings }: PremiumFeaturesPro
                     </div>
                     <div>
                       <input
+                        type="email"
+                        placeholder="Email Address (Optional)"
+                        value={spinEmail}
+                        onChange={(e) => setSpinEmail(e.target.value)}
+                        disabled={isSpinning}
+                        className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 focus:outline-none focus:ring-2 focus:ring-amber-500 text-gray-950 dark:text-gray-50"
+                      />
+                    </div>
+                    <div>
+                      <input
                         type="tel"
                         placeholder="WhatsApp Number"
                         value={spinPhone}
@@ -616,10 +655,10 @@ export default function PremiumFeaturesProvider({ settings }: PremiumFeaturesPro
                     {spinResult !== 'Try Again' && (
                       <div className="p-3 bg-gray-50 dark:bg-gray-800/50 border border-dashed border-gray-200 dark:border-gray-700 rounded-xl flex items-center justify-between">
                         <span className="font-mono text-sm font-bold text-amber-500">
-                          {settings.exit_intent_coupon || 'WELCOME10'}
+                          {getCouponCodeForSegment(spinResult)}
                         </span>
                         <button
-                          onClick={() => copyToClipboard(settings.exit_intent_coupon || 'WELCOME10')}
+                          onClick={() => copyToClipboard(getCouponCodeForSegment(spinResult))}
                           className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold rounded transition-colors"
                         >
                           Copy Code

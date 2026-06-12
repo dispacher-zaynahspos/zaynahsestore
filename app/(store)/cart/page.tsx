@@ -1,8 +1,16 @@
 import React, { Suspense } from 'react';
+import { Metadata } from 'next';
 import CartContainer from '@/components/store/CartContainer';
 import { getSettings } from '@/lib/services/settings';
 
 export const revalidate = 0; // Dynamic server rendering
+
+export const metadata: Metadata = {
+  robots: {
+    index: false,
+    follow: false
+  }
+};
 
 export default async function CartPage() {
   const settings = await getSettings();
