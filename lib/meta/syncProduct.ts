@@ -11,6 +11,10 @@ export async function syncProductToMeta(
   action: 'UPDATE' | 'DELETE' = 'UPDATE'
 ): Promise<{ success: boolean; error?: any }> {
   try {
+    if (process.env.DISABLE_META_SYNC === 'true') {
+      console.log('[MetaSync] Meta sync is temporarily disabled via env variable.');
+      return { success: true };
+    }
     const catalogId = process.env.META_CATALOG_ID;
     const accessToken = process.env.META_ACCESS_TOKEN;
     const apiVersion = process.env.META_GRAPH_API_VERSION || 'v21.0';
@@ -150,6 +154,10 @@ export async function bulkSyncProductsToMeta(
   products: Product[],
   action: 'UPDATE' | 'DELETE' = 'UPDATE'
 ): Promise<{ success: boolean; totalSynced: number; errors: string[] }> {
+  if (process.env.DISABLE_META_SYNC === 'true') {
+    console.log('[MetaSync] Bulk sync is temporarily disabled via env variable.');
+    return { success: true, totalSynced: 0, errors: [] };
+  }
   const catalogId = process.env.META_CATALOG_ID;
   const accessToken = process.env.META_ACCESS_TOKEN;
   const apiVersion = process.env.META_GRAPH_API_VERSION || 'v21.0';

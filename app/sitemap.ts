@@ -1,8 +1,12 @@
 import { MetadataRoute } from 'next';
+import { headers } from 'next/headers';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://zaynahs.pk';
+  const headersList = await headers();
+  const host = headersList.get('host') || 'zaynahs.pk';
+  const protocol = host.includes('localhost') ? 'http' : 'https';
+  const siteUrl = `${protocol}://${host}`;
 
   // 1. Fetch products and categories
   const { data: products } = await supabaseAdmin
@@ -49,11 +53,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
   }
 
-  // 4. Add categories
+  // 4. Add categories (filtering via shop page as per Rule #0)
   if (categories) {
     categories.forEach((c) => {
       routes.push({
-        url: `${siteUrl}/category/${c.slug}`,
+        url: `${siteUrl}/shop?category=${c.slug}`,
         lastModified: c.updated_at ? new Date(c.updated_at) : new Date(),
         changeFrequency: 'weekly',
         priority: 0.8,

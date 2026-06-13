@@ -39,6 +39,9 @@ export default function PreviewClient({
 
   // Client-side real-time calculation of sale prices (matches applyFlashSaleDiscounts on server)
   const liveProducts = React.useMemo(() => {
+    if (settings.flash_sale_enabled === false) {
+      return productsList;
+    }
     const now = Date.now();
     const fsSection = sections.find(s => s.section_type === 'flash_sale' && s.active);
     const isFsActive = fsSection ? (() => {
@@ -494,6 +497,7 @@ export default function PreviewClient({
                 );
               }
               if (block === 'social_feed') {
+                if (settings.social_feeds_enabled === false) return null;
                 if (settings.social_feeds_product_enabled === false) return null;
                 return (
                   <div

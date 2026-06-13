@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans, Outfit } from 'next/font/google';
 import { Toaster } from 'sonner';
 import { ThemeProvider } from '@/components/common/ThemeProvider';
+import { headers } from 'next/headers';
 import "./globals.css";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -35,9 +36,39 @@ const getFaviconType = (url: string) => {
 export async function generateMetadata(): Promise<Metadata> {
   try {
     const settings = await getSettings();
-    const title = settings.storeName || "Zaynahs E-Store";
+    const headersList = await headers();
+    const host = headersList.get('host') || '';
+    
+    // Automatically derive store name from hostname if host is present
+    let derivedName = settings.storeName || "Zaynahs E-Store";
+    if (host && !host.includes('localhost') && !host.includes('127.0.0.1')) {
+      const parts = host.replace('www.', '').split('.');
+      if (parts.length > 0) {
+        const namePart = parts[0];
+        derivedName = namePart.charAt(0).toUpperCase() + namePart.slice(1);
+        if (namePart.toLowerCase() === 'totvogue') {
+          derivedName = 'TotVogue';
+        }
+        if (parts[1]) {
+          derivedName += '.' + parts[1];
+        }
+      }
+    }
+
+    const title = derivedName;
     const suffix = settings.meta_title_suffix || "";
-    const description = settings.tagline || "Modern Pakistani E-Commerce — Premium Mobile Shop";
+    
+    let description = settings.tagline || "Welcome to our store. We provide premium quality products delivered right to your doorstep.";
+    if (settings.tagline) {
+      if (host.includes('zaynahs')) {
+        description = settings.tagline.replace(/TotVogue/gi, "Zaynahs").replace(/totvogue.pk/gi, "zaynahs.pk");
+      } else if (host.includes('totvogue')) {
+        description = settings.tagline.replace(/Zaynahs/gi, "TotVogue").replace(/zaynahs.pk/gi, "totvogue.pk");
+      }
+    } else {
+      description = `Welcome to ${derivedName}. We provide premium quality products delivered right to your doorstep. Confirm your orders instantly via WhatsApp.`;
+    }
+
     const timestamp = settings.updatedAt ? new Date(settings.updatedAt).getTime() : Date.now();
     const fav = settings.faviconUrl 
       ? `${settings.faviconUrl}?v=${timestamp}` 

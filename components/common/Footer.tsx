@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { StoreSettings } from '@/lib/types';
 import { toast } from 'sonner';
@@ -159,6 +159,15 @@ function NewsletterForm() {
 }
 
 export default function Footer({ settings }: FooterProps) {
+  const [mounted, setMounted] = useState(false);
+  const [isPreview, setIsPreview] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+    if (typeof window !== 'undefined' && window.self !== window.top) {
+      setIsPreview(true);
+    }
+  }, []);
+
   const currentYear = new Date().getFullYear();
 
   // Social Links Check
@@ -194,14 +203,14 @@ export default function Footer({ settings }: FooterProps) {
   return (
     <footer
       onClick={(e) => {
-        if (typeof window !== 'undefined' && window.self !== window.top) {
+        if (isPreview) {
           e.preventDefault();
           e.stopPropagation();
           window.parent.postMessage({ type: 'select_global_tab', subTab: 'footer' }, '*');
         }
       }}
       className={`w-full bg-white dark:bg-[#0f0f1b] border-t border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-400 select-none transition-colors duration-200 ${
-        typeof window !== 'undefined' && window.self !== window.top ? 'cursor-pointer hover:ring-2 hover:ring-[#e94560] hover:ring-offset-2' : ''
+        isPreview ? 'cursor-pointer hover:ring-2 hover:ring-[#e94560] hover:ring-offset-2' : ''
       }`}
     >
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">

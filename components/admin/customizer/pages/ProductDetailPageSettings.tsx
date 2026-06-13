@@ -20,6 +20,18 @@ export default function ProductDetailPageSettings({
   onUpdateProduct = () => {}
 }: ProductDetailPageSettingsProps) {
   if (subTab === 'product_sale') {
+    if (settings.flash_sale_enabled === false) {
+      return (
+        <div className="flex flex-col items-center justify-center p-6 text-center space-y-3 border border-dashed border-gray-200 dark:border-gray-800 rounded-2xl bg-gray-50/50 dark:bg-white/2 py-10">
+          <span className="text-2xl">🔒</span>
+          <h4 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider">Flash Sale Locked</h4>
+          <p className="text-[11px] text-gray-500 leading-normal max-w-[200px]">
+            This feature is disabled in your store settings. Please enable &quot;Flash Sale Timers&quot; in Settings &gt; Premium Tab first.
+          </p>
+        </div>
+      );
+    }
+
     if (!currentProduct) {
       return (
         <div className="p-4 text-center text-xs text-gray-500 font-semibold">
@@ -150,6 +162,18 @@ export default function ProductDetailPageSettings({
   }
 
   if (subTab === 'social_feed') {
+    if (settings.social_feeds_enabled === false) {
+      return (
+        <div className="flex flex-col items-center justify-center p-6 text-center space-y-3 border border-dashed border-gray-200 dark:border-gray-800 rounded-2xl bg-gray-50/50 dark:bg-white/2 py-10">
+          <span className="text-2xl">🔒</span>
+          <h4 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider">Social Feed Locked</h4>
+          <p className="text-[11px] text-gray-500 leading-normal max-w-[200px]">
+            This feature is disabled in your store settings. Please enable &quot;Social Feeds Embeds&quot; in Settings &gt; Premium Tab first.
+          </p>
+        </div>
+      );
+    }
+
     return (
       <div className="space-y-4">
         <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-800 pb-2">

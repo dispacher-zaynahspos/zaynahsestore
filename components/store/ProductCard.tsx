@@ -34,7 +34,7 @@ export default function ProductCard({ product, currencySymbol = 'Rs.', settings 
   const showWishlist = settings?.card_show_wishlist !== false;
   const showQuickview = settings?.card_show_quickview !== false;
   const showQuickcart = settings?.card_show_quickcart !== false;
-  const cardAlignment = settings?.card_alignment || 'left';
+  const cardAlignment = settings?.card_alignment || 'center';
   const elementsOrder = settings?.card_elements_order || ['title', 'rating', 'price', 'swatches'];
 
   // Flash sale state
@@ -114,11 +114,11 @@ export default function ProductCard({ product, currencySymbol = 'Rs.', settings 
   const swatchShape = settings?.swatchShape ?? 'circle';
   const archiveSwatchSize = settings?.archiveSwatchSize ?? settings?.swatchSize ?? 'md';
   const swatchSizeClass = 
-    archiveSwatchSize === 'sm' ? 'h-4 w-4' : 
-    archiveSwatchSize === 'lg' ? 'h-6 w-6' : 
-    archiveSwatchSize === 'xl' ? 'h-7 w-7' :
-    archiveSwatchSize === 'xxl' ? 'h-8 w-8' :
-    'h-5 w-5';
+    archiveSwatchSize === 'sm' ? 'h-3.5 w-3.5' : 
+    archiveSwatchSize === 'lg' ? 'h-5.5 w-5.5' : 
+    archiveSwatchSize === 'xl' ? 'h-6 w-6' :
+    archiveSwatchSize === 'xxl' ? 'h-7 w-7' :
+    'h-4 w-4';
   const shapeClass = swatchShape === 'circle' ? 'rounded-full' : 'rounded-sm';
 
   const colorVariants = product.variants
@@ -143,11 +143,11 @@ export default function ProductCard({ product, currencySymbol = 'Rs.', settings 
 
   const getTitleClampClass = (limit?: string) => {
     switch (limit) {
-      case '1': return 'line-clamp-1 min-h-[20px]';
+      case '1': return 'line-clamp-1 min-h-[16px] sm:min-h-[18px]';
       case 'none': return 'line-clamp-none';
       case '2':
       default:
-        return 'line-clamp-2 min-h-[40px]';
+        return 'line-clamp-2 min-h-[32px] sm:min-h-[36px]';
     }
   };
 
@@ -169,23 +169,23 @@ export default function ProductCard({ product, currencySymbol = 'Rs.', settings 
     switch (element) {
       case 'title':
         return (
-          <h4 
+          <div 
             key="title" 
-            className={`font-semibold text-sm text-gray-900 dark:text-white group-hover:text-[#e94560] transition-colors ${titleClampClass} ${
+            className={`font-bold text-xs sm:text-sm text-gray-900 dark:text-white group-hover:text-[#e94560] transition-colors leading-tight ${titleClampClass} ${
               cardStyle === 'style4' ? 'font-serif uppercase tracking-widest text-[10px] !min-h-0' : ''
             }`}
           >
             {product.name}
-          </h4>
+          </div>
         );
       case 'rating':
         if (!showStars) return null;
         return (
-          <div key="rating" className="mt-1 flex items-center gap-0.5 text-xs text-amber-400">
+          <div key="rating" className={`mt-1 flex items-center gap-0.5 text-[10px] text-amber-400 ${swatchAlign}`}>
             {Array.from({ length: 5 }).map((_, idx) => (
               <svg
                 key={idx}
-                className={`h-3.5 w-3.5 ${
+                className={`h-3 w-3 ${
                   idx < Math.round(product.rating || 5)
                     ? 'fill-amber-400 text-amber-400'
                     : 'text-gray-300 dark:text-gray-600'
@@ -196,19 +196,19 @@ export default function ProductCard({ product, currencySymbol = 'Rs.', settings 
                 <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
               </svg>
             ))}
-            <span className="text-[10px] text-gray-400 dark:text-gray-500 font-semibold ml-1">
+            <span className="text-[9px] text-gray-400 dark:text-gray-500 font-bold ml-1">
               ({product.reviewsCount || 0})
             </span>
           </div>
         );
       case 'price':
         return (
-          <div key="price" className="mt-2 flex items-baseline gap-1.5 flex-wrap">
-            <span className="text-base font-bold text-[#1a1a2e] dark:text-white">
+          <div key="price" className={`mt-1 flex items-baseline gap-1.5 flex-wrap ${swatchAlign}`}>
+            <span className="text-sm sm:text-base font-extrabold text-gray-900 dark:text-white">
               {formatPrice(initialPrice, currencySymbol)}
             </span>
             {initialComparePrice && initialComparePrice > initialPrice && (
-              <span className="text-xs text-gray-400 line-through">
+              <span className="text-[10px] sm:text-xs text-gray-400 line-through">
                 {formatPrice(initialComparePrice, currencySymbol)}
               </span>
             )}
@@ -534,9 +534,9 @@ export default function ProductCard({ product, currencySymbol = 'Rs.', settings 
         </div>
 
         {/* Product Info details block */}
-        <div className={`flex flex-grow flex-col p-3.5 ${alignClass}`}>
-          {product.category && (
-            <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">
+        <div className={`flex flex-grow flex-col p-2.5 sm:p-3 ${alignClass}`}>
+          {product.category && cardStyle === 'style4' && (
+            <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-0.5">
               {product.category.name}
             </span>
           )}

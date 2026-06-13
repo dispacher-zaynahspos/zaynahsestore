@@ -32,6 +32,7 @@ interface FlashSaleSectionProps {
 }
 
 function FlashSaleSection({ section, products, currencySymbol, settings }: FlashSaleSectionProps) {
+  if (settings.flash_sale_enabled === false) return null;
   const startTimeStr = section.settings?.startTime;
   const endTimeStr = section.settings?.endTime;
 

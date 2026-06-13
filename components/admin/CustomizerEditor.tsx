@@ -558,15 +558,32 @@ export default function CustomizerEditor({
                       { type: 'social_feed', label: 'Social Feed' },
                       { type: 'ticker', label: 'Scrolling Ticker' },
                       { type: 'flash_sale', label: 'Flash Sale Grid' }
-                    ].map(item => (
-                      <button
-                        key={item.type}
-                        onClick={() => handleAddSection(item.type)}
-                        className="px-2.5 py-1.5 text-left bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-gray-800/80 hover:border-[#e94560] dark:hover:border-[#e94560] text-xs font-bold text-gray-700 dark:text-gray-300 rounded-xl transition-all active:scale-97 cursor-pointer"
-                      >
-                        {item.label}
-                      </button>
-                    ))}
+                    ].map(item => {
+                      const isFeatureDisabled = 
+                        (item.type === 'social_feed' && storeSettings.social_feeds_enabled === false) ||
+                        (item.type === 'flash_sale' && storeSettings.flash_sale_enabled === false);
+                      
+                      return (
+                        <button
+                          key={item.type}
+                          onClick={() => {
+                            if (isFeatureDisabled) {
+                              const featureName = item.type === 'social_feed' ? 'Social Feeds' : 'Flash Sale';
+                              toast.error(`🔒 ${featureName} is disabled! Enable it in Settings > Premium Tab.`);
+                              return;
+                            }
+                            handleAddSection(item.type);
+                          }}
+                          className={`px-2.5 py-1.5 text-left border rounded-xl transition-all text-xs font-bold ${
+                            isFeatureDisabled
+                              ? 'bg-gray-100/50 dark:bg-gray-950/40 border-gray-200 dark:border-gray-800 text-gray-400 dark:text-gray-650 cursor-not-allowed'
+                              : 'bg-gray-50 dark:bg-white/5 border-gray-100 dark:border-gray-800/80 hover:border-[#e94560] dark:hover:border-[#e94560] text-gray-700 dark:text-gray-300 active:scale-97 cursor-pointer'
+                          }`}
+                        >
+                          {isFeatureDisabled ? `🔒 ${item.label}` : item.label}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -621,14 +638,22 @@ export default function CustomizerEditor({
                           >
                             <div className="flex items-center gap-2">
                               <GripVertical className="h-4 w-4 text-gray-400" />
-                              <div className="min-w-0 flex-1">
-                                <div className="text-xs font-bold text-gray-900 dark:text-white truncate">
-                                  {section.title || section.section_type}
-                                </div>
-                                <span className="text-[9px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider">
-                                  {section.section_type.replace('_', ' ')}
-                                </span>
-                              </div>
+                              {(() => {
+                                const isFeatureDisabled = 
+                                  (section.section_type === 'social_feed' && storeSettings.social_feeds_enabled === false) ||
+                                  (section.section_type === 'flash_sale' && storeSettings.flash_sale_enabled === false);
+
+                                return (
+                                  <div className="min-w-0 flex-1">
+                                    <div className={`text-xs font-bold truncate ${isFeatureDisabled ? 'text-gray-450 dark:text-gray-500 line-through' : 'text-gray-900 dark:text-white'}`}>
+                                      {isFeatureDisabled ? '🔒 ' : ''}{section.title || section.section_type}
+                                    </div>
+                                    <span className="text-[9px] text-gray-455 dark:text-gray-500 font-bold uppercase tracking-wider">
+                                      {section.section_type.replace('_', ' ')} {isFeatureDisabled && '(Disabled)'}
+                                    </span>
+                                  </div>
+                                )
+                              })()}
                             </div>
 
                             {/* Controls */}
@@ -702,29 +727,34 @@ export default function CustomizerEditor({
             ) : activePage === 'product_detail' ? (
               <div className="space-y-4">
                 {/* Product Sale Configuration Tab */}
-                <div
-                  onClick={() => {
-                    setActiveSectionId(null);
-                    setActiveSubTab('product_sale');
-                  }}
-                  className={`flex items-center justify-between p-3 border rounded-xl transition-all cursor-pointer mb-4 ${
-                    activeSubTab === 'product_sale'
-                      ? 'border-[#e94560] bg-[#e94560]/5 dark:bg-[#e94560]/10 shadow-sm'
-                      : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-[#16162a] hover:border-gray-300 dark:hover:border-gray-700'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm">🏷️</span>
-                    <div className="min-w-0 flex-grow">
-                      <div className="text-xs font-bold text-gray-900 dark:text-white">
-                        Product Sale Settings
+                {(() => {
+                  const isFlashSaleDisabled = storeSettings.flash_sale_enabled === false;
+                  return (
+                    <div
+                      onClick={() => {
+                        setActiveSectionId(null);
+                        setActiveSubTab('product_sale');
+                      }}
+                      className={`flex items-center justify-between p-3 border rounded-xl transition-all cursor-pointer mb-4 ${
+                        activeSubTab === 'product_sale'
+                          ? 'border-[#e94560] bg-[#e94560]/5 dark:bg-[#e94560]/10 shadow-sm'
+                          : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-[#16162a] hover:border-gray-300 dark:hover:border-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm">🏷️</span>
+                        <div className="min-w-0 flex-grow">
+                          <div className={`text-xs font-bold ${isFlashSaleDisabled ? 'text-gray-450 dark:text-gray-500 line-through font-semibold' : 'text-gray-900 dark:text-white'}`}>
+                            {isFlashSaleDisabled ? '🔒 ' : ''}Product Sale Settings
+                          </div>
+                          <span className="text-[9px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider block truncate max-w-[150px]">
+                            {isFlashSaleDisabled ? 'Disabled' : (currentProduct?.name || 'No Product Active')}
+                          </span>
+                        </div>
                       </div>
-                      <span className="text-[9px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider block truncate max-w-[150px]">
-                        {currentProduct?.name || 'No Product Active'}
-                      </span>
                     </div>
-                  </div>
-                </div>
+                  );
+                })()}
 
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest block">
@@ -766,14 +796,21 @@ export default function CustomizerEditor({
                         >
                           <div className="flex items-center gap-2 min-w-0 flex-1">
                             <GripVertical className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                            <div className="min-w-0 flex-1">
-                              <div className="text-xs font-bold text-gray-900 dark:text-white truncate">
-                                {blockLabels[blockId] || blockId}
-                              </div>
-                              <span className="text-[9px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider">
-                                {blockId}
-                              </span>
-                            </div>
+                              {(() => {
+                                const isFeatureDisabled = 
+                                  (blockId === 'social_feed' && storeSettings.social_feeds_enabled === false);
+
+                                return (
+                                  <div className="min-w-0 flex-1">
+                                    <div className={`text-xs font-bold truncate ${isFeatureDisabled ? 'text-gray-450 dark:text-gray-500 line-through' : 'text-gray-900 dark:text-white'}`}>
+                                      {isFeatureDisabled ? '🔒 ' : ''}{blockLabels[blockId] || blockId}
+                                    </div>
+                                    <span className="text-[9px] text-gray-455 dark:text-gray-500 font-bold uppercase tracking-wider">
+                                      {blockId} {isFeatureDisabled && '(Disabled)'}
+                                    </span>
+                                  </div>
+                                );
+                              })()}
                           </div>
                           <div className="flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
                             <button
@@ -842,28 +879,41 @@ export default function CustomizerEditor({
                         + Add Page Block
                       </label>
                       <div className="grid grid-cols-2 gap-1.5">
-                        {availableBlocks.map(block => (
-                          <button
-                            key={block.id}
-                            onClick={() => {
-                              const newLayout = [...currentLayout, block.id];
-                              setStoreSettings(prev => ({ ...prev, productPageLayout: newLayout }));
-                              setActiveSectionId(block.id);
-                              const tabMap: Record<string, string> = {
-                                details: 'swatches',
-                                ticker: 'ticker',
-                                reviews: 'urgency',
-                                related: 'delivery',
-                                recently_viewed: 'recently_viewed',
-                                social_feed: 'social_feed'
-                              };
-                              setActiveSubTab(tabMap[block.id] || 'swatches');
-                            }}
-                            className="px-2.5 py-1.5 text-left bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-gray-800/80 hover:border-[#e94560] dark:hover:border-[#e94560] text-[10px] font-bold text-gray-700 dark:text-gray-300 rounded-xl transition-all cursor-pointer truncate"
-                          >
-                            {block.label.replace(' Component', '').replace(' Grid', '').replace(' Feed', '')}
-                          </button>
-                        ))}
+                        {availableBlocks.map(block => {
+                          const isFeatureDisabled = 
+                            (block.id === 'social_feed' && storeSettings.social_feeds_enabled === false);
+
+                          return (
+                            <button
+                              key={block.id}
+                              onClick={() => {
+                                if (isFeatureDisabled) {
+                                  toast.error("🔒 Social Feeds is disabled! Enable it in Settings > Premium Tab.");
+                                  return;
+                                }
+                                const newLayout = [...currentLayout, block.id];
+                                setStoreSettings(prev => ({ ...prev, productPageLayout: newLayout }));
+                                setActiveSectionId(block.id);
+                                const tabMap: Record<string, string> = {
+                                  details: 'swatches',
+                                  ticker: 'ticker',
+                                  reviews: 'urgency',
+                                  related: 'delivery',
+                                  recently_viewed: 'recently_viewed',
+                                  social_feed: 'social_feed'
+                                };
+                                setActiveSubTab(tabMap[block.id] || 'swatches');
+                              }}
+                              className={`px-2.5 py-1.5 text-left border rounded-xl transition-all text-[10px] font-bold truncate ${
+                                isFeatureDisabled
+                                  ? 'bg-gray-105/50 dark:bg-gray-950/40 border-gray-200 dark:border-gray-800 text-gray-400 dark:text-gray-650 cursor-not-allowed'
+                                  : 'bg-gray-50 dark:bg-white/5 border-gray-100 dark:border-gray-800/80 hover:border-[#e94560] dark:hover:border-[#e94560] text-gray-700 dark:text-gray-300 cursor-pointer'
+                              }`}
+                            >
+                              {isFeatureDisabled ? '🔒 ' : ''}{block.label.replace(' Component', '').replace(' Grid', '').replace(' Feed', '')}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   );
@@ -1270,10 +1320,20 @@ export default function CustomizerEditor({
                   )}
 
                   {activeSection.section_type === 'social_feed' && (
-                    <SocialFeedSettings
-                      section={activeSection}
-                      onUpdateSection={(updates) => handleUpdateSection(activeSection.id, updates)}
-                    />
+                    storeSettings.social_feeds_enabled === false ? (
+                      <div className="flex flex-col items-center justify-center p-6 text-center space-y-3 border border-dashed border-gray-200 dark:border-gray-800 rounded-2xl bg-gray-50/50 dark:bg-white/2 py-12">
+                        <span className="text-3xl">🔒</span>
+                        <h4 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider">Social Feed Locked</h4>
+                        <p className="text-[11px] text-gray-500 leading-normal max-w-[200px]">
+                          This feature is disabled in your store settings. Please enable &quot;Social Feeds Embeds&quot; in Settings &gt; Premium Tab first.
+                        </p>
+                      </div>
+                    ) : (
+                      <SocialFeedSettings
+                        section={activeSection}
+                        onUpdateSection={(updates) => handleUpdateSection(activeSection.id, updates)}
+                      />
+                    )
                   )}
 
                   {activeSection.section_type === 'ticker' && (
@@ -1307,12 +1367,22 @@ export default function CustomizerEditor({
                   )}
 
                   {activeSection.section_type === 'flash_sale' && (
-                    <FlashSaleSettings
-                      section={activeSection}
-                      products={products}
-                      categories={categories}
-                      onUpdateSection={(updates) => handleUpdateSection(activeSection.id, updates)}
-                    />
+                    storeSettings.flash_sale_enabled === false ? (
+                      <div className="flex flex-col items-center justify-center p-6 text-center space-y-3 border border-dashed border-gray-200 dark:border-gray-800 rounded-2xl bg-gray-50/50 dark:bg-white/2 py-12">
+                        <span className="text-3xl">🔒</span>
+                        <h4 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider">Flash Sale Locked</h4>
+                        <p className="text-[11px] text-gray-500 leading-normal max-w-[200px]">
+                          This feature is disabled in your store settings. Please enable &quot;Flash Sale Timers&quot; in Settings &gt; Premium Tab first.
+                        </p>
+                      </div>
+                    ) : (
+                      <FlashSaleSettings
+                        section={activeSection}
+                        products={products}
+                        categories={categories}
+                        onUpdateSection={(updates) => handleUpdateSection(activeSection.id, updates)}
+                      />
+                    )
                   )}
                 </div>
               ) : (

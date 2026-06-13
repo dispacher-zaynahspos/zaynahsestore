@@ -165,9 +165,15 @@ export default function Navbar({
   const [mounted, setMounted] = useState(false);
   const [wishlistCount, setWishlistCount] = useState(0);
   const [customerSession, setCustomerSession] = useState<any>(null);
+  const [isPreview, setIsPreview] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => setMounted(true), 0);
+    const timer = setTimeout(() => {
+      setMounted(true);
+      if (typeof window !== 'undefined' && window.self !== window.top) {
+        setIsPreview(true);
+      }
+    }, 0);
     return () => clearTimeout(timer);
   }, []);
 
@@ -453,14 +459,14 @@ export default function Navbar({
       {(showTopBar || showNewsletter) && (
         <div 
           onClick={(e) => {
-            if (typeof window !== 'undefined' && window.self !== window.top) {
+            if (isPreview) {
               e.preventDefault();
               e.stopPropagation();
               window.parent.postMessage({ type: 'select_section', sectionId: 'announcement_bar' }, '*');
             }
           }}
           className={`w-full text-xs py-1 md:py-2 px-4 flex flex-col md:flex-row items-center justify-between gap-2 border-b transition-colors font-semibold ${
-            typeof window !== 'undefined' && window.self !== window.top ? 'cursor-pointer hover:ring-2 hover:ring-[#e94560] hover:ring-offset-2' : ''
+            isPreview ? 'cursor-pointer hover:ring-2 hover:ring-[#e94560] hover:ring-offset-2' : ''
           }`}
           style={{ 
             backgroundColor: topBarBg, 
@@ -543,14 +549,14 @@ export default function Navbar({
       {/* Main Header */}
       <header 
         onClick={(e) => {
-          if (typeof window !== 'undefined' && window.self !== window.top) {
+          if (isPreview) {
             e.preventDefault();
             e.stopPropagation();
             window.parent.postMessage({ type: 'select_global_tab', subTab: 'header' }, '*');
           }
         }}
         className={`${stickyClass} z-40 w-full border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-[#0f0f1b]/85 backdrop-blur-md transition-colors duration-200 ${
-          typeof window !== 'undefined' && window.self !== window.top ? 'cursor-pointer hover:ring-2 hover:ring-[#e94560] hover:ring-offset-2' : ''
+          isPreview ? 'cursor-pointer hover:ring-2 hover:ring-[#e94560] hover:ring-offset-2' : ''
         }`}
         style={{ 
           backgroundColor: headerBg !== '#ffffff' ? headerBg : undefined, 

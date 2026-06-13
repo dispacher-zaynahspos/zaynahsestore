@@ -215,6 +215,9 @@ const mapProduct = (row: DBProductRow): Product => {
 const applyFlashSaleDiscounts = async (products: Product[]): Promise<Product[]> => {
   try {
     const settings = await getSettings();
+    if (settings && settings.flash_sale_enabled === false) {
+      return products;
+    }
     const { data: sections, error } = await staticSupabase
       .from('homepage_sections')
       .select('*')

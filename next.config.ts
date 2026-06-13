@@ -36,8 +36,11 @@ const nextConfig: NextConfig = {
     },
   },
   async headers() {
-    return [
-      {
+    const isProd = process.env.NODE_ENV === 'production';
+    const rules: any[] = [];
+
+    if (isProd) {
+      rules.push({
         source: '/_next/static/:path*',
         headers: [
           {
@@ -45,7 +48,10 @@ const nextConfig: NextConfig = {
             value: 'public, max-age=31536000, immutable',
           },
         ],
-      },
+      });
+    }
+
+    rules.push(
       {
         source: '/fonts/:path*',
         headers: [
@@ -91,7 +97,9 @@ const nextConfig: NextConfig = {
           },
         ],
       },
-    ];
+    );
+
+    return rules;
   },
   async redirects() {
     return [
