@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Product } from '@/lib/types';
-import { getProducts } from '@/lib/services/products';
+import { getProductsClient } from '@/lib/services/products-client';
 
 export const useProducts = (categoryId?: string) => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -12,7 +12,7 @@ export const useProducts = (categoryId?: string) => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        const data = await getProducts(categoryId);
+        const data = await getProductsClient(categoryId);
         if (active) {
           setProducts(data);
           setError(null);

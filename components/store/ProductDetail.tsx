@@ -26,7 +26,7 @@ import {
   Ruler
 } from '@/components/common/Icons';
 import { StoreSettings, Product, ProductVariant, ProductModifier, PaymentMethod } from '@/lib/types';
-import { getProducts } from '@/lib/services/products';
+import { getProductsClient } from '@/lib/services/products-client';
 import PaymentBadges from '@/components/common/PaymentBadges';
 import { useCartStore } from '@/store/cartStore';
 import { formatPrice, cleanWhatsAppPhone } from '@/lib/utils/whatsapp';
@@ -199,12 +199,12 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
     const loadBundleData = async () => {
       try {
         if (product.frequentlyBoughtTogetherIds && product.frequentlyBoughtTogetherIds.length > 0) {
-          const data = await getProducts();
+          const data = await getProductsClient();
           const filtered = data.filter((p: Product) => product.frequentlyBoughtTogetherIds?.includes(p.id));
           setBundleProducts(filtered);
           setSelectedBundleIds(filtered.map((p: Product) => p.id));
         } else {
-          const data = await getProducts(product.categoryId);
+          const data = await getProductsClient(product.categoryId);
           const filtered = data.filter((p: Product) => p.id !== product.id).slice(0, 2);
           setBundleProducts(filtered);
           setSelectedBundleIds(filtered.map((p: Product) => p.id));

@@ -485,6 +485,65 @@ export const getProducts = async (categoryId?: string) => {
   return cachedProducts(categoryId);
 };
 
+const fetchRelatedProducts = async (productId: string, categoryId?: string, limit = 4): Promise<Product[]> => {
+  try {
+    let related: DBProductRow[] = [];
+    if (categoryId) {
+      const { data, error } = await staticSupabase
+        .from('products')
+        .select('*, product_images(*), product_variants(*), product_modifiers(*), categories(*), badges(*), size_guides(*)')
+        .eq('active', true)
+        .eq('category_id', categoryId)
+        .neq('id', productId)
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: false })
+        .limit(limit);
+      if (error) {
+        console.error('[Products Error Debug] fetchRelatedProducts failed:', error);
+        throw error;
+      }
+      related = data ?? [];
+    }
+
+    if (related.length < limit) {
+      const needed = limit - related.length;
+      const excludeIds = [productId, ...related.map(r => r.id)];
+      const { data, error } = await staticSupabase
+        .from('products')
+        .select('*, product_images(*), product_variants(*), product_modifiers(*), categories(*), badges(*), size_guides(*)')
+        .eq('active', true)
+        .not('id', 'in', `(${excludeIds.join(',')})`)
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: false })
+        .limit(needed);
+      if (error) {
+        console.error('[Products Error Debug] fetchRelatedProducts fallback failed:', error);
+        throw error;
+      }
+      related = [...related, ...(data ?? [])];
+    }
+
+    const products = related.map(mapProduct);
+    return applyFlashSaleDiscounts(products);
+  } catch (err) {
+    console.error('[Products Error Debug] fetchRelatedProducts caught error:', err);
+    throw err;
+  }
+};
+
+const cachedRelatedProducts = (productId: string, categoryId?: string, limit = 4) => unstable_cache(
+  async () => fetchRelatedProducts(productId, categoryId, limit),
+  [`related-products-${productId}-${categoryId || 'none'}-${limit}`],
+  { revalidate: 3600, tags: [`product-${productId}`, 'products'] }
+);
+
+export const getRelatedProducts = async (productId: string, categoryId?: string, limit = 4) => {
+  if (process.env.NODE_ENV === 'development') {
+    return fetchRelatedProducts(productId, categoryId, limit);
+  }
+  return cachedRelatedProducts(productId, categoryId, limit)();
+};
+
 const fetchProductBySlug = async (slug: string): Promise<Product | null> => {
   try {
     const { data, error } = await staticSupabase

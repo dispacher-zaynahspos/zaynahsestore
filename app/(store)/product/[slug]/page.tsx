@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import ProductDetail from '@/components/store/ProductDetail';
 import ProductReviews from '@/components/store/ProductReviews';
 import ProductCard from '@/components/store/ProductCard';
-import { getProductBySlug, getProducts } from '@/lib/services/products';
+import { getProductBySlug, getRelatedProducts } from '@/lib/services/products';
 import { getSettings } from '@/lib/services/settings';
 import { getProductReviews, getAverageRating } from '@/lib/services/reviews';
 import { Product } from '@/lib/types';
@@ -95,30 +95,12 @@ export default async function ProductPage({ params }: PageProps) {
     .eq('entity_id', product.id)
     .maybeSingle();
 
-  const [settings, reviews, averageRating, allProducts] = await Promise.all([
+  const [settings, reviews, averageRating, relatedProducts] = await Promise.all([
     getSettings(),
     getProductReviews(product.id),
     getAverageRating(product.id),
-    getProducts()
+    getRelatedProducts(product.id, product.categoryId, 4)
   ]);
-
-  // Fetch related products
-  let relatedProducts: Product[] = [];
-  if (product.categoryId) {
-    relatedProducts = allProducts.filter(
-      p => p.id !== product.id && p.categoryId === product.categoryId && p.active
-    );
-  }
-  
-  // Fallback to latest products if under 4
-  if (relatedProducts.length < 4) {
-    const extraProducts = allProducts.filter(
-      p => p.id !== product.id && p.active && !relatedProducts.some(rp => rp.id === p.id)
-    );
-    relatedProducts = [...relatedProducts, ...extraProducts].slice(0, 4);
-  } else {
-    relatedProducts = relatedProducts.slice(0, 4);
-  }
 
   const layout = settings.productPageLayout || ['details', 'ticker', 'reviews', 'related', 'recently_viewed', 'social_feed'];
 
@@ -179,7 +161,7 @@ export default async function ProductPage({ params }: PageProps) {
       </div>
 
       <div className="space-y-10 pb-16">
-        {layout.map((block) => {
+        {layout.map((block: string) => {
           if (block === 'details') {
             return (
               <ProductDetail key="details" product={product} settings={settings} averageRating={averageRating} />
@@ -207,7 +189,7 @@ export default async function ProductPage({ params }: PageProps) {
                 <div className="animate-marquee-infinite flex items-center whitespace-nowrap gap-8">
                   {[...Array(4)].map((_, loopIdx) => (
                     <div key={loopIdx} className="flex items-center gap-8">
-                      {settings.tickerText.split('\n').filter(Boolean).map((item, itemIdx) => (
+                      {settings.tickerText.split('\n').filter(Boolean).map((item: string, itemIdx: number) => (
                         <div key={itemIdx} className="flex items-center gap-8 text-sm font-bold text-gray-850 dark:text-gray-200 uppercase tracking-wider">
                           <span>{item}</span>
                           <span className="text-gray-400 dark:text-gray-600 font-normal">✦</span>
@@ -237,7 +219,7 @@ export default async function ProductPage({ params }: PageProps) {
                   </p>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {relatedProducts.map(prod => (
+                  {relatedProducts.map((prod: Product) => (
                     <ProductCard key={prod.id} product={prod} currencySymbol={settings.currencySymbol} settings={settings} />
                   ))}
                 </div>
@@ -248,7 +230,6 @@ export default async function ProductPage({ params }: PageProps) {
             return (
               <RecentlyViewed 
                 key="recently_viewed" 
-                products={allProducts} 
                 settings={settings} 
                 currentProductId={product.id} 
               />

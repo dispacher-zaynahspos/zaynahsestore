@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { StoreSettings, Product, Order } from '@/lib/types';
-import { getProducts } from '@/lib/services/products';
-import { getOrders } from '@/lib/services/orders';
+import { getProductsClient } from '@/lib/services/products-client';
+import { getOrdersClient } from '@/lib/services/orders-client';
 import { addWhatsAppSubscriber } from '@/lib/services/sections';
 import { X, Gift, Shield, CheckCircle2, Tag, Play } from '@/components/common/Icons';
 import { toast } from 'sonner';
@@ -55,7 +55,7 @@ export default function PremiumFeaturesProvider({ settings }: PremiumFeaturesPro
     // 1. Fetch active products for ticker
     const loadProducts = async () => {
       try {
-        const data = await getProducts();
+        const data = await getProductsClient();
         setProducts(data);
       } catch (err) {
         console.error('Failed to load products for ticker:', err);
@@ -66,7 +66,7 @@ export default function PremiumFeaturesProvider({ settings }: PremiumFeaturesPro
     const loadRealOrders = async () => {
       if (settings.recent_buyers_source !== 'real') return;
       try {
-        const orderData = await getOrders();
+        const orderData = await getOrdersClient();
         const validOrders = orderData.filter(o => o.items && o.items.length > 0);
         setRealOrders(validOrders);
       } catch (err) {
