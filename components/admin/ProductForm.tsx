@@ -146,6 +146,20 @@ export default function ProductForm({ categories, initialProduct }: ProductFormP
     })) || []
   );
 
+  const handlePriceChange = (val: string) => {
+    const newPrice = parseFloat(val) || 0;
+    setPrice(val);
+    // Always cascade base price to ALL variants unconditionally
+    setVariants(prev => prev.map(v => ({ ...v, price: newPrice })));
+  };
+
+  const handleComparePriceChange = (val: string) => {
+    const newCompare = val.trim() ? parseFloat(val) : undefined;
+    setComparePrice(val);
+    // Always cascade base compare price to ALL variants unconditionally
+    setVariants(prev => prev.map(v => ({ ...v, comparePrice: newCompare })));
+  };
+
   // Variant Axes (the new tag-based system)
   interface AxisValue { label: string; hex?: string; imageUrl?: string; }
   interface VariantAxis { name: string; type: 'color' | 'size' | 'material' | 'custom'; values: AxisValue[]; }
@@ -481,19 +495,20 @@ export default function ProductForm({ categories, initialProduct }: ProductFormP
         router.refresh();
       }
 
-      // Fetch settings to check auto_content_seo
+      // ─────────────────────────────────────────────────────────────────────────
+      // AUTO SEO + INDEXNOW — DISABLED UNTIL 2026-06-19
+      // Re-enable on: 2026-06-19 (restore the block below)
+      // ─────────────────────────────────────────────────────────────────────────
+      /* DISABLED BLOCK — uncomment on 2026-06-19:
       const supabase = createClient();
       const { data: aiSettings } = await supabase
         .from('ai_settings')
         .select('auto_content_seo')
         .eq('id', '00000000-0000-4000-8000-000000000002')
         .single();
-      
       const isAutoSeoOn = aiSettings?.auto_content_seo ?? true;
       const productIdToOptimize = savedProduct.id;
       const productSlugToOptimize = savedProduct.slug;
-
-      // Asynchronously trigger SEO optimization or IndexNow ping in the background
       (async () => {
         try {
           if (isAutoSeoOn) {
@@ -501,10 +516,7 @@ export default function ProductForm({ categories, initialProduct }: ProductFormP
             const optRes = await fetch('/api/seo/optimize', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                entity_type: 'product',
-                entity_id: productIdToOptimize
-              })
+              body: JSON.stringify({ entity_type: 'product', entity_id: productIdToOptimize })
             });
             if (optRes.ok) {
               toast.success('AI SEO optimization complete & IndexNow notified for product!');
@@ -512,15 +524,12 @@ export default function ProductForm({ categories, initialProduct }: ProductFormP
               console.error('Auto SEO optimization failed on save for product');
             }
           } else {
-            // Just trigger IndexNow
             const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://zaynahs.pk';
             const pageUrl = `${siteUrl}/product/${productSlugToOptimize}`;
             const pingRes = await fetch('/api/indexnow', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                urls: [pageUrl]
-              })
+              body: JSON.stringify({ urls: [pageUrl] })
             });
             if (pingRes.ok) {
               toast.success('IndexNow notified of updated product!');
@@ -530,6 +539,7 @@ export default function ProductForm({ categories, initialProduct }: ProductFormP
           console.error('Error running background SEO tasks:', bgErr);
         }
       })();
+      */
     } catch (err) {
       console.error(err);
       const errMsg = err instanceof Error ? err.message : 'Failed to save product';
@@ -784,7 +794,7 @@ export default function ProductForm({ categories, initialProduct }: ProductFormP
                   type="number"
                   required
                   value={price}
-                  onChange={(e) => setPrice(e.target.value)}
+                  onChange={(e) => handlePriceChange(e.target.value)}
                   className="mt-1.5 w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2.5 text-sm font-medium focus:border-[#1a1a2e] focus:bg-white focus:outline-none transition-all"
                 />
               </div>
@@ -794,7 +804,7 @@ export default function ProductForm({ categories, initialProduct }: ProductFormP
                 <input
                   type="number"
                   value={comparePrice}
-                  onChange={(e) => setComparePrice(e.target.value)}
+                  onChange={(e) => handleComparePriceChange(e.target.value)}
                   placeholder="Original price for strikethrough"
                   className="mt-1.5 w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2.5 text-sm font-medium focus:border-[#1a1a2e] focus:bg-white focus:outline-none transition-all"
                 />

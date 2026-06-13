@@ -555,8 +555,8 @@ export default function ProductCard({ product, currencySymbol = 'Rs.', settings 
           {/* Visible elements mapped (swatches are filtered out to be in expandable container) */}
           {elementsOrder.filter(el => el !== 'swatches').map(element => renderElement(element))}
 
-          {/* Expandable bottom section (swatches, stock bar, and quick add buttons) */}
-          <div className="w-full opacity-100 max-h-[200px] md:max-h-0 md:opacity-0 group-hover:md:max-h-[200px] group-hover:md:opacity-100 transition-all duration-300 ease-in-out overflow-hidden mt-0 group-hover:mt-2">
+          {/* Statically visible bottom section to prevent height shift & blinking loop */}
+          <div className="w-full opacity-100 max-h-[200px] overflow-hidden mt-2">
             {elementsOrder.includes('swatches') && renderElement('swatches')}
 
             {/* Style 5 Sold Stock Progress Bar */}

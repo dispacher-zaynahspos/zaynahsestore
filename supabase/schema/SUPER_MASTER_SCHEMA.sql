@@ -547,6 +547,8 @@ CREATE POLICY "Public insert reviews" ON reviews FOR INSERT WITH CHECK (true);
 CREATE POLICY "Public read badges" ON badges FOR SELECT USING (true);
 CREATE POLICY "Public insert customers" ON customers FOR INSERT WITH CHECK (true);
 CREATE POLICY "Public read customers" ON customers FOR SELECT USING (true);
+CREATE POLICY "Public insert orders" ON orders FOR INSERT WITH CHECK (true);
+CREATE POLICY "Public select orders" ON orders FOR SELECT USING (true);
 
 -- ADMIN FULL ACCESS (authenticated users = admin)
 CREATE POLICY "Admin all categories" ON categories FOR ALL USING (auth.role() = 'authenticated');

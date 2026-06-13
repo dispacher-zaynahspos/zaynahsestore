@@ -740,7 +740,8 @@ export const updateProduct = async (
     if (product.description !== undefined) updatePayload.description = product.description;
     if (product.shortDescription !== undefined) updatePayload.short_description = product.shortDescription;
     if (product.price !== undefined) updatePayload.price = product.price;
-    if (product.comparePrice !== undefined) updatePayload.compare_price = product.comparePrice;
+    // Always write compare_price (null when cleared) so admin can remove it from DB
+    updatePayload.compare_price = product.comparePrice ?? null;
     if (product.cost !== undefined) updatePayload.cost = product.cost;
     if (product.sku !== undefined) updatePayload.sku = product.sku;
     if (product.categoryId !== undefined) updatePayload.category_id = product.categoryId;

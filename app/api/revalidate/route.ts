@@ -36,6 +36,8 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. Dispatch to specific revalidation handler
+    const childTables = ['product_variants', 'product_images', 'product_modifiers', 'reviews'];
+
     if (table === 'products') {
       const slug = activeRecord.slug;
       if (slug) {
@@ -56,6 +58,19 @@ export async function POST(req: NextRequest) {
         }
       } catch (metaErr) {
         console.error('[Webhook Revalidate] Meta Catalog Sync failed:', metaErr);
+      }
+    } else if (childTables.includes(table)) {
+      const productId = activeRecord.product_id;
+      if (productId) {
+        const product = await getProductById(productId);
+        if (product && product.slug) {
+          await revalidateProduct(product.slug);
+          console.log(`[Webhook Revalidate] Revalidated parent product ${product.slug} due to change in table ${table}`);
+        } else {
+          console.warn(`[Webhook Revalidate] Parent product not found or slug missing for product ID: ${productId}`);
+        }
+      } else {
+        console.warn(`[Webhook Revalidate] Table is ${table} but product_id was missing from activeRecord.`);
       }
     } else if (table === 'banners') {
       await revalidateBanner();

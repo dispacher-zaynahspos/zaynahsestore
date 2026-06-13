@@ -22,6 +22,7 @@ const outfit = Outfit({
 import ThemeStyleRegistry from '@/components/common/ThemeStyleRegistry';
 import { getSettings } from '@/lib/services/settings';
 import Pixels from '@/components/Pixels';
+import ChunkErrorListener from '@/components/common/ChunkErrorListener';
 
 const getFaviconType = (url: string) => {
   const lower = url.toLowerCase();
@@ -164,6 +165,7 @@ export default async function RootLayout({
           enableSystem={true}
           disableTransitionOnChange
         >
+          <ChunkErrorListener />
           {children}
           <Toaster 
             position="bottom-center" 

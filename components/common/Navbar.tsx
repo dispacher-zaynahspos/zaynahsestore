@@ -31,7 +31,9 @@ export default function Navbar({
 
   // Load and fallback settings values
   const storeName = settings?.storeName ?? propStoreName;
-  const logoUrl = settings?.logoUrl ?? propLogoUrl;
+  const settingsTimestamp = settings?.updatedAt ? new Date(settings.updatedAt).getTime() : '';
+  const rawLogoUrl = settings?.logoUrl ?? propLogoUrl;
+  const logoUrl = rawLogoUrl && settingsTimestamp ? `${rawLogoUrl}?v=${settingsTimestamp}` : rawLogoUrl;
   const logoWidth = settings?.logoWidth ?? propLogoWidth;
 
   // Header options defaults

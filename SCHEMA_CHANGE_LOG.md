@@ -12,6 +12,16 @@
 1. What changed and why
 ```
 
+### [2026-06-14] v3.9.3 — Guest Orders RLS Policy & Webhook Cache Gaps
+**Files Updated:** `supabase/migrations/20260614001000_add_orders_public_insert.sql`, `supabase/schema/SUPER_MASTER_SCHEMA.sql`, `app/api/revalidate/route.ts`, `components/common/ChunkErrorListener.tsx`, `app/layout.tsx`, `components/common/Navbar.tsx`, `components/store/StoreFront.tsx`, `components/admin/ProductForm.tsx`, `components/store/ProductCard.tsx`
+**Changes:**
+1. **Orders table RLS Policy** — Added migration `20260614001000_add_orders_public_insert.sql` creating public INSERT and SELECT policies on the `orders` table to resolve checkout 500 security violations for guest users.
+2. **Revalidation Webhook Expansion** — Added handlers in `app/api/revalidate/route.ts` for product child tables: `product_variants`, `product_images`, `product_modifiers`, and `reviews`. This dynamically invalidates parent product details page cache.
+3. **Router Chunk Error Recovery** — Built `<ChunkErrorListener />` and mounted it inside the root `layout.tsx` to trap `ChunkLoadError` bundle hash load mismatches and automatically trigger clean reloads.
+4. **Cache-Busting Settings Images** — Appended the dynamic settings updatedAt timestamp version key (`?v=updatedAt`) to storefront logo and banner image elements to allow instant cache updates.
+5. **Cascading Pricing Synchronization** — Configured base `price` and `comparePrice` input onChange handlers in the admin `ProductForm.tsx` to cascade and update the respective values of existing variant entries.
+6. **ProductCard Blinking Fix** — Made card bottom detail swatches/action container statically visible instead of hover-expanded to remove height transition layout shifts that trigger cursor blink loops.
+
 ### [2026-06-13] v3.9.2 — Newsletter Email Subscribers & Badge Visibility Fix
 **Files Updated:** `supabase/migrations/20260613130000_add_email_subscribers.sql`, `supabase/schema/SUPER_MASTER_SCHEMA.sql`, `lib/types.ts`, `lib/services/sections.ts`, `components/common/Footer.tsx`, `app/admin/leads/page.tsx`, `components/admin/ProductForm.tsx`
 **Changes:**

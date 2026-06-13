@@ -222,6 +222,9 @@ function HeroBannerSection({ section, settings }: HeroBannerSectionProps) {
   const opacity = section.settings?.overlay_opacity ?? 0.3;
   const overlayColor = section.settings?.overlay_color ?? '#000000';
   
+  const settingsTimestamp = settings?.updatedAt ? new Date(settings.updatedAt).getTime() : '';
+  const bannerUrl = settings?.bannerUrl && settingsTimestamp ? `${settings.bannerUrl}?v=${settingsTimestamp}` : (settings?.bannerUrl || '');
+
   // Carousel options
   const isAutoplay = section.settings?.autoplay ?? true;
   const autoplaySpeed = section.settings?.autoplay_speed ?? 5000;
@@ -234,9 +237,9 @@ function HeroBannerSection({ section, settings }: HeroBannerSectionProps) {
     }
     return [{
       id: 'default',
-      image_url: contentData.image_url || settings.bannerUrl || '',
-      mobile_image_url: contentData.mobile_image_url || contentData.image_url || settings.bannerUrl || '',
-      tablet_image_url: contentData.tablet_image_url || contentData.image_url || settings.bannerUrl || '',
+      image_url: contentData.image_url || bannerUrl || '',
+      mobile_image_url: contentData.mobile_image_url || contentData.image_url || bannerUrl || '',
+      tablet_image_url: contentData.tablet_image_url || contentData.image_url || bannerUrl || '',
       video_url: contentData.video_url,
       mobile_video_url: contentData.mobile_video_url,
       tablet_video_url: contentData.tablet_video_url,
@@ -265,7 +268,7 @@ function HeroBannerSection({ section, settings }: HeroBannerSectionProps) {
       tablet_button_secondary_text: contentData.tablet_button_secondary_text || contentData.button_secondary_text,
       tablet_button_secondary_link: contentData.tablet_button_secondary_link || contentData.button_secondary_link
     }];
-  }, [section, settings]);
+  }, [section, settings, bannerUrl]);
 
   const autoplayPlugin = React.useRef(
     Autoplay({ delay: autoplaySpeed, stopOnInteraction: false })
@@ -396,9 +399,9 @@ function HeroBannerSection({ section, settings }: HeroBannerSectionProps) {
             const hasDesktopVideo = !!slide.video_url;
             const hasTabletVideo = !!slide.tablet_video_url;
             const hasMobileVideo = !!slide.mobile_video_url;
-            const slideDesktopImage = slide.image_url || settings.bannerUrl || '';
-            const slideTabletImage = slide.tablet_image_url || slide.image_url || settings.bannerUrl || '';
-            const slideMobileImage = slide.mobile_image_url || slide.image_url || settings.bannerUrl || '';
+            const slideDesktopImage = slide.image_url || bannerUrl || '';
+            const slideTabletImage = slide.tablet_image_url || slide.image_url || bannerUrl || '';
+            const slideMobileImage = slide.mobile_image_url || slide.image_url || bannerUrl || '';
 
             const desktopAutoplay = slide.video_autoplay !== false;
             const desktopMuted = slide.video_muted !== false;
