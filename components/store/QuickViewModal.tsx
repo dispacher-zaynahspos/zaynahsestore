@@ -39,14 +39,16 @@ export default function QuickViewModal({ product, settings, onClose }: QuickView
         }];
   }, [product.images, product.id, product.name]);
 
-  const [activeIdx, setActiveIdx] = useState(
+  const initialActiveIdx = React.useRef(
     Math.max(0, images.findIndex(img => img.isPrimary))
   );
+
+  const [activeIdx, setActiveIdx] = useState(initialActiveIdx.current);
 
   // Embla carousel for mobile touch swipe
   const [emblaRef, emblaApi] = useEmblaCarousel({
     loop: true,
-    startIndex: activeIdx
+    startIndex: initialActiveIdx.current
   });
 
   // Keep activeIdx in sync when user swipes
