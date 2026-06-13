@@ -749,3 +749,30 @@ Changes:
 
 
 
+
+---
+
+## 2026-06-14 — meta_sync_log table (Infinite Loop Fix)
+
+**Problem**: `syncProductToMeta()` was updating `products.meta_sync_status` → triggered Supabase webhook → webhook called meta sync again → infinite loop.
+
+**Fix**:
+- Created `meta_sync_log` table to store sync results
+- Removed ALL writes to `products.meta_sync_status`, `products.meta_sync_error`, `products.meta_last_synced_at`
+- `syncProduct.ts` and `bulkSyncProductsToMeta` now write ONLY to `meta_sync_log`
+- `bulk/route.ts` "failed" mode now queries `meta_sync_log` instead of `products.meta_sync_status`
+- `ALTER TABLE public.products ENABLE TRIGGER ALL` — re-enables triggers after fix
+
+**Files changed**:
+- `lib/meta/syncProduct.ts` — full rewrite, no products table writes
+- `app/api/meta-sync/bulk/route.ts` — failed mode uses meta_sync_log
+- `components/admin/ProductList.tsx` — removed meta_last_synced_at from local state
+- `supabase/migrations/20260614010000_create_meta_sync_log.sql` — NEW
+- `supabase/schema/SUPER_MASTER_SCHEMA.sql` — updated
+
+**Must run in Supabase SQL Editor**:
+```sql
+-- Run migration (20260614010000_create_meta_sync_log.sql)
+-- Then:
+ALTER TABLE public.products ENABLE TRIGGER ALL;
+```

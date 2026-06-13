@@ -549,3 +549,12 @@ META_GRAPH_API_VERSION=v21.0
 | Vercel timeout | Supabase queries pe indexes lagao |
 | Webhook fire ho raha lekin frontend update nahi | cURL test karo `/api/revalidate` pe — agar `{"revalidated":true}` aata hai to issue Cloudflare Browser Cache TTL ya next.config headers mein hai, webhook mein nahi |
 
+
+must do after  all
+
+3. cURL Test (Terminal mein)
+bashcurl -X POST https://www.zaynahs.pk/api/revalidate \
+  -H "Content-Type: application/json" \
+  -H "x-revalidate-secret: zaynahs_secret_cache_revalidate_2026" \
+  -d '{"type":"UPDATE","table":"products","record":{"slug":"kids-sonic-game-on-graphic-cotton-t-shirt"}}'
+{"revalidated":true} aaye = ✅ kaam kar raha
