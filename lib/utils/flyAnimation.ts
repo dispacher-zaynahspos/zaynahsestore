@@ -12,10 +12,10 @@ export function animateFlyTo(
   const sourceRect = sourceElement.getBoundingClientRect();
   const targetRect = targetElement.getBoundingClientRect();
 
-  const sourceX = sourceRect.left + sourceRect.width / 2 - 15;
-  const sourceY = sourceRect.top + sourceRect.height / 2 - 15;
-  const targetX = targetRect.left + targetRect.width / 2 - 15;
-  const targetY = targetRect.top + targetRect.height / 2 - 15;
+  const sourceX = sourceRect.left + sourceRect.width / 2 - 19;
+  const sourceY = sourceRect.top + sourceRect.height / 2 - 19;
+  const targetX = targetRect.left + targetRect.width / 2 - 19;
+  const targetY = targetRect.top + targetRect.height / 2 - 19;
 
   const deltaX = targetX - sourceX;
   const deltaY = targetY - sourceY;
@@ -25,11 +25,11 @@ export function animateFlyTo(
   outer.style.position = 'fixed';
   outer.style.top = `${sourceY}px`;
   outer.style.left = `${sourceX}px`;
-  outer.style.width = '30px';
-  outer.style.height = '30px';
+  outer.style.width = '38px';
+  outer.style.height = '38px';
   outer.style.zIndex = '999999'; // Ensure it's on top of modals (which are z-50 or z-[200])
   outer.style.pointerEvents = 'none';
-  outer.style.transition = 'transform 0.55s linear, opacity 0.55s ease-out';
+  outer.style.transition = 'transform 0.8s linear, opacity 0.8s ease-out';
   outer.style.transform = 'translate3d(0, 0, 0)';
   outer.style.opacity = '1';
 
@@ -43,9 +43,9 @@ export function animateFlyTo(
   inner.style.justifyContent = 'center';
   inner.style.background = 'var(--primary, #1a1a2e)';
   inner.style.boxShadow = '0 6px 15px rgba(0, 0, 0, 0.15)';
-  inner.style.border = '1.5px solid white';
+  inner.style.border = '2px solid white';
   // Use a custom cubic-bezier for vertical path to create a pleasant arc
-  inner.style.transition = 'transform 0.55s cubic-bezier(0.06, 0.97, 0.44, 1.2)';
+  inner.style.transition = 'transform 0.8s cubic-bezier(0.06, 0.97, 0.44, 1.2)';
   inner.style.transform = 'translate3d(0, 0, 0) scale(1)';
 
   if (itemImage) {
@@ -58,7 +58,7 @@ export function animateFlyTo(
     inner.appendChild(img);
   } else {
     // Fallback simple "+1" badge
-    inner.innerHTML = `<span style="color: white; font-size: 8px; font-weight: 900;">+1</span>`;
+    inner.innerHTML = `<span style="color: white; font-size: 9px; font-weight: 900;">+1</span>`;
   }
 
   outer.appendChild(inner);

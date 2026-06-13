@@ -458,7 +458,7 @@ function HeroBannerSection({ section, settings }: HeroBannerSectionProps) {
                             onLoadedData={handleLoaded}
                             onCanPlay={handleLoaded}
                             onPlaying={handleLoaded}
-                            className="w-full h-full object-cover"
+                            className={`w-full h-full object-cover ${desktopAutoplay ? 'pointer-events-none' : 'pointer-events-auto'}`}
                             style={{
                               transform: `scale(${imageScaleDesktop / 100})`,
                               transformOrigin: `${imageFocalXDesktop}% ${imageFocalYDesktop}%`,
@@ -534,7 +534,7 @@ function HeroBannerSection({ section, settings }: HeroBannerSectionProps) {
                             onLoadedData={handleLoaded}
                             onCanPlay={handleLoaded}
                             onPlaying={handleLoaded}
-                            className="w-full h-full object-cover"
+                            className={`w-full h-full object-cover ${tabletAutoplay ? 'pointer-events-none' : 'pointer-events-auto'}`}
                             style={{
                               transform: `scale(${imageScaleDesktop / 100})`,
                               transformOrigin: `${imageFocalXDesktop}% ${imageFocalYDesktop}%`,
@@ -610,7 +610,7 @@ function HeroBannerSection({ section, settings }: HeroBannerSectionProps) {
                             onLoadedData={handleLoaded}
                             onCanPlay={handleLoaded}
                             onPlaying={handleLoaded}
-                            className="w-full h-full object-cover"
+                            className={`w-full h-full object-cover ${mobileAutoplay ? 'pointer-events-none' : 'pointer-events-auto'}`}
                             style={{
                               transform: `scale(${imageScaleMobile / 100})`,
                               transformOrigin: `${imageFocalXMobile}% ${imageFocalYMobile}%`,

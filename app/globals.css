@@ -286,14 +286,30 @@ input[type="button"]:not(:disabled):active,
 
 @keyframes bounce-bounce {
   0%, 100% {
-    transform: scale(1) !important;
+    transform: scale(1) translateY(0) !important;
   }
-  50% {
-    transform: scale(1.35) !important;
+  30% {
+    transform: scale(0.85) translateY(4px) !important;
+  }
+  60% {
+    transform: scale(1.25) translateY(-5px) !important;
+  }
+  80% {
+    transform: scale(0.95) translateY(1px) !important;
   }
 }
 
 .animate-bounce-bounce {
-  animation: bounce-bounce 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) both !important;
+  animation: bounce-bounce 0.65s cubic-bezier(0.25, 1, 0.5, 1) both !important;
 }
 
+/* Hide iOS Safari native big play button overlay for autoplay videos */
+video::-webkit-media-controls-start-playback-button {
+  display: none !important;
+  -webkit-appearance: none;
+  opacity: 0 !important;
+}
+
+video::-webkit-media-controls {
+  display: none !important;
+}
