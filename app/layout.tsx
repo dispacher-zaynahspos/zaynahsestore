@@ -70,6 +70,9 @@ export async function generateMetadata(): Promise<Metadata> {
       description = `Welcome to ${derivedName}. We provide premium quality products delivered right to your doorstep. Confirm your orders instantly via WhatsApp.`;
     }
 
+    const protocol = host.includes('localhost') || host.includes('127.0.0.1') ? 'http' : 'https';
+    const siteUrl = `${protocol}://${host || 'zaynahs.pk'}`;
+
     const timestamp = settings.updatedAt ? new Date(settings.updatedAt).getTime() : Date.now();
     const fav = settings.faviconUrl 
       ? `${settings.faviconUrl}?v=${timestamp}` 
@@ -77,6 +80,7 @@ export async function generateMetadata(): Promise<Metadata> {
         ? `${settings.logoUrl}?v=${timestamp}` 
         : "/favicon.ico";
     return {
+      metadataBase: new URL(siteUrl),
       title: {
         default: title + suffix,
         template: `%s${suffix}`

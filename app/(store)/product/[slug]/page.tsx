@@ -12,6 +12,7 @@ import SocialFeedRibbon from '@/components/store/SocialFeedRibbon';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { Metadata } from 'next';
 import Breadcrumb from '@/components/Breadcrumb';
+import { headers } from 'next/headers';
 
 export const revalidate = 60; // Cache for 1 minute
 
@@ -33,7 +34,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       .maybeSingle();
 
     const settings = await getSettings();
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://zaynahs.pk';
+    const headersList = await headers();
+    const host = headersList.get('host') || 'zaynahs.pk';
+    const protocol = host.includes('localhost') || host.includes('127.0.0.1') ? 'http' : 'https';
+    const siteUrl = `${protocol}://${host}`;
     const brandName = settings.storeName || 'Zaynahs E-Store';
 
     const title = seoMeta?.seo_title || `${product.name} | ${brandName}`;
@@ -42,6 +46,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const imageUrl = product.images?.[0]?.url || '/og-default.jpg';
 
     return {
+      metadataBase: new URL(siteUrl),
       title,
       description,
       alternates: {

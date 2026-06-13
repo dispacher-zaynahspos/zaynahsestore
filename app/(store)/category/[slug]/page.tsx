@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { getSettings } from '@/lib/services/settings';
 import { Metadata } from 'next';
+import { headers } from 'next/headers';
 
 export const revalidate = 300; // Cache redirect for 5 minutes
 
@@ -33,14 +34,18 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
       .maybeSingle();
 
     const settings = await getSettings();
+    const headersList = await headers();
+    const host = headersList.get('host') || 'zaynahs.pk';
+    const protocol = host.includes('localhost') || host.includes('127.0.0.1') ? 'http' : 'https';
+    const siteUrl = `${protocol}://${host}`;
     const brandName = settings.storeName || 'Zaynahs E-Store';
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://zaynahs.pk';
 
     const title = seoMeta?.seo_title || `${category.name} | ${brandName}`;
     const description = seoMeta?.meta_description || category.description || '';
     const imageUrl = category.image_url || '/og-default.jpg';
 
     return {
+      metadataBase: new URL(siteUrl),
       title,
       description,
       alternates: {

@@ -7,18 +7,25 @@ import { getTopReviews } from '@/lib/services/reviews';
 import { getHomepageSections } from '@/lib/services/sections';
 
 import { Metadata } from 'next';
+import { headers } from 'next/headers';
 
 export const revalidate = 600; // Cache for 10 minutes
 
 export async function generateMetadata(): Promise<Metadata> {
   try {
     const settings = await getSettings();
+    const headersList = await headers();
+    const host = headersList.get('host') || 'zaynahs.pk';
+    const protocol = host.includes('localhost') || host.includes('127.0.0.1') ? 'http' : 'https';
+    const siteUrl = `${protocol}://${host}`;
+
     const brandName = settings.storeName || 'Zaynahs E-Store';
     const tagline = settings.tagline || 'Premium Mobile Shop';
     const banner = settings.bannerUrl || '/og-default.jpg';
     const desc = (settings.metaDescription || settings.tagline || 'Premium Pakistani E-Commerce Store').slice(0, 160);
 
     return {
+      metadataBase: new URL(siteUrl),
       title: `${brandName} - ${tagline}`,
       description: desc,
       openGraph: {
