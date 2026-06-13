@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { StoreSettings, Product, Order } from '@/lib/types';
 import { getProductsClient } from '@/lib/services/products-client';
 import { getOrdersClient } from '@/lib/services/orders-client';
-import { addWhatsAppSubscriber } from '@/lib/services/sections';
+import { addWhatsAppSubscriberClient } from '@/lib/services/sections-client';
 import { X, Gift, Shield, CheckCircle2, Tag, Play } from '@/components/common/Icons';
 import { toast } from 'sonner';
 import Image from 'next/image';
@@ -327,7 +327,7 @@ export default function PremiumFeaturesProvider({ settings }: PremiumFeaturesPro
     try {
       setIsSpinning(true);
       // Register WhatsApp subscriber first
-      await addWhatsAppSubscriber(spinPhone, spinName || undefined, spinEmail || undefined, 'wheel');
+      await addWhatsAppSubscriberClient(spinPhone, spinName || undefined, spinEmail || undefined, 'wheel');
     } catch (err) {
       console.error(err);
       toast.error('Could not save WhatsApp subscriber. Please try again.');
@@ -400,7 +400,7 @@ export default function PremiumFeaturesProvider({ settings }: PremiumFeaturesPro
     }
 
     try {
-      await addWhatsAppSubscriber(exitPhone, exitName || undefined, exitEmail || undefined, 'exit_intent');
+      await addWhatsAppSubscriberClient(exitPhone, exitName || undefined, exitEmail || undefined, 'exit_intent');
       setExitSubscribed(true);
       toast.success('Successfully subscribed! Enjoy your discount.');
     } catch (err) {

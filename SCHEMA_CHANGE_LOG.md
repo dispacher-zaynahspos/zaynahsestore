@@ -12,6 +12,16 @@
 1. What changed and why
 ```
 
+### [2026-06-13] v3.9.2 — Newsletter Email Subscribers & Badge Visibility Fix
+**Files Updated:** `supabase/migrations/20260613130000_add_email_subscribers.sql`, `supabase/schema/SUPER_MASTER_SCHEMA.sql`, `lib/types.ts`, `lib/services/sections.ts`, `components/common/Footer.tsx`, `app/admin/leads/page.tsx`, `components/admin/ProductForm.tsx`
+**Changes:**
+1. **New table `email_subscribers`** — stores email addresses from the footer newsletter form. Fields: `id`, `email` (UNIQUE), `source` (default `'newsletter'`), `subscribed`, `created_at`. RLS: public INSERT, admin ALL.
+2. **`lib/types.ts`** — Added `EmailSubscriber` interface.
+3. **`lib/services/sections.ts`** — Added `addEmailSubscriber(email)` and `getEmailSubscribers()` service functions with duplicate handling.
+4. **`components/common/Footer.tsx`** — Newsletter form now calls `addEmailSubscriber`, saves email to DB. Handles already-subscribed case with info toast.
+5. **`app/admin/leads/page.tsx`** — Rebuilt with two tabs: "WhatsApp Leads" (existing) and "Newsletter" (new). Stats cards updated. Newsletter tab shows email, source badge, date, mailto link.
+6. **`components/admin/ProductForm.tsx`** — Fixed badge clipping: moved `overflow-hidden` to inner div wrapping only the image/overlay. PRIMARY badge and index number badge now rendered on the outer wrapper so they're always fully visible without clipping.
+
 ### [2026-06-13] v3.9.1 — Unified Media Selection Dataset & Email Spam Bypass Fixes
 **Files Updated:** [MediaSelectorModal.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/admin/MediaSelectorModal.tsx), [sendEmail.ts](file:///Users/shoaib/Desktop/Zaynahs%20e-store/lib/email/sendEmail.ts), [layout.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/app/layout.tsx), [GeneralTab.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/admin/settings/GeneralTab.tsx)
 **Changes:**

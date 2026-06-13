@@ -1,7 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
-import { HomepageSection, WhatsAppSubscriber } from '@/lib/types';
+import { HomepageSection, WhatsAppSubscriber, EmailSubscriber } from '@/lib/types';
 import { revalidatePath, unstable_cache } from 'next/cache';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
@@ -200,6 +200,50 @@ export const getWhatsAppSubscribers = async (): Promise<WhatsAppSubscriber[]> =>
     return data || [];
   } catch (error) {
     console.error('[sections] getWhatsAppSubscribers failed:', error);
+    throw error;
+  }
+};
+
+export const addEmailSubscriber = async (email: string): Promise<EmailSubscriber> => {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from('email_subscribers')
+      .insert({ email, source: 'newsletter' })
+      .select('*')
+      .single();
+
+    if (error) {
+      // Already subscribed — return existing
+      if (error.code === '23505') {
+        const { data: existing } = await supabase
+          .from('email_subscribers')
+          .select('*')
+          .eq('email', email)
+          .single();
+        if (existing) return existing;
+      }
+      throw error;
+    }
+    return data;
+  } catch (error) {
+    console.error('[sections] addEmailSubscriber failed:', error);
+    throw error;
+  }
+};
+
+export const getEmailSubscribers = async (): Promise<EmailSubscriber[]> => {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from('email_subscribers')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('[sections] getEmailSubscribers failed:', error);
     throw error;
   }
 };

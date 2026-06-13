@@ -399,6 +399,14 @@ export interface WhatsAppSubscriber {
   created_at?: string;
 }
 
+export interface EmailSubscriber {
+  id: string;
+  email: string;
+  source: string;
+  subscribed: boolean;
+  created_at?: string;
+}
+
 export interface NavigationItem {
   id: string;
   label: string;

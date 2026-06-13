@@ -1325,6 +1325,7 @@ export default function StoreFront({
   };
 
   const renderSocialFeed = (section: HomepageSection) => {
+    if (settings.social_feeds_enabled === false) return null;
     if (settings.social_feeds_homepage_enabled === false) return null;
     
     return (

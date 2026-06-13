@@ -10,6 +10,7 @@ interface SocialFeedRibbonProps {
 }
 
 export default function SocialFeedRibbon({ settings }: SocialFeedRibbonProps) {
+  if (settings.social_feeds_enabled === false) return null;
   if (settings.social_feeds_product_enabled === false) return null;
 
   const parsedFeeds = React.useMemo(() => {

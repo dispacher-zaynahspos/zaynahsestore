@@ -1568,36 +1568,42 @@ export default function ProductForm({ categories, initialProduct }: ProductFormP
             {images.length > 0 && (
               <div className="grid grid-cols-2 gap-3 pt-2">
                 {images.map((img, i) => (
-                  <div key={i} className="group relative aspect-square rounded-lg border border-gray-100 overflow-hidden bg-gray-50">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={img.url} alt={`Preview ${i}`} className="absolute inset-0 w-full h-full object-cover" />
+                  <div key={i} className="group relative aspect-square rounded-lg border border-gray-100 bg-gray-50">
+                    {/* Inner wrapper with overflow-hidden — only clips image & overlay, NOT badges */}
+                    <div className="absolute inset-0 overflow-hidden rounded-lg">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={img.url} alt={`Preview ${i}`} className="absolute inset-0 w-full h-full object-cover" />
 
-                    
-                    {/* Controls overlay */}
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleSetPrimaryImage(i)}
-                        className={`p-1.5 rounded-lg text-white hover:bg-white/10 ${img.isPrimary ? 'text-amber-400' : ''}`}
-                        title="Make Primary"
-                      >
-                        <Star className="h-4.5 w-4.5 fill-current" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveImage(i, img.url)}
-                        className="p-1.5 rounded-lg text-red-400 hover:bg-white/10"
-                        title="Delete Image"
-                      >
-                        <Trash2 className="h-4.5 w-4.5" />
-                      </button>
+                      {/* Controls overlay */}
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleSetPrimaryImage(i)}
+                          className={`p-1.5 rounded-lg text-white hover:bg-white/10 ${img.isPrimary ? 'text-amber-400' : ''}`}
+                          title="Make Primary"
+                        >
+                          <Star className="h-4.5 w-4.5 fill-current" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveImage(i, img.url)}
+                          className="p-1.5 rounded-lg text-red-400 hover:bg-white/10"
+                          title="Delete Image"
+                        >
+                          <Trash2 className="h-4.5 w-4.5" />
+                        </button>
+                      </div>
                     </div>
 
+                    {/* Badges rendered OUTSIDE overflow-hidden — always fully visible */}
                     {img.isPrimary && (
-                      <span className="absolute top-1 right-1 bg-amber-400 text-[9px] font-extrabold text-[#1a1a2e] px-1.5 py-0.5 rounded-md shadow-sm">
+                      <span className="absolute -top-2.5 -right-2.5 z-10 bg-amber-400 text-[9px] font-extrabold text-[#1a1a2e] px-1.5 py-0.5 rounded-md shadow-md">
                         PRIMARY
                       </span>
                     )}
+                    <span className="absolute -top-2.5 -left-2.5 z-10 bg-gray-700 text-[9px] font-extrabold text-white w-5 h-5 rounded-full flex items-center justify-center shadow-md">
+                      {i + 1}
+                    </span>
                   </div>
                 ))}
               </div>
