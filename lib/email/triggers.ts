@@ -86,6 +86,18 @@ export async function onOrderPlaced(order: any, customer: any) {
       }
     }
 
+    // Fallback: Parse email from order notes if not found through customer record
+    if (!customerEmail && order.notes) {
+      const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+      const match = order.notes.match(emailRegex);
+      if (match) {
+        customerEmail = match[0];
+        if (!resolvedCustomer.email) {
+          resolvedCustomer.email = customerEmail;
+        }
+      }
+    }
+
     if (customerEmail) {
       // Send Order Placed to customer
       await sendTemplatedEmail('order_placed', customerEmail, { order, customer: resolvedCustomer });
@@ -136,6 +148,18 @@ export async function onOrderStatusChange(order: any, customer: any, newStatus: 
         }
       } catch (err) {
         console.error('Failed to load customer details for order status trigger:', err);
+      }
+    }
+
+    // Fallback: Parse email from order notes if not found through customer record
+    if (!customerEmail && order.notes) {
+      const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+      const match = order.notes.match(emailRegex);
+      if (match) {
+        customerEmail = match[0];
+        if (!resolvedCustomer.email) {
+          resolvedCustomer.email = customerEmail;
+        }
       }
     }
 

@@ -10,6 +10,15 @@ interface SendEmailParams {
   html?: string;
 }
 
+function htmlToText(html: string): string {
+  return html
+    .replace(/<style([\s\S]*?)<\/style>/gi, '')
+    .replace(/<script([\s\S]*?)<\/script>/gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export async function sendEmail({
   to,
   subject,
@@ -43,11 +52,40 @@ export async function sendEmail({
       return { success: false, error: 'No email content' };
     }
 
+    // Dynamic Message-ID Domain Resolution to prevent spam filtering on localhost/invalid domains
+    let emailDomain = 'zaynahs.com';
+    try {
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://zaynahs.com';
+      if (siteUrl && !siteUrl.includes('localhost') && !siteUrl.includes('127.0.0.1')) {
+        const parsed = new URL(siteUrl);
+        emailDomain = parsed.hostname.replace('www.', '');
+      } else if (settings.storeName) {
+        const cleaned = settings.storeName.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (cleaned) {
+          emailDomain = `${cleaned}.com`;
+        }
+      }
+    } catch (e) {
+      console.warn('[Email] Error parsing site domain for Message-ID:', e);
+    }
+
+    const randomId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    const customMessageId = `${randomId}@${emailDomain}`;
+
     const info = await transporter.sendMail({
       from: `"${settings.smtp_from_name || settings.storeName}" <${settings.smtp_email}>`,
       to,
+      replyTo: settings.smtp_email,
       subject,
+      text: htmlToText(htmlContent),
       html: htmlContent,
+      messageId: customMessageId,
+      headers: {
+        'X-Mailer': 'Nodemailer',
+        'X-Priority': '3', // Normal Priority
+        'X-MSMail-Priority': 'Normal',
+        'Importance': 'Normal',
+      }
     });
 
     console.log(`[Email] Message sent successfully: ${info.messageId}`);

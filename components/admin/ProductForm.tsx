@@ -260,12 +260,48 @@ export default function ProductForm({ categories, initialProduct }: ProductFormP
   // Remove Image
   const handleRemoveImage = async (index: number, url: string) => {
     try {
-      setImages(prev => prev.filter((_, i) => i !== index));
-      await deleteProductImage(url);
-      toast.success('Image removed');
+      setImages(prev => {
+        const filtered = prev.filter((_, i) => i !== index);
+        // Recalculate sortOrder and ensure at least one is primary if list is not empty
+        const updated = filtered.map((img, i) => ({
+          ...img,
+          sortOrder: i
+        }));
+        
+        // If the removed image was primary, set the first one of the remaining as primary
+        const wasPrimary = prev[index]?.isPrimary;
+        if (wasPrimary && updated.length > 0) {
+          updated[0].isPrimary = true;
+        }
+        return updated;
+      });
+
+      // Clear references in variant axes (color images)
+      setVariantAxes(prev => 
+        prev.map(axis => {
+          if (axis.type === 'color') {
+            return {
+              ...axis,
+              values: axis.values.map(val => 
+                val.imageUrl === url ? { ...val, imageUrl: undefined } : val
+              )
+            };
+          }
+          return axis;
+        })
+      );
+
+      // Clear references in variants list
+      setVariants(prev => 
+        prev.map(v => 
+          v.imageUrl === url ? { ...v, imageUrl: undefined } : v
+        )
+      );
+
+      toast.success('Image removed from product');
     } catch (err) {
       console.error(err);
-      toast.error('Failed to delete image storage file');
+      toast.error('Failed to remove image');
     }
   };
 

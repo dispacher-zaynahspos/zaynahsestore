@@ -32,9 +32,11 @@ export async function POST(request: Request) {
 
     // 3. Check if auto vision meta is enabled
     const settings = await getAISettings();
+    const isVideo = file.type.startsWith('video/') || 
+                    ['mp4', 'mov', 'webm', 'ogg'].includes(file.name.split('.').pop()?.toLowerCase() || '');
 
     let meta: any = null;
-    if (settings.auto_media_ai) {
+    if (settings.auto_media_ai && !isVideo) {
       try {
         console.log(`[Media Upload API] Auto Image AI is active. Analyzing: ${fileUrl}`);
         meta = await generateImageMeta(fileUrl);

@@ -65,7 +65,7 @@ export const updateEmailTemplate = async (
       .single();
 
     if (error) throw error;
-    revalidateTag('email-templates', 'max');
+    (revalidateTag as any)('email-templates');
     return mapTemplate(data);
   } catch (error) {
     console.error(`[emailTemplates] updateEmailTemplate(${emailType}) failed:`, error);
@@ -83,7 +83,7 @@ export const resetEmailTemplate = async (emailType: string): Promise<EmailTempla
       .single();
 
     if (error) throw error;
-    revalidateTag('email-templates', 'max');
+    (revalidateTag as any)('email-templates');
     return mapTemplate(data);
   } catch (error) {
     console.error(`[emailTemplates] resetEmailTemplate(${emailType}) failed:`, error);

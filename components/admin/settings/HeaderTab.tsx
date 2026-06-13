@@ -5,6 +5,10 @@ import React from 'react';
 interface HeaderTabProps {
   headerSticky: boolean;
   setHeaderSticky: (val: boolean) => void;
+  headerStickyDesktop: boolean;
+  setHeaderStickyDesktop: (val: boolean) => void;
+  headerStickyMobile: boolean;
+  setHeaderStickyMobile: (val: boolean) => void;
   headerShowTopBar: boolean;
   setHeaderShowTopBar: (val: boolean) => void;
   headerShowNewsletter: boolean;
@@ -53,6 +57,10 @@ interface HeaderTabProps {
 export default function HeaderTab({
   headerSticky,
   setHeaderSticky,
+  headerStickyDesktop,
+  setHeaderStickyDesktop,
+  headerStickyMobile,
+  setHeaderStickyMobile,
   headerShowTopBar,
   setHeaderShowTopBar,
   headerShowNewsletter,
@@ -105,15 +113,27 @@ export default function HeaderTab({
         {/* Sticky Behavior Option */}
         <div className="space-y-4 border-b border-gray-100 dark:border-gray-800 pb-4">
           <h4 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider text-gray-400">Sticky Behavior</h4>
-          <label className="flex items-center gap-3 cursor-pointer select-none text-gray-750 dark:text-gray-200">
-            <input
-              type="checkbox"
-              checked={headerSticky}
-              onChange={(e) => setHeaderSticky(e.target.checked)}
-              className="rounded border-gray-300 dark:border-gray-700 text-[#e94560] focus:ring-[#e94560] h-4 w-4"
-            />
-            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Enable Sticky Header (Desktop & Mobile)</span>
-          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label className="flex items-center gap-3 cursor-pointer select-none text-gray-750 dark:text-gray-200">
+              <input
+                type="checkbox"
+                checked={headerStickyDesktop}
+                onChange={(e) => setHeaderStickyDesktop(e.target.checked)}
+                className="rounded border-gray-300 dark:border-gray-700 text-[#e94560] focus:ring-[#e94560] h-4 w-4"
+              />
+              <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Enable Sticky Header (Desktop)</span>
+            </label>
+
+            <label className="flex items-center gap-3 cursor-pointer select-none text-gray-750 dark:text-gray-200">
+              <input
+                type="checkbox"
+                checked={headerStickyMobile}
+                onChange={(e) => setHeaderStickyMobile(e.target.checked)}
+                className="rounded border-gray-300 dark:border-gray-700 text-[#e94560] focus:ring-[#e94560] h-4 w-4"
+              />
+              <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Enable Sticky Header (Mobile)</span>
+            </label>
+          </div>
         </div>
 
         {/* Part 1: Top Bar & Announcement */}

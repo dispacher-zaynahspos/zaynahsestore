@@ -15,7 +15,7 @@ export default async function StoreLayout({
   const settings = await getSettings();
 
   return (
-    <div className="flex min-h-screen flex-col bg-gray-50 dark:bg-[#0f0f1b] text-gray-900 dark:text-gray-100 pb-20 md:pb-0 transition-colors duration-200 overflow-x-hidden">
+    <div className="flex min-h-screen flex-col bg-gray-50 dark:bg-[#0f0f1b] text-gray-900 dark:text-gray-100 pb-20 md:pb-0 transition-colors duration-200 overflow-x-clip">
       <Navbar settings={settings} />
       <main className="flex-grow bg-gray-50 dark:bg-[#0f0f1b] transition-colors duration-200">
         {children}

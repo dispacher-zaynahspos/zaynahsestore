@@ -69,7 +69,7 @@ export const createSizeGuide = async (guide: {
       .single();
 
     if (error) throw error;
-    revalidateTag('size_guides', 'max');
+    (revalidateTag as any)('size_guides');
     return mapSizeGuide(data);
   } catch (error) {
     console.error('[sizeGuides] createSizeGuide failed:', error);
@@ -96,7 +96,7 @@ export const updateSizeGuide = async (
       .single();
 
     if (error) throw error;
-    revalidateTag('size_guides', 'max');
+    (revalidateTag as any)('size_guides');
     return mapSizeGuide(data);
   } catch (error) {
     console.error('[sizeGuides] updateSizeGuide failed:', error);
@@ -113,7 +113,7 @@ export const deleteSizeGuide = async (id: string): Promise<void> => {
       .eq('id', id);
 
     if (error) throw error;
-    revalidateTag('size_guides', 'max');
+    (revalidateTag as any)('size_guides');
   } catch (error) {
     console.error('[sizeGuides] deleteSizeGuide failed:', error);
     throw error;

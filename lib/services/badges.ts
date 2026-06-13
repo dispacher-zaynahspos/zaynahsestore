@@ -49,7 +49,7 @@ export const createBadge = async (badge: {
     .single();
 
   if (error) throw error;
-  revalidateTag('products', 'max');
+  (revalidateTag as any)('products');
   return mapBadge(data);
 };
 
@@ -74,7 +74,7 @@ export const updateBadge = async (
     .single();
 
   if (error) throw error;
-  revalidateTag('products', 'max');
+  (revalidateTag as any)('products');
   return mapBadge(data);
 };
 
@@ -86,5 +86,5 @@ export const deleteBadge = async (id: string): Promise<void> => {
     .eq('id', id);
 
   if (error) throw error;
-  revalidateTag('products', 'max');
+  (revalidateTag as any)('products');
 };

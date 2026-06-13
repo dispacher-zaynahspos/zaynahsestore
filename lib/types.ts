@@ -153,6 +153,8 @@ export interface StoreSettings {
   
   // Header options
   headerSticky?: boolean;
+  headerStickyDesktop?: boolean;
+  headerStickyMobile?: boolean;
   headerShowTopBar?: boolean;
   headerTopBarPhone?: string;
   headerTopBarEmail?: string;
@@ -256,6 +258,8 @@ export interface StoreSettings {
   flash_sale_enabled?: boolean;
   flash_sale_start_date?: string;
   flash_sale_end_date?: string;
+  globalFlashSaleDiscountType?: 'percentage' | 'fixed';
+  globalFlashSaleDiscountValue?: number;
   social_feeds_enabled?: boolean;
   cart_timer_enabled?: boolean;
   size_guide_enabled?: boolean;

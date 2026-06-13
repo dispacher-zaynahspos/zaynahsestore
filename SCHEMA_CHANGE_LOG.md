@@ -12,6 +12,27 @@
 1. What changed and why
 ```
 
+### [2026-06-13] v3.9.1 — Unified Media Selection Dataset & Email Spam Bypass Fixes
+**Files Updated:** [MediaSelectorModal.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/admin/MediaSelectorModal.tsx), [sendEmail.ts](file:///Users/shoaib/Desktop/Zaynahs%20e-store/lib/email/sendEmail.ts), [layout.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/app/layout.tsx), [GeneralTab.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/admin/settings/GeneralTab.tsx)
+**Changes:**
+1. Unified Media Selector dataset source: Modified `MediaSelectorModal.tsx` to retrieve and write files from/to `media_library` (same as the Media Library page) instead of `product_images`, ensuring the same uploaded images display on both screens.
+2. Email Spam Bypass: Configured `sendEmail.ts` to automatically extract text and provide a plaintext `text` fallback body to SMTP/nodemailer, avoiding standard spam filter penalties.
+3. Favicon Cache-Buster & MIME Type Mapping: Added dynamic cache-busting timestamp version URL params `?v=timestamp` to favicons in metadata API, mapped correct MIME types (like `image/webp` for uploaded WebP icons) to prevent browser rejection, and added helpful incognito cache instructions in `GeneralTab.tsx`.
+
+### [2026-06-13] v3.9.0 — Split Desktop/Mobile Sticky Header & Min Logo Width Control
+**Files Updated:** [SUPER_MASTER_SCHEMA.sql](file:///Users/shoaib/Desktop/Zaynahs%20e-store/supabase/schema/SUPER_MASTER_SCHEMA.sql), [20260613144500_add_separate_header_sticky.sql](file:///Users/shoaib/Desktop/Zaynahs%20e-store/supabase/migrations/20260613144500_add_separate_header_sticky.sql), [types.ts](file:///Users/shoaib/Desktop/Zaynahs%20e-store/lib/types.ts), [settings.ts](file:///Users/shoaib/Desktop/Zaynahs%20e-store/lib/services/settings.ts), [SettingsForm.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/admin/SettingsForm.tsx), [HeaderTab.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/admin/settings/HeaderTab.tsx), [GlobalSettings.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/admin/customizer/pages/GlobalSettings.tsx), [GeneralTab.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/admin/settings/GeneralTab.tsx), [Navbar.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/components/common/Navbar.tsx), [layout.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/app/layout.tsx), [layout.tsx](file:///Users/shoaib/Desktop/Zaynahs%20e-store/app/(store)/layout.tsx)
+**Changes:**
+1. Added database migration creating separate sticky header settings columns `header_sticky_desktop` and `header_sticky_mobile` to `store_settings`.
+2. Overhauled storefront Header logic (`Navbar.tsx`) to implement responsive desktop-specific and mobile-specific sticky header CSS states.
+3. Updated main layouts (`app/layout.tsx` and `app/(store)/layout.tsx`) replacing `overflow-x-hidden` with `overflow-x-clip` on parent containers to ensure position sticky scrolls and anchors perfectly.
+4. Decreased minimum logo display width range limit to `30px` inside customizer and settings tabs, allowing smaller logos.
+
+### [2026-06-13] v3.8.0 — Media Library Advanced Filters Support
+**Files Updated:** [SUPER_MASTER_SCHEMA.sql](file:///Users/shoaib/Desktop/Zaynahs%20e-store/supabase/schema/SUPER_MASTER_SCHEMA.sql), [20260613134100_add_media_size_type.sql](file:///Users/shoaib/Desktop/Zaynahs%20e-store/supabase/migrations/20260613134100_add_media_size_type.sql), [SCHEMA_CHANGE_LOG.md](file:///Users/shoaib/Desktop/Zaynahs%20e-store/SCHEMA_CHANGE_LOG.md)
+**Changes:**
+1. Added `file_size` (BIGINT) and `mime_type` (TEXT) columns to the `media_library` database table.
+2. Backfilled `mime_type` fields based on file URL extensions and initialized `file_size` placeholders for existing media items.
+
 ### [2026-06-12] v3.7.0 — Meta Catalog Real-time Sync Database Schema
 **Files Updated:** [SUPER_MASTER_SCHEMA.sql](file:///Users/shoaib/Desktop/Zaynahs%20e-store/supabase/schema/SUPER_MASTER_SCHEMA.sql), [20260612110000_add_meta_catalog_sync.sql](file:///Users/shoaib/Desktop/Zaynahs%20e-store/supabase/migrations/20260612110000_add_meta_catalog_sync.sql)
 **Changes:**

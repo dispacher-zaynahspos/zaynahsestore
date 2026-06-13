@@ -68,41 +68,104 @@ export const createOrder = async (order: {
     let customerId = session ? session.id : null;
 
     // Auto-create/lookup guest customer record if phone is provided and they aren't logged in
-    if (!customerId && order.customerPhone) {
+    if (!customerId && (order.customerPhone || order.customerEmail)) {
       try {
-        const cleanPhone = order.customerPhone.replace(/\D/g, '');
-        if (cleanPhone.length >= 7) {
-          // Query customers to see if a customer with this phone exists
-          const { data: existingCustomer } = await supabaseAdmin
+        let existingCustomer = null;
+
+        // 1. Try to find by email if email is provided
+        if (order.customerEmail) {
+          const { data } = await supabaseAdmin
             .from('customers')
-            .select('id')
-            .eq('phone', order.customerPhone)
+            .select('id, phone, email')
+            .eq('email', order.customerEmail.trim().toLowerCase())
+            .maybeSingle();
+          if (data) {
+            existingCustomer = data;
+          }
+        }
+
+        // 2. Try to find by phone if not found by email
+        if (!existingCustomer && order.customerPhone) {
+          const rawPhone = order.customerPhone.trim();
+          const cleanPhone = rawPhone.replace(/\D/g, '');
+
+          // Check raw phone
+          let { data } = await supabaseAdmin
+            .from('customers')
+            .select('id, phone, email')
+            .eq('phone', rawPhone)
             .maybeSingle();
 
-          if (existingCustomer) {
-            customerId = existingCustomer.id;
-            if (order.customerEmail) {
-              await supabaseAdmin
-                .from('customers')
-                .update({ email: order.customerEmail })
-                .eq('id', customerId);
-            }
-          } else {
-            // Auto-create guest account record
-            const { data: newCustomer } = await supabaseAdmin
+          if (!data && cleanPhone) {
+            // Check clean phone
+            const { data: dataClean } = await supabaseAdmin
               .from('customers')
-              .insert({
-                name: order.customerName || 'Guest Customer',
-                phone: order.customerPhone,
-                email: order.customerEmail || null,
-                password_hash: null
-              })
-              .select('id')
-              .single();
+              .select('id, phone, email')
+              .eq('phone', cleanPhone)
+              .maybeSingle();
+            data = dataClean;
+          }
+          
+          if (data) {
+            existingCustomer = data;
+          }
+        }
 
-            if (newCustomer) {
-              customerId = newCustomer.id;
+        if (existingCustomer) {
+          customerId = existingCustomer.id;
+          
+          // Update customer fields if they changed or were empty
+          const updates: Record<string, any> = {};
+          if (order.customerEmail && existingCustomer.email !== order.customerEmail) {
+            updates.email = order.customerEmail.trim().toLowerCase();
+          }
+          if (order.customerPhone && existingCustomer.phone !== order.customerPhone) {
+            updates.phone = order.customerPhone.trim();
+          }
+          if (order.customerName && order.customerName !== 'Guest Customer') {
+            updates.name = order.customerName;
+          }
+
+          if (Object.keys(updates).length > 0) {
+            await supabaseAdmin
+              .from('customers')
+              .update(updates)
+              .eq('id', customerId);
+          }
+        } else {
+          // Create new customer record
+          const { data: newCustomer, error: insertError } = await supabaseAdmin
+            .from('customers')
+            .insert({
+              name: order.customerName || 'Guest Customer',
+              phone: order.customerPhone ? order.customerPhone.trim() : null,
+              email: order.customerEmail ? order.customerEmail.trim().toLowerCase() : null,
+              password_hash: null
+            })
+            .select('id')
+            .single();
+
+          if (insertError) {
+            console.error('Error inserting customer:', insertError);
+            // Fallback: if it still fails on unique email or phone, query again to link it
+            if (order.customerEmail) {
+              const { data } = await supabaseAdmin
+                .from('customers')
+                .select('id')
+                .eq('email', order.customerEmail.trim().toLowerCase())
+                .maybeSingle();
+              if (data) customerId = data.id;
             }
+            if (!customerId && order.customerPhone) {
+              const { data } = await supabaseAdmin
+                .from('customers')
+                .select('id')
+                .eq('phone', order.customerPhone.trim())
+                .maybeSingle();
+              if (data) customerId = data.id;
+            }
+          } else if (newCustomer) {
+            customerId = newCustomer.id;
           }
         }
       } catch (err) {

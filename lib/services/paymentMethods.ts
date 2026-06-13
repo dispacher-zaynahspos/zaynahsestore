@@ -51,7 +51,7 @@ export async function createPaymentMethod(data: {
     throw error;
   }
 
-  revalidateTag('payment_methods', 'max');
+  (revalidateTag as any)('payment_methods');
   return {
     id: row.id,
     name: row.name,
@@ -84,7 +84,7 @@ export async function updatePaymentMethod(
     throw error;
   }
 
-  revalidateTag('payment_methods', 'max');
+  (revalidateTag as any)('payment_methods');
   return {
     id: row.id,
     name: row.name,
@@ -106,5 +106,5 @@ export async function deletePaymentMethod(id: string): Promise<void> {
     throw error;
   }
 
-  revalidateTag('payment_methods', 'max');
+  (revalidateTag as any)('payment_methods');
 }

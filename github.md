@@ -1,0 +1,1 @@
+cd ~/Desktop/"Zaynahs e-store" && git add . && git commit -m "redeploy fix" && git push origin main

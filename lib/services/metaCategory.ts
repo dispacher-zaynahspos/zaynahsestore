@@ -56,7 +56,7 @@ export async function upsertMetaCategoryMapping(
       );
 
     if (error) throw error;
-    revalidateTag('meta-category-mappings', 'max');
+    (revalidateTag as any)('meta-category-mappings');
   } catch (error) {
     console.error('[metaCategory] upsertMetaCategoryMapping failed:', error);
     throw error;

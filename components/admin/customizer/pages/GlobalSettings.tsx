@@ -38,6 +38,9 @@ export default function GlobalSettings({
               Select
             </button>
           </div>
+          <span className="text-[9px] text-gray-400 dark:text-gray-500 block mt-1 leading-normal">
+            PNG ya ICO formats dono support hote hain. Favicon update browser cache clear karne ke baad dikhta hai.
+          </span>
         </div>
 
         {/* Logo Selector */}
@@ -67,7 +70,7 @@ export default function GlobalSettings({
             </div>
             <input
               type="range"
-              min="50"
+              min="30"
               max="300"
               step="10"
               value={settings.logoWidth || 120}
@@ -84,12 +87,25 @@ export default function GlobalSettings({
     return (
       <div className="space-y-4">
         <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-800 pb-2">
-          <span className="text-xs font-bold text-gray-700 dark:text-gray-300">Sticky Main Header</span>
+          <span className="text-xs font-bold text-gray-700 dark:text-gray-300">Sticky Header (Desktop)</span>
           <label className="relative inline-flex items-center cursor-pointer select-none">
             <input
               type="checkbox"
-              checked={settings.headerSticky}
-              onChange={(e) => onUpdateSettings({ headerSticky: e.target.checked })}
+              checked={settings.headerStickyDesktop ?? true}
+              onChange={(e) => onUpdateSettings({ headerStickyDesktop: e.target.checked })}
+              className="sr-only peer"
+            />
+            <div className="w-10 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#e94560]" />
+          </label>
+        </div>
+
+        <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-800 pb-2">
+          <span className="text-xs font-bold text-gray-700 dark:text-gray-300">Sticky Header (Mobile)</span>
+          <label className="relative inline-flex items-center cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={settings.headerStickyMobile ?? true}
+              onChange={(e) => onUpdateSettings({ headerStickyMobile: e.target.checked })}
               className="sr-only peer"
             />
             <div className="w-10 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#e94560]" />

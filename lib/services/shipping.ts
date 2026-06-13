@@ -54,7 +54,7 @@ export async function createShippingMethod(data: {
     throw error;
   }
 
-  revalidateTag('shipping_methods', 'max');
+  (revalidateTag as any)('shipping_methods');
   return {
     id: row.id,
     name: row.name,
@@ -89,7 +89,7 @@ export async function updateShippingMethod(
     throw error;
   }
 
-  revalidateTag('shipping_methods', 'max');
+  (revalidateTag as any)('shipping_methods');
   return {
     id: row.id,
     name: row.name,
@@ -112,5 +112,5 @@ export async function deleteShippingMethod(id: string): Promise<void> {
     throw error;
   }
 
-  revalidateTag('shipping_methods', 'max');
+  (revalidateTag as any)('shipping_methods');
 }

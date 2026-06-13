@@ -212,6 +212,8 @@ CREATE TABLE IF NOT EXISTS store_settings (
   
   -- Header configuration settings
   header_sticky BOOLEAN DEFAULT true,
+  header_sticky_desktop BOOLEAN DEFAULT true,
+  header_sticky_mobile BOOLEAN DEFAULT true,
   header_show_top_bar BOOLEAN DEFAULT true,
   header_top_bar_phone TEXT DEFAULT '0328-4114551',
   header_top_bar_email TEXT DEFAULT 'Totvoguepk@gmail.com',
@@ -309,6 +311,8 @@ CREATE TABLE IF NOT EXISTS store_settings (
   flash_sale_enabled BOOLEAN DEFAULT true,
   flash_sale_start_date TIMESTAMPTZ,
   flash_sale_end_date TIMESTAMPTZ,
+  global_flash_sale_discount_type TEXT DEFAULT 'percentage',
+  global_flash_sale_discount_value NUMERIC(10,2) DEFAULT 0,
   social_feeds_enabled BOOLEAN DEFAULT true,
   cart_timer_enabled BOOLEAN DEFAULT true,
   size_guide_enabled BOOLEAN DEFAULT true,
@@ -786,6 +790,8 @@ CREATE TABLE IF NOT EXISTS media_library (
   ai_generated BOOLEAN DEFAULT false,
   ai_enabled BOOLEAN DEFAULT true,
   bucket TEXT,
+  file_size BIGINT,
+  mime_type TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

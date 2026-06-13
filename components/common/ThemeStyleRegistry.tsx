@@ -158,6 +158,10 @@ export default function ThemeStyleRegistry({ settings }: ThemeStyleRegistryProps
     .text-accent, .dark .text-accent {
       color: var(--color-accent) !important;
     }
+    .text-\\[\\#1a1a2e\\], [class*="text-[#1a1a2e]"],
+    .text-secondary, .dark .text-secondary {
+      color: var(--color-text-primary) !important;
+    }
 
     /* Borders hardcoded overrides */
     .border-\\[\\#e94560\\], [class*="border-[#e94560]"] {

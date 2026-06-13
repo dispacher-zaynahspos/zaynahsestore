@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { StoreSettings } from '@/lib/types';
 import { unstable_cache, revalidateTag } from 'next/cache';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { revalidateSettings } from '@/lib/revalidate';
 
 const SETTINGS_ID = '00000000-0000-4000-8000-000000000001';
 
@@ -62,6 +63,8 @@ interface SettingsRow {
   product_swatch_size?: string | null;
   archive_swatch_align?: string | null;
   header_sticky?: boolean | null;
+  header_sticky_desktop?: boolean | null;
+  header_sticky_mobile?: boolean | null;
   header_show_top_bar?: boolean | null;
   header_top_bar_phone?: string | null;
   header_top_bar_email?: string | null;
@@ -129,7 +132,7 @@ interface SettingsRow {
   floating_tiktok_enabled?: boolean | null;
   floating_snapchat_enabled?: boolean | null;
   floating_twitter_enabled?: boolean | null;
-  
+
   // Customizer & Premium Theme Settings
   exit_intent_enabled?: boolean | null;
   exit_intent_title?: string | null;
@@ -152,6 +155,8 @@ interface SettingsRow {
   flash_sale_enabled?: boolean | null;
   flash_sale_start_date?: string | null;
   flash_sale_end_date?: string | null;
+  global_flash_sale_discount_type?: string | null;
+  global_flash_sale_discount_value?: number | string | null;
   social_feeds_enabled?: boolean | null;
   cart_timer_enabled?: boolean | null;
   size_guide_enabled?: boolean | null;
@@ -273,6 +278,8 @@ const mapSettings = (row: SettingsRow): StoreSettings => ({
   productSwatchSize: (row.product_swatch_size as any) ?? 'md',
   archiveSwatchAlign: (row.archive_swatch_align as any) ?? 'left',
   headerSticky: row.header_sticky ?? true,
+  headerStickyDesktop: row.header_sticky_desktop ?? true,
+  headerStickyMobile: row.header_sticky_mobile ?? true,
   headerShowTopBar: row.header_show_top_bar ?? true,
   headerTopBarPhone: row.header_top_bar_phone ?? '0328-4114551',
   headerTopBarEmail: row.header_top_bar_email ?? 'Totvoguepk@gmail.com',
@@ -340,7 +347,7 @@ const mapSettings = (row: SettingsRow): StoreSettings => ({
   floatingTiktokEnabled: row.floating_tiktok_enabled ?? false,
   floatingSnapchatEnabled: row.floating_snapchat_enabled ?? false,
   floatingTwitterEnabled: row.floating_twitter_enabled ?? false,
-  
+
   // Customizer & Premium Theme Settings
   exit_intent_enabled: row.exit_intent_enabled ?? false,
   exit_intent_title: row.exit_intent_title ?? 'Wait! Get a Special Discount',
@@ -363,6 +370,8 @@ const mapSettings = (row: SettingsRow): StoreSettings => ({
   flash_sale_enabled: row.flash_sale_enabled ?? true,
   flash_sale_start_date: row.flash_sale_start_date || undefined,
   flash_sale_end_date: row.flash_sale_end_date || undefined,
+  globalFlashSaleDiscountType: (row.global_flash_sale_discount_type as any) || 'percentage',
+  globalFlashSaleDiscountValue: row.global_flash_sale_discount_value ? parseFloat(row.global_flash_sale_discount_value.toString()) : 0,
   social_feeds_enabled: row.social_feeds_enabled ?? true,
   cart_timer_enabled: row.cart_timer_enabled ?? true,
   size_guide_enabled: row.size_guide_enabled ?? true,
@@ -398,7 +407,7 @@ const mapSettings = (row: SettingsRow): StoreSettings => ({
   card_elements_order: row.card_elements_order ?? ['title', 'rating', 'price', 'swatches'],
   theme_preset: row.theme_preset ?? 'classic_white',
   theme_config: typeof row.theme_config === 'string' ? JSON.parse(row.theme_config) : (row.theme_config ?? undefined),
-  
+
   // Pixels & Tracking
   meta_pixel_id: row.meta_pixel_id ?? '',
   ga4_measurement_id: row.ga4_measurement_id ?? '',
@@ -437,25 +446,37 @@ const mapSettings = (row: SettingsRow): StoreSettings => ({
 });
 
 const fetchSettings = async (): Promise<StoreSettings> => {
-  const { data, error } = await staticSupabase
-    .from('store_settings')
-    .select('*')
-    .eq('id', SETTINGS_ID)
-    .maybeSingle();
+  try {
+    const { data, error } = await staticSupabase
+      .from('store_settings')
+      .select('*')
+      .eq('id', SETTINGS_ID)
+      .maybeSingle();
 
-  if (error) throw error;
-  if (data) return mapSettings(data);
+    if (error) {
+      console.error('[Settings Error Debug] staticSupabase.from(store_settings) failed:', error);
+      throw error;
+    }
+    if (data) return mapSettings(data);
 
-  // Fallback (only run if somehow the row doesn't exist, which shouldn't happen under normal circumstances)
-  const supabase = await createClient();
-  const { data: insData, error: insError } = await supabase
-    .from('store_settings')
-    .insert({ id: SETTINGS_ID })
-    .select('*')
-    .single();
+    console.warn('[Settings Error Debug] store_settings row not found with staticSupabase, attempting fallback insert...');
+    // Fallback (only run if somehow the row doesn't exist, which shouldn't happen under normal circumstances)
+    const supabase = await createClient();
+    const { data: insData, error: insError } = await supabase
+      .from('store_settings')
+      .insert({ id: SETTINGS_ID })
+      .select('*')
+      .single();
 
-  if (insError) throw insError;
-  return mapSettings(insData);
+    if (insError) {
+      console.error('[Settings Error Debug] fallback insert failed:', insError);
+      throw insError;
+    }
+    return mapSettings(insData);
+  } catch (err) {
+    console.error('[Settings Error Debug] fetchSettings caught error:', err);
+    throw err;
+  }
 };
 
 const cachedSettings = unstable_cache(
@@ -465,10 +486,15 @@ const cachedSettings = unstable_cache(
 );
 
 export const getSettings = async () => {
-  if (process.env.NODE_ENV === 'development') {
+  try {
+    if (process.env.NODE_ENV === 'development') {
+      return fetchSettings();
+    }
+    return await cachedSettings();
+  } catch (error) {
+    console.warn('[settings] cachedSettings failed, falling back to direct fetchSettings:', error);
     return fetchSettings();
   }
-  return cachedSettings();
 };
 
 
@@ -523,6 +549,8 @@ export const updateSettings = async (settings: Partial<StoreSettings>): Promise<
     if (settings.productSwatchSize !== undefined) updatePayload.product_swatch_size = settings.productSwatchSize;
     if (settings.archiveSwatchAlign !== undefined) updatePayload.archive_swatch_align = settings.archiveSwatchAlign;
     if (settings.headerSticky !== undefined) updatePayload.header_sticky = settings.headerSticky;
+    if (settings.headerStickyDesktop !== undefined) updatePayload.header_sticky_desktop = settings.headerStickyDesktop;
+    if (settings.headerStickyMobile !== undefined) updatePayload.header_sticky_mobile = settings.headerStickyMobile;
     if (settings.headerShowTopBar !== undefined) updatePayload.header_show_top_bar = settings.headerShowTopBar;
     if (settings.headerTopBarPhone !== undefined) updatePayload.header_top_bar_phone = settings.headerTopBarPhone;
     if (settings.headerTopBarEmail !== undefined) updatePayload.header_top_bar_email = settings.headerTopBarEmail;
@@ -547,32 +575,32 @@ export const updateSettings = async (settings: Partial<StoreSettings>): Promise<
     if (settings.headerDesktopMenuAlign !== undefined) updatePayload.header_desktop_menu_align = settings.headerDesktopMenuAlign;
     if (settings.faqContent !== undefined) updatePayload.faq_content = settings.faqContent;
     if (settings.returnPolicyContent !== undefined) updatePayload.return_policy_content = settings.returnPolicyContent;
-    
+
     if (settings.trustBadge1Title !== undefined) updatePayload.trust_badge_1_title = settings.trustBadge1Title;
     if (settings.trustBadge1Desc !== undefined) updatePayload.trust_badge_1_desc = settings.trustBadge1Desc;
     if (settings.trustBadge1Icon !== undefined) updatePayload.trust_badge_1_icon = settings.trustBadge1Icon;
-    
+
     if (settings.trustBadge2Title !== undefined) updatePayload.trust_badge_2_title = settings.trustBadge2Title;
     if (settings.trustBadge2Desc !== undefined) updatePayload.trust_badge_2_desc = settings.trustBadge2Desc;
     if (settings.trustBadge2Icon !== undefined) updatePayload.trust_badge_2_icon = settings.trustBadge2Icon;
-    
+
     if (settings.trustBadge3Title !== undefined) updatePayload.trust_badge_3_title = settings.trustBadge3Title;
     if (settings.trustBadge3Desc !== undefined) updatePayload.trust_badge_3_desc = settings.trustBadge3Desc;
     if (settings.trustBadge3Icon !== undefined) updatePayload.trust_badge_3_icon = settings.trustBadge3Icon;
-    
+
     if (settings.trustBadge4Title !== undefined) updatePayload.trust_badge_4_title = settings.trustBadge4Title;
     if (settings.trustBadge4Desc !== undefined) updatePayload.trust_badge_4_desc = settings.trustBadge4Desc;
     if (settings.trustBadge4Icon !== undefined) updatePayload.trust_badge_4_icon = settings.trustBadge4Icon;
-    
+
     if (settings.trustBadge1Enabled !== undefined) updatePayload.trust_badge_1_enabled = settings.trustBadge1Enabled;
     if (settings.trustBadge2Enabled !== undefined) updatePayload.trust_badge_2_enabled = settings.trustBadge2Enabled;
     if (settings.trustBadge3Enabled !== undefined) updatePayload.trust_badge_3_enabled = settings.trustBadge3Enabled;
     if (settings.trustBadge4Enabled !== undefined) updatePayload.trust_badge_4_enabled = settings.trustBadge4Enabled;
-    
+
     if (settings.socialTiktok !== undefined) updatePayload.social_tiktok = settings.socialTiktok;
     if (settings.socialSnapchat !== undefined) updatePayload.social_snapchat = settings.socialSnapchat;
     if (settings.socialTwitter !== undefined) updatePayload.social_twitter = settings.socialTwitter;
-    
+
     if (settings.footerCol1Title !== undefined) updatePayload.footer_col_1_title = settings.footerCol1Title;
     if (settings.footerCol2Title !== undefined) updatePayload.footer_col_2_title = settings.footerCol2Title;
     if (settings.footerCol2Text !== undefined) updatePayload.footer_col_2_text = settings.footerCol2Text;
@@ -620,6 +648,8 @@ export const updateSettings = async (settings: Partial<StoreSettings>): Promise<
     if (settings.flash_sale_enabled !== undefined) updatePayload.flash_sale_enabled = settings.flash_sale_enabled;
     if (settings.flash_sale_start_date !== undefined) updatePayload.flash_sale_start_date = settings.flash_sale_start_date;
     if (settings.flash_sale_end_date !== undefined) updatePayload.flash_sale_end_date = settings.flash_sale_end_date;
+    if (settings.globalFlashSaleDiscountType !== undefined) updatePayload.global_flash_sale_discount_type = settings.globalFlashSaleDiscountType;
+    if (settings.globalFlashSaleDiscountValue !== undefined) updatePayload.global_flash_sale_discount_value = settings.globalFlashSaleDiscountValue;
     if (settings.social_feeds_enabled !== undefined) updatePayload.social_feeds_enabled = settings.social_feeds_enabled;
     if (settings.cart_timer_enabled !== undefined) updatePayload.cart_timer_enabled = settings.cart_timer_enabled;
     if (settings.size_guide_enabled !== undefined) updatePayload.size_guide_enabled = settings.size_guide_enabled;
@@ -698,7 +728,11 @@ export const updateSettings = async (settings: Partial<StoreSettings>): Promise<
       .single();
 
     if (error) throw error;
-    revalidateTag('settings', 'max');
+    try {
+      await revalidateSettings();
+    } catch (revalErr) {
+      console.error('[settings] revalidateSettings failed during update:', revalErr);
+    }
     return mapSettings(data);
   } catch (error) {
     console.error('[settings] updateSettings failed:', error);

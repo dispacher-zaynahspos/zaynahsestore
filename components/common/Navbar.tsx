@@ -35,7 +35,16 @@ export default function Navbar({
   const logoWidth = settings?.logoWidth ?? propLogoWidth;
 
   // Header options defaults
-  const headerSticky = settings?.headerSticky ?? true;
+  const headerStickyDesktop = settings?.headerStickyDesktop ?? true;
+  const headerStickyMobile = settings?.headerStickyMobile ?? true;
+
+  const stickyClass = (headerStickyDesktop && headerStickyMobile)
+    ? 'sticky top-0'
+    : headerStickyDesktop
+      ? 'md:sticky md:top-0 relative'
+      : headerStickyMobile
+        ? 'sticky top-0 md:relative'
+        : 'relative';
   const showTopBar = settings?.headerShowTopBar ?? true;
   const topBarPhone = settings?.headerTopBarPhone ?? '0328-4114551';
   const topBarEmail = settings?.headerTopBarEmail ?? 'Totvoguepk@gmail.com';
@@ -220,6 +229,11 @@ export default function Navbar({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [searchOpen, setSearchOpen]);
 
+  // Reset search query on pathname change to prevent stale search results on page transitions
+  useEffect(() => {
+    setSearchQuery('');
+  }, [pathname, setSearchQuery]);
+
   // Helper renderers for dynamic alignment
   const customTextColorStyle = headerTextColor !== '#1a1a2e' ? { color: headerTextColor } : {};
   const customBorderColorStyle = headerBorderColor !== '#e5e7eb' ? { borderColor: headerBorderColor } : {};
@@ -229,7 +243,7 @@ export default function Navbar({
       {logoUrl ? (
         <div 
           style={{ width: `${logoWidth}px` }} 
-          className={`relative h-9 flex items-center justify-center ${
+          className={`relative flex items-center ${
             desktopLogoAlign === 'left' ? 'md:justify-start' : 
             desktopLogoAlign === 'right' ? 'md:justify-end' : 'md:justify-center'
           }`}
@@ -238,7 +252,8 @@ export default function Navbar({
           <img
             src={logoUrl}
             alt={storeName}
-            className="max-h-9 object-contain w-auto h-auto"
+            style={{ width: `${logoWidth}px` }}
+            className="object-contain h-auto max-h-12 md:max-h-16"
           />
         </div>
       ) : (
@@ -534,7 +549,7 @@ export default function Navbar({
             window.parent.postMessage({ type: 'select_global_tab', subTab: 'header' }, '*');
           }
         }}
-        className={`${headerSticky ? 'sticky top-0' : 'relative'} z-40 w-full border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-[#0f0f1b]/85 backdrop-blur-md transition-colors duration-200 ${
+        className={`${stickyClass} z-40 w-full border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-[#0f0f1b]/85 backdrop-blur-md transition-colors duration-200 ${
           typeof window !== 'undefined' && window.self !== window.top ? 'cursor-pointer hover:ring-2 hover:ring-[#e94560] hover:ring-offset-2' : ''
         }`}
         style={{ 

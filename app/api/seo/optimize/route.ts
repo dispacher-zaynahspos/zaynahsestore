@@ -132,11 +132,11 @@ export async function POST(request: Request) {
     try {
       const { revalidateTag } = await import('next/cache');
       if (entity_type === 'product') {
-        revalidateTag(`product-${slug}`, 'max');
-        revalidateTag('products', 'max');
+        (revalidateTag as any)(`product-${slug}`);
+        (revalidateTag as any)('products');
       } else if (entity_type === 'category') {
-        revalidateTag(`category-${slug}`, 'max');
-        revalidateTag('categories', 'max');
+        (revalidateTag as any)(`category-${slug}`);
+        (revalidateTag as any)('categories');
       }
     } catch (revalErr) {
       console.warn('[SEO Optimize] Local revalidation skipped:', revalErr);

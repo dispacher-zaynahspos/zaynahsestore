@@ -27,6 +27,10 @@ interface PremiumTabProps {
   setFlashSaleStartDate: (v: string) => void;
   flashSaleEndDate: string;
   setFlashSaleEndDate: (v: string) => void;
+  globalFlashSaleDiscountType: 'percentage' | 'fixed';
+  setGlobalFlashSaleDiscountType: (v: 'percentage' | 'fixed') => void;
+  globalFlashSaleDiscountValue: number;
+  setGlobalFlashSaleDiscountValue: (v: number) => void;
   socialFeedsEnabled: boolean;
   setSocialFeedsEnabled: (v: boolean) => void;
   cartTimerEnabled: boolean;
@@ -165,6 +169,10 @@ export default function PremiumTab({
   setFlashSaleStartDate,
   flashSaleEndDate,
   setFlashSaleEndDate,
+  globalFlashSaleDiscountType,
+  setGlobalFlashSaleDiscountType,
+  globalFlashSaleDiscountValue,
+  setGlobalFlashSaleDiscountValue,
   socialFeedsEnabled,
   setSocialFeedsEnabled,
   cartTimerEnabled,
@@ -419,7 +427,32 @@ export default function PremiumTab({
             />
           </div>
         </div>
-        <p className="text-[10px] text-gray-500 mt-1">Configure when the flash sale begins and ends. When active, it automatically shows a countdown timer to customers.</p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-gray-100 dark:border-gray-800">
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">Global Discount Type</label>
+            <select
+              value={globalFlashSaleDiscountType}
+              onChange={(e) => setGlobalFlashSaleDiscountType(e.target.value as 'percentage' | 'fixed')}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-[#e94560] focus:border-[#e94560] bg-white dark:bg-[#16162a] text-gray-900 dark:text-white text-sm"
+            >
+              <option value="percentage">Percentage (%)</option>
+              <option value="fixed">Fixed Amount (Rs.)</option>
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">Global Discount Value</label>
+            <input
+              type="number"
+              value={globalFlashSaleDiscountValue || ''}
+              onChange={(e) => setGlobalFlashSaleDiscountValue(parseFloat(e.target.value) || 0)}
+              placeholder={globalFlashSaleDiscountType === 'percentage' ? 'e.g. 20' : 'e.g. 500'}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-[#e94560] focus:border-[#e94560] bg-white dark:bg-[#16162a] text-gray-900 dark:text-white text-sm"
+            />
+          </div>
+        </div>
+
+        <p className="text-[10px] text-gray-500 mt-1">Configure when the flash sale begins and ends, and the storewide discount applied to all products. When active, it overrides individual product sales and displays a unified countdown timer to customers.</p>
       </div>
 
       {/* Header Announcement & News Bar */}

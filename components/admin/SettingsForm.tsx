@@ -146,6 +146,8 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
 
   // Header settings states
   const [headerSticky, setHeaderSticky] = useState(initialSettings.headerSticky ?? true);
+  const [headerStickyDesktop, setHeaderStickyDesktop] = useState(initialSettings.headerStickyDesktop ?? true);
+  const [headerStickyMobile, setHeaderStickyMobile] = useState(initialSettings.headerStickyMobile ?? true);
   const [headerShowTopBar, setHeaderShowTopBar] = useState(initialSettings.headerShowTopBar ?? true);
   const [headerTopBarPhone, setHeaderTopBarPhone] = useState(initialSettings.headerTopBarPhone ?? '0328-4114551');
   const [headerTopBarEmail, setHeaderTopBarEmail] = useState(initialSettings.headerTopBarEmail ?? 'Totvoguepk@gmail.com');
@@ -223,6 +225,8 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
   const [flashSaleEnabled, setFlashSaleEnabled] = useState(initialSettings.flash_sale_enabled ?? true);
   const [flashSaleStartDate, setFlashSaleStartDate] = useState(initialSettings.flash_sale_start_date || '');
   const [flashSaleEndDate, setFlashSaleEndDate] = useState(initialSettings.flash_sale_end_date || '');
+  const [globalFlashSaleDiscountType, setGlobalFlashSaleDiscountType] = useState(initialSettings.globalFlashSaleDiscountType || 'percentage');
+  const [globalFlashSaleDiscountValue, setGlobalFlashSaleDiscountValue] = useState(initialSettings.globalFlashSaleDiscountValue || 0);
   const [socialFeedsEnabled, setSocialFeedsEnabled] = useState(initialSettings.social_feeds_enabled ?? true);
   const [cartTimerEnabled, setCartTimerEnabled] = useState(initialSettings.cart_timer_enabled ?? true);
   const [sizeGuideEnabled, setSizeGuideEnabled] = useState(initialSettings.size_guide_enabled ?? true);
@@ -839,6 +843,8 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
         productSwatchSize,
         archiveSwatchAlign,
         headerSticky,
+        headerStickyDesktop,
+        headerStickyMobile,
         headerShowTopBar,
         headerTopBarPhone,
         headerTopBarEmail,
@@ -929,6 +935,8 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
         flash_sale_enabled: flashSaleEnabled,
         flash_sale_start_date: flashSaleStartDate || undefined,
         flash_sale_end_date: flashSaleEndDate || undefined,
+        globalFlashSaleDiscountType: globalFlashSaleDiscountType,
+        globalFlashSaleDiscountValue: globalFlashSaleDiscountValue,
         social_feeds_enabled: socialFeedsEnabled,
         cart_timer_enabled: cartTimerEnabled,
         size_guide_enabled: sizeGuideEnabled,
@@ -992,8 +1000,9 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
       await updateSettings(payload);
       toast.success('Settings updated successfully!');
       router.refresh();
-    } catch (err) {
-      toast.error('Failed to update settings');
+    } catch (err: any) {
+      console.error('Settings update error:', err);
+      toast.error(err?.message || 'Failed to update settings');
     }
   };
 
@@ -1293,6 +1302,10 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
         <HeaderTab
           headerSticky={headerSticky}
           setHeaderSticky={setHeaderSticky}
+          headerStickyDesktop={headerStickyDesktop}
+          setHeaderStickyDesktop={setHeaderStickyDesktop}
+          headerStickyMobile={headerStickyMobile}
+          setHeaderStickyMobile={setHeaderStickyMobile}
           headerShowTopBar={headerShowTopBar}
           setHeaderShowTopBar={setHeaderShowTopBar}
           headerShowNewsletter={headerShowNewsletter}
@@ -1608,6 +1621,10 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
           setFlashSaleStartDate={setFlashSaleStartDate}
           flashSaleEndDate={flashSaleEndDate}
           setFlashSaleEndDate={setFlashSaleEndDate}
+          globalFlashSaleDiscountType={globalFlashSaleDiscountType}
+          setGlobalFlashSaleDiscountType={setGlobalFlashSaleDiscountType}
+          globalFlashSaleDiscountValue={globalFlashSaleDiscountValue}
+          setGlobalFlashSaleDiscountValue={setGlobalFlashSaleDiscountValue}
           socialFeedsEnabled={socialFeedsEnabled}
           setSocialFeedsEnabled={setSocialFeedsEnabled}
           cartTimerEnabled={cartTimerEnabled}

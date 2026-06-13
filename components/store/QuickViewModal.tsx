@@ -66,6 +66,8 @@ export default function QuickViewModal({ product, settings, onClose }: QuickView
     product.hasVariants && activeVariants.length > 0 ? activeVariants[0] : undefined
   );
   const [quantity, setQuantity] = useState(1);
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
+  const fallbackPlaceholder = 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=600&auto=format&fit=crop&q=60';
 
   // ── Image sync on variant change ─────────────────────────────────────────
   const applyVariant = useCallback((v: ProductVariant) => {
@@ -137,18 +139,21 @@ export default function QuickViewModal({ product, settings, onClose }: QuickView
 
             {/* ── Image Gallery ─────────────────────────────────────────── */}
             <div className="relative bg-gray-50 dark:bg-black/20">
-              <div className="relative aspect-square w-full overflow-hidden" ref={emblaRef}>
-                <div className="flex h-full animate-fade-in">
+              <div className="relative aspect-square w-full overflow-hidden touch-pan-y" ref={emblaRef}>
+                <div className="flex h-full">
                   {images.map((img, i) => (
-                    <div key={img.id || i} className="relative flex-none w-full h-full select-none overflow-hidden">
+                    <div key={img.id || i} className="relative flex-[0_0_100%] min-w-0 w-full h-full select-none overflow-hidden">
                       <Image
-                        src={img.url}
+                        src={imageErrors[img.url] ? fallbackPlaceholder : img.url}
                         alt={product.name}
                         fill
                         sizes="(max-width: 640px) 100vw, 50vw"
                         className="object-cover"
                         priority={i === 0}
                         unoptimized={true}
+                        onError={() => {
+                          setImageErrors(prev => ({ ...prev, [img.url]: true }));
+                        }}
                       />
                     </div>
                   ))}
@@ -199,7 +204,17 @@ export default function QuickViewModal({ product, settings, onClose }: QuickView
                         i === activeIdx ? 'border-[#e94560]' : 'border-transparent hover:border-gray-400'
                       }`}
                     >
-                      <Image src={img.url} alt={`Thumbnail ${i + 1}`} fill sizes="48px" className="object-cover" unoptimized={true} />
+                      <Image
+                        src={imageErrors[img.url] ? fallbackPlaceholder : img.url}
+                        alt={`Thumbnail ${i + 1}`}
+                        fill
+                        sizes="48px"
+                        className="object-cover"
+                        unoptimized={true}
+                        onError={() => {
+                          setImageErrors(prev => ({ ...prev, [img.url]: true }));
+                        }}
+                      />
                     </button>
                   ))}
                 </div>

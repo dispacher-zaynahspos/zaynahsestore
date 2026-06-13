@@ -105,8 +105,8 @@ export const submitReview = async (review: {
     if (error) throw error;
     
     // Revalidate reviews caches
-    revalidateTag('reviews', 'max');
-    revalidateTag('products', 'max');
+    (revalidateTag as any)('reviews');
+    (revalidateTag as any)('products');
     
     const savedReview = mapReview(data);
 
@@ -142,8 +142,8 @@ export const approveReview = async (id: string): Promise<Review> => {
 
     if (error) throw error;
     
-    revalidateTag('reviews', 'max');
-    revalidateTag('products', 'max');
+    (revalidateTag as any)('reviews');
+    (revalidateTag as any)('products');
     return mapReview(data);
   } catch (error) {
     console.error('[reviews] approveReview failed:', error);
@@ -162,8 +162,8 @@ export const deleteReview = async (id: string): Promise<void> => {
 
     if (error) throw error;
     
-    revalidateTag('reviews', 'max');
-    revalidateTag('products', 'max');
+    (revalidateTag as any)('reviews');
+    (revalidateTag as any)('products');
   } catch (error) {
     console.error('[reviews] deleteReview failed:', error);
     throw error;

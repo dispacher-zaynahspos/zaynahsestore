@@ -75,12 +75,38 @@ export function buildVariables(emailType: string, data: Record<string, any>): Re
 
     // Address
     const address = order.shipping_address || data.customer || {};
-    vars['shipping_address.name'] = address.name || '';
-    vars['shipping_address.phone'] = address.phone || '';
-    vars['shipping_address.street'] = address.street || address.address || '';
-    vars['shipping_address.city'] = address.city || '';
+    let addressName = order.customerName || address.name || data.customer?.name || data.user?.name || 'Customer';
+    let street = address.street || address.address || '';
+    let city = address.city || '';
+    let postalCode = address.postalCode || '';
+    let phone = address.phone || order.customerPhone || data.customer?.phone || '';
+
+    // Parse specific address fields from formatted notes if present
+    if (order.notes) {
+      const addressMatch = order.notes.match(/Address:\s*(.+)/i);
+      const aptMatch = order.notes.match(/Apt\/Suite:\s*(.+)/i);
+      const cityMatch = order.notes.match(/City:\s*(.+)/i);
+      const postalMatch = order.notes.match(/Postal:\s*(.+)/i);
+      const phoneMatch = order.notes.match(/Phone:\s*(.+)/i);
+
+      if (addressMatch) {
+        street = addressMatch[1].trim();
+        if (aptMatch) {
+          street += `, ${aptMatch[1].trim()}`;
+        }
+      }
+      if (cityMatch) city = cityMatch[1].trim();
+      if (postalMatch) postalCode = postalMatch[1].trim();
+      if (phoneMatch) phone = phoneMatch[1].trim();
+    }
+
+    vars['shipping_address.name'] = addressName;
+    vars['shipping_address.phone'] = phone;
+    vars['shipping_address.street'] = street;
+    vars['shipping_address.city'] = city;
+    vars['shipping_address.postal_code'] = postalCode;
     vars['shipping_address.full'] = address.full || 
-      [address.name, address.street || address.address, address.city, address.phone].filter(Boolean).join(', ');
+      [addressName, street, city, postalCode, phone].filter(Boolean).join(', ');
 
     // Shipping
     vars.tracking_number = order.trackingNumber || '';

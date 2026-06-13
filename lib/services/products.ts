@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server';
 import { Product, ProductImage, ProductVariant, ProductModifier, Category } from '@/lib/types';
 import { unstable_cache, revalidateTag } from 'next/cache';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { revalidateProduct } from '@/lib/revalidate';
+import { getSettings } from './settings';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder';
@@ -212,41 +214,99 @@ const mapProduct = (row: DBProductRow): Product => {
 
 const applyFlashSaleDiscounts = async (products: Product[]): Promise<Product[]> => {
   try {
+    const settings = await getSettings();
     const { data: sections, error } = await staticSupabase
       .from('homepage_sections')
       .select('*')
       .eq('section_type', 'flash_sale')
       .eq('active', true);
-    
+
     const now = Date.now();
-    
+
+    let isGlobalFlashSaleActive = false;
+    if (settings && settings.flash_sale_enabled) {
+      const gStart = settings.flash_sale_start_date ? new Date(settings.flash_sale_start_date).getTime() : 0;
+      const gEnd = settings.flash_sale_end_date ? new Date(settings.flash_sale_end_date).getTime() : 0;
+
+      const isStarted = !settings.flash_sale_start_date || gStart <= now;
+      const isEnded = gEnd && gEnd < now;
+      if (isStarted && !isEnded) {
+        isGlobalFlashSaleActive = true;
+      }
+    }
+
     // Check if any homepage flash sale section is active (including infinite if dates are empty)
     const activeFlashSales = (sections || []).filter(sec => {
       const startStr = sec.settings?.startTime;
       const endStr = sec.settings?.endTime;
-      
+
       if (!startStr && !endStr) {
         return true;
       }
-      
+
       const start = startStr ? new Date(startStr).getTime() : 0;
       const end = endStr ? new Date(endStr).getTime() : 0;
-      
+
       const isStarted = !startStr || start <= now;
       const isEnded = endStr && end < now;
       return isStarted && !isEnded;
     });
 
     return products.map(product => {
+      // 0. Global Flash Sale (highest priority, overrides and holds individual settings)
+      if (isGlobalFlashSaleActive && settings) {
+        const discountType = settings.globalFlashSaleDiscountType || 'percentage';
+        const discountVal = settings.globalFlashSaleDiscountValue || 0;
+
+        const basePrice = product.comparePrice || product.price;
+        let discountPrice = product.price;
+
+        if (discountType === 'percentage') {
+          discountPrice = Math.round(basePrice * (1 - discountVal / 100));
+        } else if (discountType === 'fixed') {
+          discountPrice = Math.max(0, basePrice - discountVal);
+        }
+
+        if (discountPrice < basePrice) {
+          const updatedVariants = product.variants.map(v => {
+            if (v.price) {
+              const varBasePrice = v.comparePrice || (product.comparePrice ? Math.round(product.comparePrice * (v.price / product.price)) : v.price);
+              let varDiscountPrice = v.price;
+              if (discountType === 'percentage') {
+                varDiscountPrice = Math.round(varBasePrice * (1 - discountVal / 100));
+              } else if (discountType === 'fixed') {
+                varDiscountPrice = Math.max(0, varBasePrice - discountVal);
+              }
+              return {
+                ...v,
+                price: varDiscountPrice,
+                comparePrice: varBasePrice
+              };
+            }
+            return v;
+          });
+
+          return {
+            ...product,
+            price: discountPrice,
+            comparePrice: basePrice,
+            variants: updatedVariants,
+            flashSaleEnabled: true,
+            flashSaleEndDate: settings.flash_sale_end_date || undefined,
+            flashSaleStartDate: settings.flash_sale_start_date || undefined
+          };
+        }
+      }
+
       // 1. Homepage manual products overrides (highest priority)
       for (const fs of activeFlashSales) {
         const fsProducts = fs.content_data?.products || [];
         const fsProd = fsProducts.find((p: any) => p?.productId === product.id);
-        
+
         if (fsProd) {
           const basePrice = product.comparePrice || product.price;
           const discountPrice = fsProd.discountValue ? parseFloat(fsProd.discountValue.toString()) : product.price;
-          
+
           if (discountPrice < basePrice) {
             const ratio = discountPrice / basePrice;
             const updatedVariants = product.variants.map(v => {
@@ -279,15 +339,15 @@ const applyFlashSaleDiscounts = async (products: Product[]): Promise<Product[]> 
       if (product.flashSaleEnabled) {
         const pStartStr = product.flashSaleStartDate;
         const pEndStr = product.flashSaleEndDate;
-        
+
         // Active if infinite (no dates selected) or inside selected timeframe
         const isStarted = !pStartStr || new Date(pStartStr).getTime() <= now;
         const isEnded = pEndStr && new Date(pEndStr).getTime() < now;
-        
+
         if (isStarted && !isEnded) {
           const discountType = product.flashSaleDiscountType || 'fixed';
           const discountVal = product.flashSaleDiscountValue || 0;
-          
+
           const basePrice = product.comparePrice || product.price;
           let discountPrice = product.price;
 
@@ -386,22 +446,30 @@ const applyFlashSaleDiscounts = async (products: Product[]): Promise<Product[]> 
 };
 
 const fetchProducts = async (categoryId?: string): Promise<Product[]> => {
-  let query = staticSupabase
-    .from('products')
-    .select('*, product_images(*), product_variants(*), product_modifiers(*), categories(*), badges(*), size_guides(*)')
-    .eq('active', true);
+  try {
+    let query = staticSupabase
+      .from('products')
+      .select('*, product_images(*), product_variants(*), product_modifiers(*), categories(*), badges(*), size_guides(*)')
+      .eq('active', true);
 
-  if (categoryId) {
-    query = query.eq('category_id', categoryId);
+    if (categoryId) {
+      query = query.eq('category_id', categoryId);
+    }
+
+    const { data, error } = await query
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('[Products Error Debug] fetchProducts failed:', error);
+      throw error;
+    }
+    const products = (data ?? []).map(mapProduct);
+    return applyFlashSaleDiscounts(products);
+  } catch (err) {
+    console.error('[Products Error Debug] fetchProducts caught error:', err);
+    throw err;
   }
-
-  const { data, error } = await query
-    .order('sort_order', { ascending: true })
-    .order('created_at', { ascending: false });
-
-  if (error) throw error;
-  const products = (data ?? []).map(mapProduct);
-  return applyFlashSaleDiscounts(products);
 };
 
 const cachedProducts = unstable_cache(
@@ -418,18 +486,26 @@ export const getProducts = async (categoryId?: string) => {
 };
 
 const fetchProductBySlug = async (slug: string): Promise<Product | null> => {
-  const { data, error } = await staticSupabase
-    .from('products')
-    .select('*, product_images(*), product_variants(*), product_modifiers(*), categories(*), badges(*), size_guides(*)')
-    .eq('slug', slug)
-    .eq('active', true)
-    .maybeSingle();
+  try {
+    const { data, error } = await staticSupabase
+      .from('products')
+      .select('*, product_images(*), product_variants(*), product_modifiers(*), categories(*), badges(*), size_guides(*)')
+      .eq('slug', slug)
+      .eq('active', true)
+      .maybeSingle();
 
-  if (error) throw error;
-  if (!data) return null;
-  const product = mapProduct(data);
-  const discounted = await applyFlashSaleDiscounts([product]);
-  return discounted[0] || null;
+    if (error) {
+      console.error('[Products Error Debug] fetchProductBySlug failed:', error);
+      throw error;
+    }
+    if (!data) return null;
+    const product = mapProduct(data);
+    const discounted = await applyFlashSaleDiscounts([product]);
+    return discounted[0] || null;
+  } catch (err) {
+    console.error('[Products Error Debug] fetchProductBySlug caught error:', err);
+    throw err;
+  }
 };
 
 const cachedProductBySlug = (slug: string) => unstable_cache(
@@ -577,7 +653,7 @@ export const createProduct = async (
     // 5. Get final updated product structure
     const updatedProduct = await getProductById(productId);
     if (!updatedProduct) throw new Error('Product created but could not be retrieved');
-    revalidateTag('products', 'max');
+    await revalidateProduct(updatedProduct.slug);
     return updatedProduct;
   } catch (error) {
     console.error('[products] createProduct failed:', error);
@@ -705,7 +781,7 @@ export const updateProduct = async (
     // 5. Get final updated product structure
     const updatedProduct = await getProductById(id);
     if (!updatedProduct) throw new Error('Product updated but could not be retrieved');
-    revalidateTag('products', 'max');
+    await revalidateProduct(updatedProduct.slug);
     return updatedProduct;
   } catch (error) {
     console.error('[products] updateProduct failed:', error);
@@ -749,13 +825,29 @@ export const updateProductFields = async (
     if (fields.rating !== undefined) updatePayload.rating = fields.rating;
     if (fields.reviewsCount !== undefined) updatePayload.reviews_count = fields.reviewsCount;
 
+    // Get product slug to revalidate properly
+    const { data: prodData } = await supabase
+      .from('products')
+      .select('slug')
+      .eq('id', id)
+      .single();
+
     const { error } = await supabase
       .from('products')
       .update(updatePayload)
       .eq('id', id);
 
     if (error) throw error;
-    revalidateTag('products', 'max');
+    
+    if (prodData?.slug) {
+      try {
+        await revalidateProduct(prodData.slug);
+      } catch (revalErr) {
+        console.error('[products] revalidateProduct failed during updateProductFields:', revalErr);
+      }
+    } else {
+      (revalidateTag as any)('products');
+    }
   } catch (error) {
     console.error('[products] updateProductFields failed:', error);
     throw error;
@@ -765,6 +857,14 @@ export const updateProductFields = async (
 export const deleteProduct = async (id: string): Promise<void> => {
   try {
     const supabase = await createClient();
+    
+    // Get product slug to revalidate properly
+    const { data: prodData } = await supabase
+      .from('products')
+      .select('slug')
+      .eq('id', id)
+      .single();
+
     // Soft delete product by setting active = false
     const { error } = await supabase
       .from('products')
@@ -772,7 +872,16 @@ export const deleteProduct = async (id: string): Promise<void> => {
       .eq('id', id);
 
     if (error) throw error;
-    revalidateTag('products', 'max');
+    
+    if (prodData?.slug) {
+      try {
+        await revalidateProduct(prodData.slug);
+      } catch (revalErr) {
+        console.error('[products] revalidateProduct failed during deleteProduct:', revalErr);
+      }
+    } else {
+      (revalidateTag as any)('products');
+    }
   } catch (error) {
     console.error('[products] deleteProduct failed:', error);
     throw error;

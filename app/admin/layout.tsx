@@ -55,17 +55,17 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="flex min-h-screen flex-col md:flex-row bg-gray-50 dark:bg-[#0f0f1b]">
+    <div className="flex h-screen w-screen flex-col md:flex-row bg-gray-50 dark:bg-[#0f0f1b] overflow-hidden">
       {/* Sidebar navigation */}
-      <aside className="w-full md:w-64 bg-[#1a1a2e] text-white flex flex-col md:min-h-screen">
+      <aside className="w-full md:w-64 bg-[#1a1a2e] text-white flex flex-col flex-shrink-0 md:h-screen md:sticky md:top-0 md:overflow-y-auto">
         {/* Brand name */}
-        <div className="h-16 flex items-center gap-2 px-6 border-b border-white/10">
+        <div className="hidden md:flex h-16 items-center gap-2 px-6 border-b border-white/10">
           <Store className="h-6 w-6 text-[#e94560]" />
           <span className="font-bold text-lg tracking-tight">Admin Console</span>
         </div>
 
         {/* Links */}
-        <nav className="flex-1 px-4 py-4 space-y-1.5 flex flex-row md:flex-col overflow-x-auto md:overflow-x-visible">
+        <nav className="flex-1 px-4 py-3 md:py-4 space-y-1.5 flex flex-row md:flex-col overflow-x-auto md:overflow-x-visible">
           {navItems.map(item => {
             const Icon = item.icon;
             const isActive = pathname === item.href || (item.href !== '/admin/dashboard' && pathname?.startsWith(item.href));
@@ -99,8 +99,8 @@ export default function AdminLayout({
       </aside>
 
       {/* Main content area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 bg-white dark:bg-[#16162a] border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-6 md:px-8">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <header className="h-16 flex-shrink-0 bg-white dark:bg-[#16162a] border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-6 md:px-8">
           <h2 className="text-lg font-bold text-gray-900 dark:text-white">
             {navItems.find(item => pathname === item.href || (item.href !== '/admin/dashboard' && pathname?.startsWith(item.href)))?.label || 'Console'}
           </h2>

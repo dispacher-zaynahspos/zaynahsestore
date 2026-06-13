@@ -22,13 +22,28 @@ import ThemeStyleRegistry from '@/components/common/ThemeStyleRegistry';
 import { getSettings } from '@/lib/services/settings';
 import Pixels from '@/components/Pixels';
 
+const getFaviconType = (url: string) => {
+  const lower = url.toLowerCase();
+  if (lower.includes('.png')) return 'image/png';
+  if (lower.includes('.svg')) return 'image/svg+xml';
+  if (lower.includes('.webp')) return 'image/webp';
+  if (lower.includes('.gif')) return 'image/gif';
+  if (lower.includes('.jpg') || lower.includes('.jpeg')) return 'image/jpeg';
+  return 'image/x-icon';
+};
+
 export async function generateMetadata(): Promise<Metadata> {
   try {
     const settings = await getSettings();
     const title = settings.storeName || "Zaynahs E-Store";
     const suffix = settings.meta_title_suffix || "";
     const description = settings.tagline || "Modern Pakistani E-Commerce — Premium Mobile Shop";
-    const fav = settings.faviconUrl || settings.logoUrl || "/favicon.ico";
+    const timestamp = settings.updatedAt ? new Date(settings.updatedAt).getTime() : Date.now();
+    const fav = settings.faviconUrl 
+      ? `${settings.faviconUrl}?v=${timestamp}` 
+      : settings.logoUrl 
+        ? `${settings.logoUrl}?v=${timestamp}` 
+        : "/favicon.ico";
     return {
       title: {
         default: title + suffix,
@@ -42,7 +57,12 @@ export async function generateMetadata(): Promise<Metadata> {
         title: title,
       },
       icons: {
-        icon: fav,
+        icon: [
+          {
+            url: fav,
+            type: getFaviconType(fav),
+          }
+        ],
         shortcut: fav,
         apple: settings.logoUrl || fav,
       },
@@ -99,12 +119,12 @@ export default async function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${jakarta.variable} ${outfit.variable} h-full antialiased overflow-x-hidden`}
+      className={`${jakarta.variable} ${outfit.variable} h-full antialiased overflow-x-clip`}
     >
       <head>
         <ThemeStyleRegistry settings={settings} />
       </head>
-      <body className={`${jakarta.variable} ${outfit.variable} font-body min-h-full flex flex-col bg-gray-50 dark:bg-[#0f0f1b] text-gray-900 dark:text-gray-100 overflow-x-hidden`}>
+      <body className={`${jakarta.variable} ${outfit.variable} font-body min-h-full flex flex-col bg-gray-50 dark:bg-[#0f0f1b] text-gray-900 dark:text-gray-100 overflow-x-clip`}>
         {/* Conditional Script Injection for Tracking Pixels */}
         <Pixels />
         <ThemeProvider
@@ -116,18 +136,26 @@ export default async function RootLayout({
           {children}
           <Toaster position="top-center" richColors closeButton />
           
-          {/* Register Service Worker */}
           <script
             dangerouslySetInnerHTML={{
               __html: `
                 if ('serviceWorker' in navigator) {
-                  window.addEventListener('load', function() {
-                    navigator.serviceWorker.register('/sw.js').then(function(reg) {
-                      console.log('SW registered:', reg);
-                    }).catch(function(err) {
-                      console.log('SW registration failed:', err);
+                  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                    navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                      for (var i = 0; i < registrations.length; i++) {
+                        registrations[i].unregister();
+                        console.log('Service Worker unregistered on localhost to prevent stale cache.');
+                      }
                     });
-                  });
+                  } else {
+                    window.addEventListener('load', function() {
+                      navigator.serviceWorker.register('/sw.js').then(function(reg) {
+                        console.log('SW registered:', reg);
+                      }).catch(function(err) {
+                        console.log('SW registration failed:', err);
+                      });
+                    });
+                  }
                 }
               `,
             }}

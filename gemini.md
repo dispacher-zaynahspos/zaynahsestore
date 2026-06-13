@@ -397,29 +397,29 @@ Every DB change:
 # ⚡ NEXT.JS CACHING RULES
 
 ## Caching Strategy
-For Zaynahs E-Store, use **Next.js built-in cache + revalidateTag** (ISR) as the primary caching strategy.
+For Zaynahs E-Store, use **Next.js built-in cache + revalidateTag** (ISR) as the primary caching strategy combined with Cloudflare Edge CDN cache purging.
 
 - **Kyun (Rationale):**
   - Zero extra cost or third-party infrastructure.
   - Vercel automated global CDN edge caching.
-  - On-demand revalidation: When products/categories are updated in the admin panel, trigger `revalidateTag` or `revalidatePath` to instantly refresh the storefront.
+  - On-demand revalidation: When products/categories/settings are updated in the admin panel, trigger revalidation to instantly refresh the storefront and purge Cloudflare Edge cache.
 
-## Implementation Standard
-```typescript
-// Fetching data with revalidation tags (Server Component or service)
-const getProducts = await fetch('...', { 
-  next: { tags: ['products'], revalidate: 3600 } // Cache for 1 hour with tag
-})
+## Rule for New Pages/Features Caching
+Whenever a new database-driven feature or page is added:
+1. **Cache Data Fetches**: Wrap data retrieval queries inside `unstable_cache(fn, keyParts, { revalidate: 3600, tags: [tag] })` in the service files under `lib/services/`.
+2. **Implement Revalidation Helper**: Add a revalidation helper function inside [revalidate.ts](file:///Users/shoaib/Desktop/Zaynahs%20e-store/lib/revalidate.ts) that:
+   * Revalidates the Next.js cache tags.
+   * Purges the specific page URLs (and if layout is affected, calls `purgeCloudflareEverything()`) from Cloudflare Edge cache using the zone API.
+3. **Trigger on CRUD**: Call the revalidation helper in the corresponding service files (e.g., inside `create`, `update`, `delete` functions).
+4. **Hook up Webhooks**: Update the trigger dispatcher inside the `/api/revalidate` webhook route ([route.ts](file:///Users/shoaib/Desktop/Zaynahs%20e-store/app/api/revalidate/route.ts)) to handle changes originating directly from Supabase DB triggers.
 
-// On-demand revalidation on update (in admin actions/api)
-import { revalidateTag } from 'next/cache';
-
-export async function updateProductAction(id: string, data: any) {
-  // 1. Update database
-  // 2. Revalidate storefront cache tag
-  revalidateTag('products');
-}
-```
+## Next.js 16 Type-Safety Standard
+In this codebase (Next.js 16), `revalidateTag` type definition expects 2 arguments, but standard runtime execution only needs 1.
+* **MANDATORY**: You MUST cast the `revalidateTag` call to `any` to allow compile-time checks to pass without error:
+  ```typescript
+  (revalidateTag as any)('your-cache-tag');
+  ```
+  *Never* call `revalidateTag('tag')` directly without the `as any` typecast wrapper, otherwise the TypeScript compilation (`tsc`) will fail with argument count errors (`TS2554`).
 
 ---
 

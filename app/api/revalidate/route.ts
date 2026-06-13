@@ -3,7 +3,8 @@ import {
   revalidateProduct,
   revalidateBanner,
   revalidateCategory,
-  revalidateHomepage
+  revalidateHomepage,
+  revalidateSettings
 } from '@/lib/revalidate';
 import { getProductById } from '@/lib/services/products';
 import { syncProductToMeta } from '@/lib/meta/syncProduct';
@@ -66,10 +67,10 @@ export async function POST(req: NextRequest) {
         console.warn('[Webhook Revalidate] Category update received but slug was missing.');
       }
     } else if (table === 'store_settings') {
-      await revalidateHomepage();
+      await revalidateSettings();
     } else {
-      console.log(`[Webhook Revalidate] Table ${table} has no specific handler. Revalidating homepage.`);
-      await revalidateHomepage();
+      console.log(`[Webhook Revalidate] Table ${table} has no specific handler. Revalidating settings completely.`);
+      await revalidateSettings();
     }
 
     return NextResponse.json({ revalidated: true, table, type });

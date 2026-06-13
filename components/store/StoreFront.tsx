@@ -1353,7 +1353,7 @@ export default function StoreFront({
               href={feed.link || '#'}
               target="_blank"
               rel="noopener noreferrer"
-              className="relative aspect-[9/16] bg-gray-150 dark:bg-gray-800 rounded-2xl overflow-hidden group border border-gray-100 dark:border-gray-855 block cursor-pointer"
+              className="relative aspect-[9/16] bg-gray-100 dark:bg-gray-800 rounded-2xl overflow-hidden group border border-gray-100 dark:border-gray-800 block cursor-pointer"
             >
               <Image
                 src={feed.imageUrl}

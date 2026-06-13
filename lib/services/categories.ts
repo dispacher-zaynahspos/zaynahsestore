@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { Category } from '@/lib/types';
 import { unstable_cache, revalidateTag } from 'next/cache';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { revalidateCategory } from '@/lib/revalidate';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder';
@@ -118,8 +119,13 @@ export const createCategory = async (category: Omit<Category, 'id' | 'createdAt'
       .single();
 
     if (error) throw error;
-    revalidateTag('categories', 'max');
-    return mapCategory(data);
+    const mapped = mapCategory(data);
+    try {
+      await revalidateCategory(mapped.slug);
+    } catch (revalErr) {
+      console.error('[categories] revalidateCategory failed in create:', revalErr);
+    }
+    return mapped;
   } catch (error) {
     console.error('[categories] createCategory failed:', error);
     throw error;
@@ -145,8 +151,13 @@ export const updateCategory = async (id: string, category: Partial<Category>): P
       .single();
 
     if (error) throw error;
-    revalidateTag('categories', 'max');
-    return mapCategory(data);
+    const mapped = mapCategory(data);
+    try {
+      await revalidateCategory(mapped.slug);
+    } catch (revalErr) {
+      console.error('[categories] revalidateCategory failed in update:', revalErr);
+    }
+    return mapped;
   } catch (error) {
     console.error('[categories] updateCategory failed:', error);
     throw error;
@@ -156,6 +167,12 @@ export const updateCategory = async (id: string, category: Partial<Category>): P
 export const deleteCategory = async (id: string): Promise<void> => {
   try {
     const supabase = await createClient();
+    const { data: catData } = await supabase
+      .from('categories')
+      .select('slug')
+      .eq('id', id)
+      .single();
+
     // Soft delete category by setting active = false
     const { error } = await supabase
       .from('categories')
@@ -163,7 +180,16 @@ export const deleteCategory = async (id: string): Promise<void> => {
       .eq('id', id);
 
     if (error) throw error;
-    revalidateTag('categories', 'max');
+    
+    if (catData?.slug) {
+      try {
+        await revalidateCategory(catData.slug);
+      } catch (revalErr) {
+        console.error('[categories] revalidateCategory failed in delete:', revalErr);
+      }
+    } else {
+      (revalidateTag as any)('categories');
+    }
   } catch (error) {
     console.error('[categories] deleteCategory failed:', error);
     throw error;

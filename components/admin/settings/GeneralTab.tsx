@@ -245,7 +245,7 @@ export default function GeneralTab({
                   </div>
                   <input 
                     type="range" 
-                    min="60" 
+                    min="30" 
                     max="240" 
                     step="10"
                     value={logoWidth}
@@ -262,7 +262,7 @@ export default function GeneralTab({
               <div className="flex items-center gap-4 p-4 rounded-xl border border-dashed border-gray-200 dark:border-gray-800 bg-gray-50/20 dark:bg-[#0f0f1b]/20">
                 {faviconUrl ? (
                   <div className="flex flex-col items-center gap-2">
-                    <div className="relative h-12 w-12 border border-gray-200 dark:border-gray-855 rounded-lg overflow-hidden bg-white dark:bg-[#0f0f1b] flex items-center justify-center p-1.5">
+                    <div className="relative h-12 w-12 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden bg-white dark:bg-[#0f0f1b] flex items-center justify-center p-1.5">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={faviconUrl} alt="Store Favicon Preview" className="h-full w-full object-contain" />
                     </div>
@@ -292,7 +292,11 @@ export default function GeneralTab({
                     <ImageIcon className="h-3.5 w-3.5" />
                     <span>Select Media</span>
                   </button>
-                  <span className="text-[10px] text-gray-400 dark:text-gray-500">Small icon for tab headers</span>
+                  <span className="text-[10px] text-gray-400 dark:text-gray-500">
+                    Browser tab ke liye small icon. Aap <strong className="text-gray-900 dark:text-white">.png</strong> ya <strong className="text-gray-900 dark:text-white">.ico</strong> dono formats use kar sakte hain (dono theek hain).
+                    <br />
+                    <span className="text-amber-500 font-semibold">Tip: Browser favicon ko bohot aggressive cache karta hai. Agar update na ho raha ho toh cache clear karein (Ctrl/Cmd + Shift + R) ya Incognito tab mein check karein.</span>
+                  </span>
                 </div>
               </div>
             </div>

@@ -18,7 +18,7 @@ export const uploadImage = async (file: File | Blob, bucket: string, customName?
       : (await import('@/lib/supabase/admin')).supabaseAdmin;
 
     // 1. Validate file extension
-    const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'avif'];
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'avif', 'mp4', 'mov', 'webm', 'ogg'];
     let fileExtension = 'webp';
     let originalName = 'image';
 
@@ -34,7 +34,10 @@ export const uploadImage = async (file: File | Blob, bucket: string, customName?
       throw new Error(`Invalid file format. Allowed formats: ${allowedExtensions.join(', ')}`);
     }
 
-    // 2. Convert to WebP
+    // 2. Determine if file is a video
+    const isVideo = file.type.startsWith('video/') || ['mp4', 'mov', 'webm', 'ogg'].includes(fileExtension);
+
+    // 3. Convert images to WebP
     let webpFile: File | Blob = file;
     const sanitizedName = originalName
       .replace(/[^a-zA-Z0-9-_\s]/g, '')
@@ -43,37 +46,39 @@ export const uploadImage = async (file: File | Blob, bucket: string, customName?
       .toLowerCase();
     const timestamp = Date.now();
 
-    if (isBrowser) {
-      // Client-side conversion using imageCompressor fallback chain
-      const { compressImage } = await import('@/lib/utils/imageCompressor');
-      const fileToCompress = file instanceof File 
-        ? file 
-        : new File([file], `${sanitizedName}.${fileExtension}`, { type: file.type });
-      
-      try {
-        webpFile = await compressImage(fileToCompress, 50);
-        fileExtension = 'webp';
-      } catch (err) {
-        console.warn('[uploadImage] Client side compression failed, using original:', err);
-        webpFile = fileToCompress;
-      }
-    } else {
-      // Server-side conversion using sharp
-      try {
-        const sharp = (await import('sharp')).default;
-        const arrayBuffer = await file.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-        const webpBuffer = await sharp(buffer)
-          .webp({ quality: 80 })
-          .toBuffer();
-        webpFile = new Blob([webpBuffer as any], { type: 'image/webp' });
-        fileExtension = 'webp';
-      } catch (err) {
-        console.warn('[uploadImage] Server side sharp compression failed, using original:', err);
+    if (!isVideo) {
+      if (isBrowser) {
+        // Client-side conversion using imageCompressor fallback chain
+        const { compressImage } = await import('@/lib/utils/imageCompressor');
+        const fileToCompress = file instanceof File 
+          ? file 
+          : new File([file], `${sanitizedName}.${fileExtension}`, { type: file.type });
+        
+        try {
+          webpFile = await compressImage(fileToCompress, 50);
+          fileExtension = 'webp';
+        } catch (err) {
+          console.warn('[uploadImage] Client side compression failed, using original:', err);
+          webpFile = fileToCompress;
+        }
+      } else {
+        // Server-side conversion using sharp
+        try {
+          const sharp = (await import('sharp')).default;
+          const arrayBuffer = await file.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
+          const webpBuffer = await sharp(buffer)
+            .webp({ quality: 80 })
+            .toBuffer();
+          webpFile = new Blob([webpBuffer as any], { type: 'image/webp' });
+          fileExtension = 'webp';
+        } catch (err) {
+          console.warn('[uploadImage] Server side sharp compression failed, using original:', err);
+        }
       }
     }
 
-    // 3. Generate filename
+    // 4. Generate filename
     let webpFileName = `${sanitizedName}-${timestamp}.${fileExtension}`;
 
     // 4. Check if file already exists in bucket
@@ -122,7 +127,9 @@ export const uploadImage = async (file: File | Blob, bucket: string, customName?
         title: originalName.replace(/-/g, ' '),
         bucket: bucket,
         ai_generated: false,
-        ai_enabled: true
+        ai_enabled: true,
+        file_size: webpFile.size,
+        mime_type: webpFile.type || 'image/webp'
       });
 
     if (dbError) {

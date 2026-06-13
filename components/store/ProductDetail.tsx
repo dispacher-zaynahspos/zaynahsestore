@@ -61,6 +61,8 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
   const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const imgContainerRef = useRef<HTMLDivElement>(null);
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
+  const fallbackPlaceholder = 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=600&auto=format&fit=crop&q=60';
 
   // Embla carousel for mobile touch swipe
   const [emblaRef, emblaApi] = useEmblaCarousel({
@@ -425,7 +427,7 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
                     onMouseLeave={() => setIsZoomed(false)}
                   >
                     <Image
-                      src={img.url}
+                      src={imageErrors[img.url] ? fallbackPlaceholder : img.url}
                       alt={product.name}
                       fill
                       sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 600px"
@@ -435,6 +437,9 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
                       priority={i === 0}
                       draggable={false}
                       unoptimized={true}
+                      onError={() => {
+                        setImageErrors(prev => ({ ...prev, [img.url]: true }));
+                      }}
                     />
                   </div>
                 ))}
@@ -504,12 +509,15 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
                     }`}
                 >
                   <Image
-                    src={img.url}
+                    src={imageErrors[img.url] ? fallbackPlaceholder : img.url}
                     alt={`${product.name} gallery ${i}`}
                     fill
                     sizes="64px"
                     className="object-cover"
                     unoptimized={true}
+                    onError={() => {
+                      setImageErrors(prev => ({ ...prev, [img.url]: true }));
+                    }}
                   />
                 </button>
               ))}
@@ -1158,12 +1166,16 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
             onClick={(e) => e.stopPropagation()}
           >
             <Image
-              src={images[activeImageIndex]?.url ?? activeImage}
+              src={imageErrors[images[activeImageIndex]?.url ?? activeImage] ? fallbackPlaceholder : (images[activeImageIndex]?.url ?? activeImage)}
               alt={product.name}
               fill
               sizes="90vw"
               className="object-contain"
               unoptimized={true}
+              onError={() => {
+                const targetUrl = images[activeImageIndex]?.url ?? activeImage;
+                setImageErrors(prev => ({ ...prev, [targetUrl]: true }));
+              }}
             />
           </div>
 

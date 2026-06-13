@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     // Query pending review email orders delivered over 3 days ago
     const { data: pendingOrders, error: fetchError } = await supabaseAdmin
       .from('orders')
-      .select('id, order_number, customer_name, customer_phone, customer_id, items, total, subtotal')
+      .select('id, order_number, customer_name, customer_phone, customer_id, items, total, subtotal, notes')
       .eq('review_email_pending', true)
       .lte('delivered_at', threeDaysAgo.toISOString());
 
@@ -50,6 +50,15 @@ export async function GET(request: NextRequest) {
             .maybeSingle();
           if (cust?.email) {
             customerEmail = cust.email;
+          }
+        }
+
+        // Fallback: Parse email from order notes if not found through customer record
+        if (!customerEmail && order.notes) {
+          const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+          const match = order.notes.match(emailRegex);
+          if (match) {
+            customerEmail = match[0];
           }
         }
 
