@@ -104,8 +104,7 @@ export default function ProductList({ initialProducts, settings }: ProductListPr
         setProducts(prev => prev.map(p => p.id === productId ? { 
           ...p, 
           meta_sync_status: 'synced', 
-          meta_sync_error: null,
-          meta_last_synced_at: new Date().toISOString()
+          meta_sync_error: null
         } : p));
       } else {
         toast.error(`Failed to sync: ${res.error}`);

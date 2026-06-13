@@ -84,18 +84,41 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const { mode = 'all' } = body;
 
-    let query = supabaseAdmin
-      .from('products')
-      .select('*, product_images(*), product_variants(*), categories(*)');
+    let productIds: string[] | null = null;
 
     if (mode === 'failed') {
-      // Fetch products that are active but have error or pending status
-      query = query
-        .eq('active', true)
-        .or('meta_sync_status.eq.error,meta_sync_status.eq.pending');
-    } else {
-      // By default sync all active products
-      query = query.eq('active', true);
+      // Find product IDs whose LATEST sync log entry is 'error'
+      // Get the latest log entry per product, then filter for errors
+      const { data: errorLogs } = await supabaseAdmin
+        .from('meta_sync_log')
+        .select('product_id, status, created_at')
+        .order('created_at', { ascending: false });
+
+      if (errorLogs && errorLogs.length > 0) {
+        // Latest entry per product_id
+        const latestByProduct = new Map<string, string>();
+        for (const log of errorLogs) {
+          if (!latestByProduct.has(log.product_id)) {
+            latestByProduct.set(log.product_id, log.status);
+          }
+        }
+        productIds = Array.from(latestByProduct.entries())
+          .filter(([, status]) => status === 'error')
+          .map(([id]) => id);
+
+        if (productIds.length === 0) {
+          return NextResponse.json({ success: true, message: 'No failed products found.', totalSynced: 0 });
+        }
+      }
+    }
+
+    let query = supabaseAdmin
+      .from('products')
+      .select('*, product_images(*), product_variants(*), categories(*)')
+      .eq('active', true);
+
+    if (productIds !== null) {
+      query = query.in('id', productIds);
     }
 
     const { data: rows, error } = await query;

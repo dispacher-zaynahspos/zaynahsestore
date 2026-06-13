@@ -4,7 +4,33 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { Product } from '@/lib/types';
 
 /**
+ * Writes sync result to meta_sync_log table ONLY.
+ * NEVER writes to products table — avoids infinite webhook loop.
+ */
+async function logSyncResult(
+  productId: string,
+  status: 'synced' | 'error' | 'skipped',
+  action: 'UPDATE' | 'DELETE',
+  error?: string
+): Promise<void> {
+  try {
+    await supabaseAdmin
+      .from('meta_sync_log')
+      .insert({
+        product_id: productId,
+        status,
+        action,
+        error: error ?? null,
+      });
+  } catch (logErr) {
+    // Log failure is non-fatal — don't throw
+    console.error('[MetaSync] Failed to write to meta_sync_log:', logErr);
+  }
+}
+
+/**
  * Syncs a single product (including its variants) to Meta Catalog.
+ * Results are written to meta_sync_log — NOT to products table.
  */
 export async function syncProductToMeta(
   product: Product,
@@ -15,6 +41,7 @@ export async function syncProductToMeta(
       console.log('[MetaSync] Meta sync is temporarily disabled via env variable.');
       return { success: true };
     }
+
     const catalogId = process.env.META_CATALOG_ID;
     const accessToken = process.env.META_ACCESS_TOKEN;
     const apiVersion = process.env.META_GRAPH_API_VERSION || 'v21.0';
@@ -22,16 +49,7 @@ export async function syncProductToMeta(
     if (!catalogId || !accessToken) {
       const errMsg = 'Meta Catalog ID or Access Token is missing in environment variables.';
       console.warn(`[MetaSync] ${errMsg}`);
-      
-      // Update database status to error
-      await supabaseAdmin
-        .from('products')
-        .update({
-          meta_sync_status: 'error',
-          meta_sync_error: errMsg
-        })
-        .eq('id', product.id);
-        
+      await logSyncResult(product.id, 'error', action, errMsg);
       return { success: false, error: errMsg };
     }
 
@@ -39,7 +57,7 @@ export async function syncProductToMeta(
     const { data: mappings } = await supabaseAdmin
       .from('meta_category_mapping')
       .select('store_category_id, meta_category');
-      
+
     const categoryMap: Record<string, string> = {};
     if (mappings) {
       mappings.forEach(m => {
@@ -60,13 +78,10 @@ export async function syncProductToMeta(
           retailer_id: v.id
         }));
       } else {
-        requests = [{
-          method: 'DELETE',
-          retailer_id: product.id
-        }];
+        requests = [{ method: 'DELETE', retailer_id: product.id }];
       }
     } else {
-      // If product is inactive, delete it from Meta catalog (soft-delete mapping)
+      // Inactive product → delete from Meta catalog
       if (!product.active) {
         if (product.hasVariants && product.variants && product.variants.length > 0) {
           requests = product.variants.map(v => ({
@@ -74,10 +89,7 @@ export async function syncProductToMeta(
             retailer_id: v.id
           }));
         } else {
-          requests = [{
-            method: 'DELETE',
-            retailer_id: product.id
-          }];
+          requests = [{ method: 'DELETE', retailer_id: product.id }];
         }
       } else {
         const mappedItems = mapProductToMeta(product, settings, categoryMap);
@@ -90,16 +102,15 @@ export async function syncProductToMeta(
     }
 
     if (requests.length === 0) {
+      await logSyncResult(product.id, 'skipped', action);
       return { success: true };
     }
 
-    // 4. Send API request
+    // 4. Send API request to Meta Graph API
     const url = `https://graph.facebook.com/${apiVersion}/${catalogId}/items_batch`;
     const response = await fetch(`${url}?access_token=${accessToken}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ requests })
     });
 
@@ -108,47 +119,25 @@ export async function syncProductToMeta(
     if (result.error) {
       const errDetail = result.error.message || JSON.stringify(result.error);
       console.error('[MetaSync] Graph API error:', errDetail);
-      
-      await supabaseAdmin
-        .from('products')
-        .update({
-          meta_sync_status: 'error',
-          meta_sync_error: errDetail
-        })
-        .eq('id', product.id);
-
+      await logSyncResult(product.id, 'error', action, errDetail);
       return { success: false, error: errDetail };
     }
 
-    // Successful sync: update product record
-    await supabaseAdmin
-      .from('products')
-      .update({
-        meta_sync_status: 'synced',
-        meta_sync_error: null,
-        meta_last_synced_at: new Date().toISOString()
-      })
-      .eq('id', product.id);
-
+    // ✅ Success — write ONLY to meta_sync_log, NOT to products table
+    await logSyncResult(product.id, 'synced', action);
     console.log(`[MetaSync] Product ${product.id} synced successfully.`);
     return { success: true };
+
   } catch (error: any) {
     console.error(`[MetaSync] Failed to sync product ${product.id}:`, error);
-    
-    await supabaseAdmin
-      .from('products')
-      .update({
-        meta_sync_status: 'error',
-        meta_sync_error: error.message || 'Unknown error occurred during sync.'
-      })
-      .eq('id', product.id);
-      
+    await logSyncResult(product.id, 'error', action, error.message || 'Unknown error occurred during sync.');
     return { success: false, error };
   }
 }
 
 /**
  * Performs bulk synchronization of multiple products to Meta in chunks of 50.
+ * Results are written to meta_sync_log — NOT to products table.
  */
 export async function bulkSyncProductsToMeta(
   products: Product[],
@@ -158,6 +147,7 @@ export async function bulkSyncProductsToMeta(
     console.log('[MetaSync] Bulk sync is temporarily disabled via env variable.');
     return { success: true, totalSynced: 0, errors: [] };
   }
+
   const catalogId = process.env.META_CATALOG_ID;
   const accessToken = process.env.META_ACCESS_TOKEN;
   const apiVersion = process.env.META_GRAPH_API_VERSION || 'v21.0';
@@ -172,7 +162,7 @@ export async function bulkSyncProductsToMeta(
     const { data: mappings } = await supabaseAdmin
       .from('meta_category_mapping')
       .select('store_category_id, meta_category');
-      
+
     const categoryMap: Record<string, string> = {};
     if (mappings) {
       mappings.forEach(m => {
@@ -183,24 +173,17 @@ export async function bulkSyncProductsToMeta(
     // 2. Fetch settings
     const settings = await getSettings();
 
-    // 3. Build all requests
+    // 3. Build all requests + track which productId maps to what
     const allRequests: any[] = [];
-    const productIds: string[] = [];
+    const productIdForChunk: string[] = [];
 
     for (const product of products) {
-      productIds.push(product.id);
       let requests: any[] = [];
       if (action === 'DELETE' || !product.active) {
         if (product.hasVariants && product.variants && product.variants.length > 0) {
-          requests = product.variants.map(v => ({
-            method: 'DELETE',
-            retailer_id: v.id
-          }));
+          requests = product.variants.map(v => ({ method: 'DELETE', retailer_id: v.id }));
         } else {
-          requests = [{
-            method: 'DELETE',
-            retailer_id: product.id
-          }];
+          requests = [{ method: 'DELETE', retailer_id: product.id }];
         }
       } else {
         const mappedItems = mapProductToMeta(product, settings, categoryMap);
@@ -210,6 +193,7 @@ export async function bulkSyncProductsToMeta(
           data: item
         }));
       }
+      requests.forEach(() => productIdForChunk.push(product.id));
       allRequests.push(...requests);
     }
 
@@ -217,50 +201,50 @@ export async function bulkSyncProductsToMeta(
       return { success: true, totalSynced: 0, errors: [] };
     }
 
-    // 4. Batch submit requests in chunks of 50
+    // 4. Batch submit in chunks of 50
     const chunkSize = 50;
     const errors: string[] = [];
     let totalSynced = 0;
+    const successProductIds = new Set<string>();
+    const errorProductIds = new Set<string>();
 
     for (let i = 0; i < allRequests.length; i += chunkSize) {
       const chunk = allRequests.slice(i, i + chunkSize);
-      
+      const chunkProductIds = productIdForChunk.slice(i, i + chunkSize);
+
       const url = `https://graph.facebook.com/${apiVersion}/${catalogId}/items_batch`;
       const response = await fetch(`${url}?access_token=${accessToken}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ requests: chunk })
       });
 
       const result = await response.json();
 
       if (result.error) {
-        errors.push(result.error.message || JSON.stringify(result.error));
+        const errMsg = result.error.message || JSON.stringify(result.error);
+        errors.push(errMsg);
+        chunkProductIds.forEach(id => errorProductIds.add(id));
       } else {
         totalSynced += chunk.length;
+        chunkProductIds.forEach(id => successProductIds.add(id));
       }
     }
 
-    // 5. Update statuses in DB
-    if (errors.length === 0) {
-      await supabaseAdmin
-        .from('products')
-        .update({
-          meta_sync_status: 'synced',
-          meta_sync_error: null,
-          meta_last_synced_at: new Date().toISOString()
-        })
-        .in('id', productIds);
-    } else {
-      await supabaseAdmin
-        .from('products')
-        .update({
-          meta_sync_status: 'error',
-          meta_sync_error: errors[0]
-        })
-        .in('id', productIds);
+    // 5. ✅ Write results ONLY to meta_sync_log — NOT to products table
+    const logRows: any[] = [];
+    successProductIds.forEach(id => {
+      // Don't double-log as error
+      if (!errorProductIds.has(id)) {
+        logRows.push({ product_id: id, status: 'synced', action });
+      }
+    });
+    errorProductIds.forEach(id => {
+      logRows.push({ product_id: id, status: 'error', action, error: errors[0] || 'Unknown error' });
+    });
+
+    if (logRows.length > 0) {
+      await supabaseAdmin.from('meta_sync_log').insert(logRows);
     }
 
     return { success: errors.length === 0, totalSynced, errors };
