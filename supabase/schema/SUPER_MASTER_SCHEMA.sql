@@ -356,7 +356,9 @@ CREATE TABLE IF NOT EXISTS store_settings (
       "surface": "#F9F9F9",
       "textPrimary": "#111111",
       "textSecondary": "#666666",
-      "border": "#EEEEEE"
+      "border": "#EEEEEE",
+      "textHeading": "#000000",
+      "textAccent": "#C8A97E"
     },
     "fonts": {
       "heading": "Playfair Display",

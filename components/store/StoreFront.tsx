@@ -469,15 +469,10 @@ function HeroBannerSection({ section, settings }: HeroBannerSectionProps) {
                             }}
                             autoPlay={desktopAutoplay}
                             muted={desktopMuted}
-                            defaultMuted={desktopMuted}
                             loop={desktopAutoplay}
                             controls={!desktopAutoplay}
                             playsInline={true}
                             preload="auto"
-                            {...({
-                              "webkit-playsinline": "true",
-                              "playsinline": "true"
-                            } as any)}
                             ref={el => {
                               if (el) {
                                 if (isSlideActive && desktopAutoplay) {
@@ -551,15 +546,10 @@ function HeroBannerSection({ section, settings }: HeroBannerSectionProps) {
                             }}
                             autoPlay={tabletAutoplay}
                             muted={tabletMuted}
-                            defaultMuted={tabletMuted}
                             loop={tabletAutoplay}
                             controls={!tabletAutoplay}
                             playsInline={true}
                             preload="auto"
-                            {...({
-                              "webkit-playsinline": "true",
-                              "playsinline": "true"
-                            } as any)}
                             ref={el => {
                               if (el) {
                                 if (isSlideActive && tabletAutoplay) {
@@ -633,15 +623,10 @@ function HeroBannerSection({ section, settings }: HeroBannerSectionProps) {
                             }}
                             autoPlay={mobileAutoplay}
                             muted={mobileMuted}
-                            defaultMuted={mobileMuted}
                             loop={mobileAutoplay}
                             controls={!mobileAutoplay}
                             playsInline={true}
                             preload="auto"
-                            {...({
-                              "webkit-playsinline": "true",
-                              "playsinline": "true"
-                            } as any)}
                             ref={el => {
                               if (el) {
                                 if (isSlideActive && mobileAutoplay) {

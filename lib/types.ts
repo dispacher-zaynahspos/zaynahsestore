@@ -345,6 +345,8 @@ export interface ThemeConfig {
     textPrimary: string;
     textSecondary: string;
     border: string;
+    textHeading?: string;
+    textAccent?: string;
   };
   fonts: {
     heading: string;

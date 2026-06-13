@@ -40,6 +40,8 @@ export default function ThemeStyleRegistry({ settings }: ThemeStyleRegistryProps
       --color-surface: ${colors.surface} !important;
       --color-text-primary: ${colors.textPrimary} !important;
       --color-text-secondary: ${colors.textSecondary} !important;
+      --color-text-heading: ${colors.textHeading || colors.textPrimary || colors.primary} !important;
+      --color-text-accent: ${colors.textAccent || colors.accent} !important;
       --color-border: ${colors.border} !important;
 
       --font-heading: "${headingFont}", sans-serif !important;
@@ -101,6 +103,7 @@ export default function ThemeStyleRegistry({ settings }: ThemeStyleRegistryProps
     }
     h1, h2, h3, h4, h5, h6, .font-heading, [class*="font-heading"] {
       font-family: var(--font-heading) !important;
+      color: var(--color-text-heading) !important;
     }
 
     /* Elements corner-radius overrides */
@@ -156,7 +159,7 @@ export default function ThemeStyleRegistry({ settings }: ThemeStyleRegistryProps
     /* Text color hardcoded overrides */
     .text-\\[\\#e94560\\], [class*="text-[#e94560]"],
     .text-accent, .dark .text-accent {
-      color: var(--color-accent) !important;
+      color: var(--color-text-accent) !important;
     }
     .text-\\[\\#1a1a2e\\], [class*="text-[#1a1a2e]"],
     .text-secondary, .dark .text-secondary {
@@ -171,25 +174,25 @@ export default function ThemeStyleRegistry({ settings }: ThemeStyleRegistryProps
       border-color: var(--btn-primary-bg) !important;
     }
 
-    /* Standard Tailwind color scales overrides - Excluded inside dark containers to protect readability */
-    .text-gray-900:not([class*="bg-[#1a1a2e]"] *):not(.bg-secondary *):not([class*="bg-[#e94560]"] *):not(.bg-accent *):not([class*="dark:bg-"] *):not([class*="bg-gray-9"] *):not([class*="bg-black"] *),
-    .dark .text-gray-900:not([class*="bg-[#1a1a2e]"] *):not(.bg-secondary *):not([class*="bg-[#e94560]"] *):not(.bg-accent *):not([class*="dark:bg-"] *):not([class*="bg-gray-9"] *):not([class*="bg-black"] *), 
-    .text-gray-955:not([class*="bg-[#1a1a2e]"] *):not(.bg-secondary *):not([class*="bg-[#e94560]"] *):not(.bg-accent *):not([class*="dark:bg-"] *):not([class*="bg-gray-9"] *):not([class*="bg-black"] *),
-    .text-gray-950:not([class*="bg-[#1a1a2e]"] *):not(.bg-secondary *):not([class*="bg-[#e94560]"] *):not(.bg-accent *):not([class*="dark:bg-"] *):not([class*="bg-gray-9"] *):not([class*="bg-black"] *),
-    .dark .text-gray-955:not([class*="bg-[#1a1a2e]"] *):not(.bg-secondary *):not([class*="bg-[#e94560]"] *):not(.bg-accent *):not([class*="dark:bg-"] *):not([class*="bg-gray-9"] *):not([class*="bg-black"] *),
-    .text-gray-800:not([class*="bg-[#1a1a2e]"] *):not(.bg-secondary *):not([class*="bg-[#e94560]"] *):not(.bg-accent *):not([class*="dark:bg-"] *):not([class*="bg-gray-9"] *):not([class*="bg-black"] *),
-    .dark .text-gray-800:not([class*="bg-[#1a1a2e]"] *):not(.bg-secondary *):not([class*="bg-[#e94560]"] *):not(.bg-accent *):not([class*="dark:bg-"] *):not([class*="bg-gray-9"] *):not([class*="bg-black"] *) {
+    /* Standard Tailwind color scales overrides - Excluded inside dark containers and heading elements to protect readability */
+    .text-gray-900:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(.font-heading):not([class*="font-heading"]):not([class*="bg-[#1a1a2e]"] *):not(.bg-secondary *):not([class*="bg-[#e94560]"] *):not(.bg-accent *):not([class*="dark:bg-"] *):not([class*="bg-gray-9"] *):not([class*="bg-black"] *),
+    .dark .text-gray-900:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(.font-heading):not([class*="font-heading"]):not([class*="bg-[#1a1a2e]"] *):not(.bg-secondary *):not([class*="bg-[#e94560]"] *):not(.bg-accent *):not([class*="dark:bg-"] *):not([class*="bg-gray-9"] *):not([class*="bg-black"] *), 
+    .text-gray-955:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(.font-heading):not([class*="font-heading"]):not([class*="bg-[#1a1a2e]"] *):not(.bg-secondary *):not([class*="bg-[#e94560]"] *):not(.bg-accent *):not([class*="dark:bg-"] *):not([class*="bg-gray-9"] *):not([class*="bg-black"] *),
+    .text-gray-950:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(.font-heading):not([class*="font-heading"]):not([class*="bg-[#1a1a2e]"] *):not(.bg-secondary *):not([class*="bg-[#e94560]"] *):not(.bg-accent *):not([class*="dark:bg-"] *):not([class*="bg-gray-9"] *):not([class*="bg-black"] *),
+    .dark .text-gray-955:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(.font-heading):not([class*="font-heading"]):not([class*="bg-[#1a1a2e]"] *):not(.bg-secondary *):not([class*="bg-[#e94560]"] *):not(.bg-accent *):not([class*="dark:bg-"] *):not([class*="bg-gray-9"] *):not([class*="bg-black"] *),
+    .text-gray-800:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(.font-heading):not([class*="font-heading"]):not([class*="bg-[#1a1a2e]"] *):not(.bg-secondary *):not([class*="bg-[#e94560]"] *):not(.bg-accent *):not([class*="dark:bg-"] *):not([class*="bg-gray-9"] *):not([class*="bg-black"] *),
+    .dark .text-gray-800:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(.font-heading):not([class*="font-heading"]):not([class*="bg-[#1a1a2e]"] *):not(.bg-secondary *):not([class*="bg-[#e94560]"] *):not(.bg-accent *):not([class*="dark:bg-"] *):not([class*="bg-gray-9"] *):not([class*="bg-black"] *) {
       color: var(--color-text-primary) !important;
     }
     
-    .text-gray-700:not([class*="bg-[#1a1a2e]"] *):not(.bg-secondary *):not([class*="bg-[#e94560]"] *):not(.bg-accent *):not([class*="dark:bg-"] *):not([class*="bg-gray-9"] *):not([class*="bg-black"] *),
-    .dark .text-gray-700:not([class*="bg-[#1a1a2e]"] *):not(.bg-secondary *):not([class*="bg-[#e94560]"] *):not(.bg-accent *):not([class*="dark:bg-"] *):not([class*="bg-gray-9"] *):not([class*="bg-black"] *), 
-    .text-gray-600:not([class*="bg-[#1a1a2e]"] *):not(.bg-secondary *):not([class*="bg-[#e94560]"] *):not(.bg-accent *):not([class*="dark:bg-"] *):not([class*="bg-gray-9"] *):not([class*="bg-black"] *),
-    .dark .text-gray-600:not([class*="bg-[#1a1a2e]"] *):not(.bg-secondary *):not([class*="bg-[#e94560]"] *):not(.bg-accent *):not([class*="dark:bg-"] *):not([class*="bg-gray-9"] *):not([class*="bg-black"] *), 
-    .text-gray-500:not([class*="bg-[#1a1a2e]"] *):not(.bg-secondary *):not([class*="bg-[#e94560]"] *):not(.bg-accent *):not([class*="dark:bg-"] *):not([class*="bg-gray-9"] *):not([class*="bg-black"] *),
-    .dark .text-gray-500:not([class*="bg-[#1a1a2e]"] *):not(.bg-secondary *):not([class*="bg-[#e94560]"] *):not(.bg-accent *):not([class*="dark:bg-"] *):not([class*="bg-gray-9"] *):not([class*="bg-black"] *), 
-    .text-gray-400:not([class*="bg-[#1a1a2e]"] *):not(.bg-secondary *):not([class*="bg-[#e94560]"] *):not(.bg-accent *):not([class*="dark:bg-"] *):not([class*="bg-gray-9"] *):not([class*="bg-black"] *),
-    .dark .text-gray-400:not([class*="bg-[#1a1a2e]"] *):not(.bg-secondary *):not([class*="bg-[#e94560]"] *):not(.bg-accent *):not([class*="dark:bg-"] *):not([class*="bg-gray-9"] *):not([class*="bg-black"] *) {
+    .text-gray-700:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(.font-heading):not([class*="font-heading"]):not([class*="bg-[#1a1a2e]"] *):not(.bg-secondary *):not([class*="bg-[#e94560]"] *):not(.bg-accent *):not([class*="dark:bg-"] *):not([class*="bg-gray-9"] *):not([class*="bg-black"] *),
+    .dark .text-gray-700:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(.font-heading):not([class*="font-heading"]):not([class*="bg-[#1a1a2e]"] *):not(.bg-secondary *):not([class*="bg-[#e94560]"] *):not(.bg-accent *):not([class*="dark:bg-"] *):not([class*="bg-gray-9"] *):not([class*="bg-black"] *), 
+    .text-gray-600:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(.font-heading):not([class*="font-heading"]):not([class*="bg-[#1a1a2e]"] *):not(.bg-secondary *):not([class*="bg-[#e94560]"] *):not(.bg-accent *):not([class*="dark:bg-"] *):not([class*="bg-gray-9"] *):not([class*="bg-black"] *),
+    .dark .text-gray-600:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(.font-heading):not([class*="font-heading"]):not([class*="bg-[#1a1a2e]"] *):not(.bg-secondary *):not([class*="bg-[#e94560]"] *):not(.bg-accent *):not([class*="dark:bg-"] *):not([class*="bg-gray-9"] *):not([class*="bg-black"] *), 
+    .text-gray-500:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(.font-heading):not([class*="font-heading"]):not([class*="bg-[#1a1a2e]"] *):not(.bg-secondary *):not([class*="bg-[#e94560]"] *):not(.bg-accent *):not([class*="dark:bg-"] *):not([class*="bg-gray-9"] *):not([class*="bg-black"] *),
+    .dark .text-gray-500:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(.font-heading):not([class*="font-heading"]):not([class*="bg-[#1a1a2e]"] *):not(.bg-secondary *):not([class*="bg-[#e94560]"] *):not(.bg-accent *):not([class*="dark:bg-"] *):not([class*="bg-gray-9"] *):not([class*="bg-black"] *), 
+    .text-gray-400:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(.font-heading):not([class*="font-heading"]):not([class*="bg-[#1a1a2e]"] *):not(.bg-secondary *):not([class*="bg-[#e94560]"] *):not(.bg-accent *):not([class*="dark:bg-"] *):not([class*="bg-gray-9"] *):not([class*="bg-black"] *),
+    .dark .text-gray-400:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(.font-heading):not([class*="font-heading"]):not([class*="bg-[#1a1a2e]"] *):not(.bg-secondary *):not([class*="bg-[#e94560]"] *):not(.bg-accent *):not([class*="dark:bg-"] *):not([class*="bg-gray-9"] *):not([class*="bg-black"] *) {
       color: var(--color-text-secondary) !important;
     }
     

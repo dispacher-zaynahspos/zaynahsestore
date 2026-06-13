@@ -12,6 +12,15 @@
 1. What changed and why
 ```
 
+### [2026-06-14] v3.9.4 — Advanced Theme Typography Font & Text Colors Customization
+**Files Updated:** `lib/types.ts`, `lib/themePresets.ts`, `components/admin/customizer/pages/AppearanceSettings.tsx`, `components/common/ThemeStyleRegistry.tsx`, `supabase/schema/SUPER_MASTER_SCHEMA.sql`, `supabase/migrations/20260614040900_add_text_colors_to_theme_config.sql`, `SCHEMA_CHANGE_LOG.md`
+**Changes:**
+1. **Typography color tokens in ThemeConfig** — Added `textHeading?: string` and `textAccent?: string` to `ThemeConfig['colors']` inside `lib/types.ts`.
+2. **Presets enhancement** — Backfilled all 12 preset templates in `lib/themePresets.ts` with custom, design-harmonious values for `textHeading` and `textAccent` color configurations.
+3. **AppearanceSettings Customizer Panel** — Exposed color picker controls and hex code inputs for both Heading Font Color and Accent Text Color. JSON Import/Export features automatically pick up the new fields since they consume `themeConfig` directly.
+4. **Theme Style Injection Registry** — Registered `--color-text-heading` and `--color-text-accent` CSS variables in `ThemeStyleRegistry.tsx`, map all `h1`-`h6` tags and `.font-heading` selector text directly to heading variable, and styled text accent elements (`.text-accent` and `.text-[#e94560]`) to consume the accent text color. Corrected Tailwind text color overrides rules to not hijack heading elements.
+5. **Database columns default schema & migration** — Updated database default settings column value inside `SUPER_MASTER_SCHEMA.sql` and created migration file `20260614040900_add_text_colors_to_theme_config.sql` which merges the properties into existing settings singleton rows safely.
+
 ### [2026-06-14] v3.9.3 — Guest Orders RLS Policy & Webhook Cache Gaps
 **Files Updated:** `supabase/migrations/20260614001000_add_orders_public_insert.sql`, `supabase/schema/SUPER_MASTER_SCHEMA.sql`, `app/api/revalidate/route.ts`, `components/common/ChunkErrorListener.tsx`, `app/layout.tsx`, `components/common/Navbar.tsx`, `components/store/StoreFront.tsx`, `components/admin/ProductForm.tsx`, `components/store/ProductCard.tsx`
 **Changes:**

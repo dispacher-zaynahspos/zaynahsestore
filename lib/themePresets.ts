@@ -22,6 +22,8 @@ export const THEME_PRESETS: ThemePreset[] = [
         textPrimary: '#111111',
         textSecondary: '#666666',
         border: '#EEEEEE',
+        textHeading: '#000000',
+        textAccent: '#C8A97E',
       },
       fonts: {
         heading: 'Playfair Display',
@@ -55,6 +57,8 @@ export const THEME_PRESETS: ThemePreset[] = [
         textPrimary: '#2D3748',
         textSecondary: '#718096',
         border: '#FED7E2',
+        textHeading: '#880E4F',
+        textAccent: '#C2185B',
       },
       fonts: {
         heading: 'Cormorant Garamond',
@@ -88,6 +92,8 @@ export const THEME_PRESETS: ThemePreset[] = [
         textPrimary: '#FFFFFF',
         textSecondary: '#A0A0A0',
         border: '#2C2C2C',
+        textHeading: '#BB86FC',
+        textAccent: '#CF6679',
       },
       fonts: {
         heading: 'Montserrat',
@@ -121,6 +127,8 @@ export const THEME_PRESETS: ThemePreset[] = [
         textPrimary: '#1E293B',
         textSecondary: '#64748B',
         border: '#E2E8F0',
+        textHeading: '#0D47A1',
+        textAccent: '#1565C0',
       },
       fonts: {
         heading: 'Raleway',
@@ -154,6 +162,8 @@ export const THEME_PRESETS: ThemePreset[] = [
         textPrimary: '#1C2E1D',
         textSecondary: '#556B56',
         border: '#E8F5E9',
+        textHeading: '#1B5E20',
+        textAccent: '#2E7D32',
       },
       fonts: {
         heading: 'Josefin Sans',
@@ -187,6 +197,8 @@ export const THEME_PRESETS: ThemePreset[] = [
         textPrimary: '#3E2723',
         textSecondary: '#795548',
         border: '#EFEBE9',
+        textHeading: '#3E2723',
+        textAccent: '#8D6E63',
       },
       fonts: {
         heading: 'Libre Baskerville',
@@ -220,6 +232,8 @@ export const THEME_PRESETS: ThemePreset[] = [
         textPrimary: '#111111',
         textSecondary: '#4A4A4A',
         border: '#E0E0E0',
+        textHeading: '#B71C1C',
+        textAccent: '#D32F2F',
       },
       fonts: {
         heading: 'Anton',
@@ -253,6 +267,8 @@ export const THEME_PRESETS: ThemePreset[] = [
         textPrimary: '#2D1F35',
         textSecondary: '#6C5874',
         border: '#E8DFEE',
+        textHeading: '#4A148C',
+        textAccent: '#7B1FA2',
       },
       fonts: {
         heading: 'Quicksand',
@@ -286,6 +302,8 @@ export const THEME_PRESETS: ThemePreset[] = [
         textPrimary: '#212121',
         textSecondary: '#616161',
         border: '#FFF9C4',
+        textHeading: '#E65100',
+        textAccent: '#F57F17',
       },
       fonts: {
         heading: 'Cinzel',
@@ -319,6 +337,8 @@ export const THEME_PRESETS: ThemePreset[] = [
         textPrimary: '#111111',
         textSecondary: '#757575',
         border: '#E0E0E0',
+        textHeading: '#212121',
+        textAccent: '#616161',
       },
       fonts: {
         heading: 'DM Sans',
@@ -352,6 +372,8 @@ export const THEME_PRESETS: ThemePreset[] = [
         textPrimary: '#2D3748',
         textSecondary: '#4A5568',
         border: '#FCE7C4',
+        textHeading: '#FF6B6B',
+        textAccent: '#FF6B6B',
       },
       fonts: {
         heading: 'Fredoka',
@@ -385,6 +407,8 @@ export const THEME_PRESETS: ThemePreset[] = [
         textPrimary: '#4A3B63',
         textSecondary: '#5A6B83',
         border: '#E1EBF5',
+        textHeading: '#B39DDB',
+        textAccent: '#B39DDB',
       },
       fonts: {
         heading: 'Baloo 2',

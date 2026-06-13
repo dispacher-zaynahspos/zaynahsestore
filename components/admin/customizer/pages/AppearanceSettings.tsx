@@ -221,11 +221,22 @@ export function AppearanceCustomizePanel({ settings, onUpdateSettings }: Appeara
               { key: 'accent', label: 'Accent Highlight', desc: 'Banners, sales counters, interactive highlights' },
               { key: 'background', label: 'Body Background', desc: 'Default background behind all layouts' },
               { key: 'surface', label: 'Card Surface', desc: 'Background for category and product cards' },
-              { key: 'textPrimary', label: 'Text Primary', desc: 'Body headers, titles, text descriptions' },
+              { key: 'textPrimary', label: 'Text Primary', desc: 'Body text, titles, text descriptions' },
               { key: 'textSecondary', label: 'Text Secondary (Muted)', desc: 'Muted info, tags list, subtitles' },
+              { key: 'textHeading', label: 'Heading Font Color', desc: 'Custom color for all h1-h6 and heading blocks' },
+              { key: 'textAccent', label: 'Accent Text Color', desc: 'Custom color for highlighted text elements' },
               { key: 'border', label: 'Borders/Dividers', desc: 'Layout segment borders and list dividers' }
             ].map(item => {
-              const val = colors[item.key as keyof typeof colors] || '';
+              let val = colors[item.key as keyof typeof colors] || '';
+              if (!val) {
+                if (item.key === 'textHeading') {
+                  val = colors.textPrimary || colors.primary || '#000000';
+                } else if (item.key === 'textAccent') {
+                  val = colors.accent || '#e94560';
+                } else {
+                  val = '#000000';
+                }
+              }
               return (
                 <div key={item.key} className="space-y-1 p-2.5 bg-gray-50/50 dark:bg-white/2 rounded-xl border border-gray-100 dark:border-gray-800/80">
                   <div className="flex justify-between items-center">
