@@ -63,6 +63,11 @@ export default function MobileBottomNav() {
             <Link
               key={item.href}
               href={item.href}
+              id={
+                item.label === 'Wishlist' ? 'mobile-bottom-wishlist-icon' :
+                item.label === 'Cart' ? 'mobile-bottom-cart-icon' :
+                undefined
+              }
               className={`flex flex-col items-center justify-center flex-1 h-full relative text-[10px] font-bold transition-colors ${
                 isActive
                   ? 'text-[#e94560]'

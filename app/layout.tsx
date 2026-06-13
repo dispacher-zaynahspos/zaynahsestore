@@ -165,7 +165,18 @@ export default async function RootLayout({
           disableTransitionOnChange
         >
           {children}
-          <Toaster position="top-center" richColors closeButton />
+          <Toaster 
+            position="bottom-right" 
+            toastOptions={{
+              className: 'dark:bg-[#16162a] dark:text-white dark:border-gray-800 rounded-2xl shadow-lg border border-gray-100 font-semibold',
+              style: {
+                fontSize: '11px',
+                padding: '10px 14px',
+                maxWidth: '300px',
+              }
+            }} 
+            closeButton 
+          />
           
           <script
             dangerouslySetInnerHTML={{

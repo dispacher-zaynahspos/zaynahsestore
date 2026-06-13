@@ -12,6 +12,7 @@ import { formatPrice } from '@/lib/utils/whatsapp';
 import { useCartStore } from '@/store/cartStore';
 import { toast } from 'sonner';
 import { trackEvent } from '@/lib/trackEvent';
+import { animateFlyTo } from '@/lib/utils/flyAnimation';
 
 interface ShopPageProps {
   initialProducts: Product[];
@@ -52,6 +53,11 @@ function ShopProductListCard({ product, settings, addItem }: ShopProductListCard
     } else {
       newW = [...wishlist, product.id];
       toast.success('Added to wishlist');
+      
+      // Trigger fly animation
+      const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+      const targetId = isMobile ? 'mobile-bottom-wishlist-icon' : 'header-wishlist-icon-desktop';
+      animateFlyTo(e.currentTarget as HTMLElement, targetId, primaryImage);
     }
     localStorage.setItem('wishlist', JSON.stringify(newW));
     setInWish(!inWish);
@@ -159,6 +165,11 @@ function ShopProductListCard({ product, settings, addItem }: ShopProductListCard
                 }
                 addItem(product, undefined, [], 1);
                 toast.success(`${product.name} added to cart!`);
+                
+                // Trigger fly animation
+                const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+                const targetId = isMobile ? 'header-cart-icon-mobile' : 'header-cart-icon-desktop';
+                animateFlyTo(e.currentTarget as HTMLElement, targetId, primaryImage);
               }}
               className="flex h-9 items-center gap-1.5 px-4 rounded-xl bg-[#1a1a2e] dark:bg-[#e94560] text-white hover:opacity-90 active:scale-95 text-xs font-bold transition-all cursor-pointer"
             >
@@ -279,6 +290,12 @@ export default function ShopPage({
     }
     addItem(product, undefined, [], 1);
     toast.success(`${product.name} added to cart!`);
+
+    // Trigger fly animation
+    const img = product.images.find(img => img.isPrimary)?.url || product.images[0]?.url;
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    const targetId = isMobile ? 'header-cart-icon-mobile' : 'header-cart-icon-desktop';
+    animateFlyTo(e.currentTarget as HTMLElement, targetId, img);
   };
 
   // Double slider ref

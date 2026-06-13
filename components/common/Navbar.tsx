@@ -287,10 +287,11 @@ export default function Navbar({
     </div>
   );
 
-  const renderWishlist = () => !isAdmin && (
+  const renderWishlist = (isMobile?: boolean) => !isAdmin && (
     <Link
       href="/wishlist"
       key="wishlist"
+      id={isMobile ? "header-wishlist-icon-mobile" : "header-wishlist-icon-desktop"}
       className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-[#1a1a2e] dark:hover:text-white transition-all"
       title="My Wishlist"
     >
@@ -303,10 +304,11 @@ export default function Navbar({
     </Link>
   );
 
-  const renderCart = () => !isAdmin && (
+  const renderCart = (isMobile?: boolean) => !isAdmin && (
     <Link
       href="/cart"
       key="cart"
+      id={isMobile ? "header-cart-icon-mobile" : "header-cart-icon-desktop"}
       className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-[#1a1a2e] dark:hover:text-white transition-all cursor-pointer"
     >
       <ShoppingCart className="h-5 w-5" style={customTextColorStyle} />
@@ -422,8 +424,8 @@ export default function Navbar({
   addToDesktopSlot(headerDesktopMenuAlign, renderDesktopNavMenu());
   addToDesktopSlot(desktopSearchAlign, renderSearch());
   addToDesktopSlot(desktopWishlistAlign, renderAccountLink());
-  addToDesktopSlot(desktopWishlistAlign, renderWishlist());
-  addToDesktopSlot(desktopCartAlign, renderCart());
+  addToDesktopSlot(desktopWishlistAlign, renderWishlist(false));
+  addToDesktopSlot(desktopCartAlign, renderCart(false));
   addToDesktopSlot(desktopThemeAlign, renderThemeToggle());
   addToDesktopSlot(desktopThemeAlign, renderAdminLink());
 
@@ -442,8 +444,8 @@ export default function Navbar({
   addToMobileSlot(mobileLogoAlign, renderLogo());
   addToMobileSlot(mobileSearchAlign, renderSearch());
   addToMobileSlot(mobileWishlistAlign, renderAccountLink());
-  addToMobileSlot(mobileWishlistAlign, renderWishlist());
-  addToMobileSlot(mobileCartAlign, renderCart());
+  addToMobileSlot(mobileWishlistAlign, renderWishlist(true));
+  addToMobileSlot(mobileCartAlign, renderCart(true));
   addToMobileSlot(settings?.headerMobileWishlistAlign ?? 'hidden', renderThemeToggle());
   addToMobileSlot('right', renderAdminLink());
 

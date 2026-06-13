@@ -18,6 +18,7 @@ import { useCartStore } from '@/store/cartStore';
 import { formatPrice } from '@/lib/utils/whatsapp';
 import { toast } from 'sonner';
 import VariantSelector from './VariantSelector';
+import { animateFlyTo } from '@/lib/utils/flyAnimation';
 
 interface QuickViewModalProps {
   product: Product;
@@ -87,14 +88,24 @@ export default function QuickViewModal({ product, settings, onClose }: QuickView
   const comparePrice = selectedVariant?.comparePrice ?? product.comparePrice;
 
   // ── Cart ──────────────────────────────────────────────────────────────────
-  const handleAddToCart = () => {
+  const handleAddToCart = (e: React.MouseEvent) => {
     if (quantity > stockAvailable) {
       toast.error(`Only ${stockAvailable} items left in stock`);
       return;
     }
     addItem(product, selectedVariant, [], quantity);
     toast.success(`${product.name} added to cart!`);
-    onClose();
+
+    // Trigger fly animation
+    const imageUrl = selectedVariant?.imageUrl || product.images.find(img => img.isPrimary)?.url || product.images[0]?.url;
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    const targetId = isMobile ? 'header-cart-icon-mobile' : 'header-cart-icon-desktop';
+    animateFlyTo(e.currentTarget as HTMLElement, targetId, imageUrl);
+
+    // Close the modal after a short delay so the animation can source from the button before it unmounts
+    setTimeout(() => {
+      onClose();
+    }, 250);
   };
 
   // ── Escape + body scroll lock ─────────────────────────────────────────────

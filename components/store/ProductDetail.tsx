@@ -33,6 +33,7 @@ import { formatPrice, cleanWhatsAppPhone } from '@/lib/utils/whatsapp';
 import { toast } from 'sonner';
 import VariantSelector from './VariantSelector';
 import { trackEvent } from '@/lib/trackEvent';
+import { animateFlyTo } from '@/lib/utils/flyAnimation';
 
 interface ProductDetailProps {
   product: Product;
@@ -348,7 +349,7 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
     );
   };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = (e: React.MouseEvent) => {
     if (quantity > stockAvailable) {
       toast.error(`Only ${stockAvailable} items left in stock`);
       return;
@@ -365,9 +366,15 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
     });
 
     toast.success(`${product.name} added to cart!`);
+
+    // Trigger fly animation
+    const imageUrl = selectedVariant?.imageUrl || product.images.find(img => img.isPrimary)?.url || product.images[0]?.url;
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    const targetId = isMobile ? 'header-cart-icon-mobile' : 'header-cart-icon-desktop';
+    animateFlyTo(e.currentTarget as HTMLElement, targetId, imageUrl);
   };
 
-  const toggleWishlist = () => {
+  const toggleWishlist = (e: React.MouseEvent) => {
     const wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
     let newWishlist;
     if (wishlist.includes(product.id)) {
@@ -378,6 +385,12 @@ export default function ProductDetail({ product, settings, averageRating }: Prod
       newWishlist = [...wishlist, product.id];
       setIsWishlisted(true);
       toast.success('Added to wishlist');
+
+      // Trigger fly animation for adding to wishlist
+      const imageUrl = selectedVariant?.imageUrl || product.images.find(img => img.isPrimary)?.url || product.images[0]?.url;
+      const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+      const targetId = isMobile ? 'mobile-bottom-wishlist-icon' : 'header-wishlist-icon-desktop';
+      animateFlyTo(e.currentTarget as HTMLElement, targetId, imageUrl);
     }
     localStorage.setItem('wishlist', JSON.stringify(newWishlist));
     window.dispatchEvent(new Event('wishlist-updated'));

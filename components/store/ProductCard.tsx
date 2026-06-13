@@ -9,6 +9,7 @@ import { useCartStore } from '@/store/cartStore';
 import { toast } from 'sonner';
 import { formatPrice } from '@/lib/utils/whatsapp';
 import QuickViewModal from './QuickViewModal';
+import { animateFlyTo } from '@/lib/utils/flyAnimation';
 
 interface ProductCardProps {
   product: Product;
@@ -86,6 +87,11 @@ export default function ProductCard({ product, currencySymbol = 'Rs.', settings 
     } else {
       newWishlist = [...wishlist, product.id];
       toast.success('Added to wishlist');
+      
+      // Trigger fly animation for adding to wishlist
+      const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+      const targetId = isMobile ? 'mobile-bottom-wishlist-icon' : 'header-wishlist-icon-desktop';
+      animateFlyTo(e.currentTarget as HTMLElement, targetId, primaryImage);
     }
     localStorage.setItem('wishlist', JSON.stringify(newWishlist));
     window.dispatchEvent(new Event('wishlist-updated'));
@@ -108,6 +114,11 @@ export default function ProductCard({ product, currencySymbol = 'Rs.', settings 
     }
     addItem(product, undefined, [], 1);
     toast.success(`${product.name} added to cart!`);
+
+    // Trigger fly animation for adding to cart
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    const targetId = isMobile ? 'header-cart-icon-mobile' : 'header-cart-icon-desktop';
+    animateFlyTo(e.currentTarget as HTMLElement, targetId, primaryImage);
   };
 
   const showSwatches = settings?.enableVariantSwatches ?? true;
