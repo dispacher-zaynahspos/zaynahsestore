@@ -7,8 +7,6 @@ import FloatingContacts from '@/components/common/FloatingContacts';
 import PremiumFeaturesProvider from '@/components/store/PremiumFeaturesProvider';
 import { getSettings } from '@/lib/services/settings';
 
-export const revalidate = 0; // Dynamic rendering
-
 export default async function StoreLayout({
   children
 }: {
