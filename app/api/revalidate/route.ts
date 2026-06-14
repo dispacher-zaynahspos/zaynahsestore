@@ -39,6 +39,20 @@ export async function POST(req: NextRequest) {
     const childTables = ['product_variants', 'product_images', 'product_modifiers', 'reviews'];
 
     if (table === 'products') {
+      // 🛡️ LOOP GUARD: If the UPDATE only changed meta_sync fields, skip everything.
+      // This prevents the infinite loop: meta_sync update → webhook → meta_sync update → ...
+      const META_ONLY_COLUMNS = new Set(['meta_sync_status', 'meta_sync_error', 'meta_last_synced_at', 'updated_at']);
+      if (type === 'UPDATE' && record && old_record) {
+        const changedColumns = Object.keys(record).filter(
+          (key) => record[key] !== old_record[key]
+        );
+        const isMetaOnly = changedColumns.length > 0 && changedColumns.every((col) => META_ONLY_COLUMNS.has(col));
+        if (isMetaOnly) {
+          console.log('[Webhook Revalidate] Skipping — only meta_sync fields changed, no real product update.');
+          return NextResponse.json({ revalidated: false, reason: 'meta_sync_only' });
+        }
+      }
+
       const slug = activeRecord.slug;
       if (slug) {
         await revalidateProduct(slug);
