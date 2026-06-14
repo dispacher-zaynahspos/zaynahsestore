@@ -88,5 +88,6 @@ export {
   Save,
   Edit,
   ListChecks,
-  MapPin
+  MapPin,
+  Menu
 } from 'lucide-react';

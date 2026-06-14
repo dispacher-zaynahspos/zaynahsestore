@@ -89,7 +89,25 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        source: '/:path((?!api|_next|static|fonts|cart|checkout|account).*)',
+        source: '/admin',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          },
+        ],
+      },
+      {
+        source: '/admin/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          },
+        ],
+      },
+      {
+        source: '/:path((?!api|_next|static|fonts|cart|checkout|account|admin).*)',
         headers: [
           {
             key: 'Cache-Control',

@@ -1,9 +1,28 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, ShoppingBag, FolderOpen, ClipboardList, Settings, LogOut, Store, Star, Layers, Images, Award, Users, Layout, MessageSquare, TrendingUp, ShoppingCart } from 'lucide-react';
+import { 
+  LayoutDashboard, 
+  ShoppingBag, 
+  FolderOpen, 
+  ClipboardList, 
+  Settings, 
+  LogOut, 
+  Store, 
+  Star, 
+  Layers, 
+  Images, 
+  Award, 
+  Users, 
+  Layout, 
+  MessageSquare, 
+  TrendingUp, 
+  ShoppingCart,
+  Menu,
+  X
+} from '@/components/common/Icons';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { useOrderNotification } from '@/lib/hooks/useOrderNotification';
@@ -16,6 +35,7 @@ export default function AdminLayout({
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // 🔔 Real-time order notifications (sound + browser notification)
   useOrderNotification();
@@ -60,16 +80,37 @@ export default function AdminLayout({
 
   return (
     <div className="flex h-screen w-screen flex-col md:flex-row bg-gray-50 dark:bg-[#0f0f1b] overflow-hidden">
-      {/* Sidebar navigation */}
-      <aside className="w-full md:w-64 bg-[#1a1a2e] text-white flex flex-col flex-shrink-0 md:h-screen md:sticky md:top-0 md:overflow-y-auto">
-        {/* Brand name */}
-        <div className="hidden md:flex h-16 items-center gap-2 px-6 border-b border-white/10">
-          <Store className="h-6 w-6 text-[#e94560]" />
-          <span className="font-bold text-lg tracking-tight">Admin Console</span>
+      {/* 📱 Mobile Drawer Sidebar Backdrop (overlay) */}
+      <div 
+        onClick={() => setIsMobileMenuOpen(false)}
+        className={`fixed inset-0 bg-black/60 backdrop-blur-xs z-40 md:hidden transition-opacity duration-300 ${
+          isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+      />
+
+      {/* 📱 Mobile Drawer Sidebar Container */}
+      <div 
+        className={`fixed inset-y-0 left-0 w-72 bg-[#1a1a2e] z-50 transform transition-transform duration-300 md:hidden flex flex-col h-full border-r border-white/10 ${
+          isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        {/* Mobile Drawer Header */}
+        <div className="h-16 flex items-center justify-between px-6 border-b border-white/10 flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <Store className="h-6 w-6 text-[#e94560]" />
+            <span className="font-bold text-lg tracking-tight text-white">Admin Console</span>
+          </div>
+          <button 
+            onClick={() => setIsMobileMenuOpen(false)} 
+            className="p-1.5 rounded-xl text-white/50 hover:bg-white/5 hover:text-white transition-all focus:outline-none"
+            title="Close menu"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
-        {/* Links */}
-        <nav className="flex-1 px-4 py-3 md:py-4 space-y-1.5 flex flex-row md:flex-col overflow-x-auto md:overflow-x-visible">
+        {/* Mobile Drawer Scrollable Navigation links (Touch-First) */}
+        <nav className="flex-1 px-4 py-4 space-y-1.5 overflow-y-auto overscroll-contain touch-pan-y">
           {navItems.map(item => {
             const Icon = item.icon;
             const isActive = pathname === item.href || (item.href !== '/admin/dashboard' && pathname?.startsWith(item.href));
@@ -77,10 +118,12 @@ export default function AdminLayout({
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all min-w-max md:min-w-0 ${isActive
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
+                  isActive
                     ? 'bg-[#e94560] text-white shadow-md'
                     : 'text-white/70 hover:bg-white/5 hover:text-white'
-                  }`}
+                }`}
               >
                 <Icon className="h-5 w-5 flex-shrink-0" />
                 <span>{item.label}</span>
@@ -89,8 +132,50 @@ export default function AdminLayout({
           })}
         </nav>
 
-        {/* Footer logout */}
-        <div className="p-4 border-t border-white/10 hidden md:block">
+        {/* Mobile Drawer Footer Logout */}
+        <div className="p-4 border-t border-white/10 flex-shrink-0">
+          <button
+            onClick={() => { setIsMobileMenuOpen(false); handleLogout(); }}
+            className="flex w-full items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-white/70 hover:bg-red-500/10 hover:text-red-400 transition-all cursor-pointer text-left"
+          >
+            <LogOut className="h-5 w-5" />
+            <span>Logout</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 🖥️ Desktop Static Sidebar Navigation */}
+      <aside className="hidden md:flex md:w-64 bg-[#1a1a2e] text-white flex-col flex-shrink-0 md:h-screen md:sticky md:top-0 md:overflow-y-auto">
+        {/* Brand logo header */}
+        <div className="flex h-16 items-center gap-2 px-6 border-b border-white/10">
+          <Store className="h-6 w-6 text-[#e94560]" />
+          <span className="font-bold text-lg tracking-tight">Admin Console</span>
+        </div>
+
+        {/* Desktop Vertical nav links */}
+        <nav className="flex-1 px-4 py-4 space-y-1.5">
+          {navItems.map(item => {
+            const Icon = item.icon;
+            const isActive = pathname === item.href || (item.href !== '/admin/dashboard' && pathname?.startsWith(item.href));
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
+                  isActive
+                    ? 'bg-[#e94560] text-white shadow-md'
+                    : 'text-white/70 hover:bg-white/5 hover:text-white'
+                }`}
+              >
+                <Icon className="h-5 w-5 flex-shrink-0" />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Desktop Footer Logout */}
+        <div className="p-4 border-t border-white/10">
           <button
             onClick={handleLogout}
             className="flex w-full items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-white/70 hover:bg-red-500/10 hover:text-red-400 transition-all cursor-pointer text-left"
@@ -103,20 +188,25 @@ export default function AdminLayout({
 
       {/* Main content area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="h-16 flex-shrink-0 bg-white dark:bg-[#16162a] border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-6 md:px-8">
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-            {navItems.find(item => pathname === item.href || (item.href !== '/admin/dashboard' && pathname?.startsWith(item.href)))?.label || 'Console'}
-          </h2>
+        {/* Unified Mobile/Desktop Header with Hamburger Trigger */}
+        <header className="h-16 flex-shrink-0 bg-white dark:bg-[#16162a] border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-4 md:px-8">
+          <div className="flex items-center gap-3">
+            {/* 📱 Hamburger Menu Toggle Button */}
+            <button
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="md:hidden p-2 rounded-xl text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800 transition-all focus:outline-none"
+              title="Open menu"
+            >
+              <Menu className="h-5.5 w-5.5" />
+            </button>
+            <h2 className="text-sm md:text-lg font-black text-gray-900 dark:text-white tracking-tight">
+              {navItems.find(item => pathname === item.href || (item.href !== '/admin/dashboard' && pathname?.startsWith(item.href)))?.label || 'Console'}
+            </h2>
+          </div>
           <div className="flex items-center gap-4">
-            <Link href="/" className="text-sm font-semibold text-[#e94560] hover:underline">
+            <Link href="/" className="text-xs md:text-sm font-bold text-[#e94560] hover:underline">
               View Store
             </Link>
-            <button
-              onClick={handleLogout}
-              className="md:hidden text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 cursor-pointer"
-            >
-              <LogOut className="h-5 w-5" />
-            </button>
           </div>
         </header>
 
