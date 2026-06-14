@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
       } else {
         console.warn(`[Webhook Revalidate] Table is ${table} but product_id was missing from activeRecord.`);
       }
-    } else if (table === 'banners') {
+    } else if (table === 'banners' || table === 'homepage_sections') {
       await revalidateBanner();
     } else if (table === 'categories') {
       const slug = activeRecord.slug;

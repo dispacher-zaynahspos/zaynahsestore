@@ -284,7 +284,7 @@ async function executeRequest(
 
       // OpenRouter can take extra headers
       if (provider.toLowerCase() === 'openrouter') {
-        headers['HTTP-Referer'] = process.env.NEXT_PUBLIC_SITE_URL || 'https://localhost:3000';
+        headers['HTTP-Referer'] = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.zaynahs.pk';
         headers['X-Title'] = 'Zaynahs E-Store';
       }
 

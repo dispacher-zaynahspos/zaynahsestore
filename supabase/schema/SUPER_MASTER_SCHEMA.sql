@@ -427,6 +427,10 @@ CREATE TABLE IF NOT EXISTS store_settings (
     "admin_contact_form": true
   }'::jsonb,
   low_stock_threshold INTEGER DEFAULT 5,
+  abandoned_cart_email_enabled BOOLEAN DEFAULT FALSE,
+  abandoned_cart_admin_notify BOOLEAN DEFAULT FALSE,
+  abandoned_cart_email_subject TEXT DEFAULT 'You left items in your cart!',
+  abandoned_cart_email_template TEXT DEFAULT 'Hi {{name}},\n\nYou left some items in your cart. Complete your purchase here:\n{{checkout_url}}',
 
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

@@ -3,10 +3,10 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, ShoppingBag, FolderOpen, ClipboardList, Settings, LogOut, Store, Star, Layers, Images, Award, Users, Layout, MessageSquare, TrendingUp } from 'lucide-react';
+import { LayoutDashboard, ShoppingBag, FolderOpen, ClipboardList, Settings, LogOut, Store, Star, Layers, Images, Award, Users, Layout, MessageSquare, TrendingUp, ShoppingCart } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
-import ThemeToggle from '@/components/common/ThemeToggle';
+import { useOrderNotification } from '@/lib/hooks/useOrderNotification';
 
 export default function AdminLayout({
   children
@@ -16,6 +16,9 @@ export default function AdminLayout({
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
+
+  // 🔔 Real-time order notifications (sound + browser notification)
+  useOrderNotification();
 
   const handleLogout = async () => {
     try {
@@ -37,6 +40,7 @@ export default function AdminLayout({
     { label: 'Variants', href: '/admin/variants', icon: Layers },
     { label: 'Media', href: '/admin/media', icon: Images },
     { label: 'Orders Log', href: '/admin/orders', icon: ClipboardList },
+    { label: 'Abandoned Carts', href: '/admin/abandoned-carts', icon: ShoppingCart },
     { label: 'Customers', href: '/admin/customers', icon: Users },
     { label: 'WhatsApp Leads', href: '/admin/leads', icon: MessageSquare },
     { label: 'Reviews', href: '/admin/reviews', icon: Star },
@@ -47,7 +51,7 @@ export default function AdminLayout({
 
   // If we are on the login page, customizer preview page, or customizer page, don't show the dashboard layout
   if (
-    pathname === '/admin/login' || 
+    pathname === '/admin/login' ||
     pathname === '/admin/settings/customizer/preview' ||
     pathname === '/admin/settings/customizer'
   ) {
@@ -73,11 +77,10 @@ export default function AdminLayout({
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all min-w-max md:min-w-0 ${
-                  isActive
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all min-w-max md:min-w-0 ${isActive
                     ? 'bg-[#e94560] text-white shadow-md'
                     : 'text-white/70 hover:bg-white/5 hover:text-white'
-                }`}
+                  }`}
               >
                 <Icon className="h-5 w-5 flex-shrink-0" />
                 <span>{item.label}</span>
@@ -105,7 +108,6 @@ export default function AdminLayout({
             {navItems.find(item => pathname === item.href || (item.href !== '/admin/dashboard' && pathname?.startsWith(item.href)))?.label || 'Console'}
           </h2>
           <div className="flex items-center gap-4">
-            <ThemeToggle />
             <Link href="/" className="text-sm font-semibold text-[#e94560] hover:underline">
               View Store
             </Link>
@@ -117,7 +119,7 @@ export default function AdminLayout({
             </button>
           </div>
         </header>
-        
+
         <main className="flex-1 p-6 md:p-8 overflow-y-auto bg-gray-50 dark:bg-[#0f0f1b] transition-colors duration-200">
           {children}
         </main>

@@ -2,7 +2,7 @@ import { revalidateTag } from 'next/cache';
 
 const CLOUDFLARE_ZONE_ID = process.env.CLOUDFLARE_ZONE_ID;
 const CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.zaynahs.pk';
 
 async function purgeCloudflareUrls(urls: string[]) {
   if (!CLOUDFLARE_ZONE_ID || !CLOUDFLARE_API_TOKEN) {
@@ -91,6 +91,7 @@ export async function revalidateBanner() {
     // 1. Revalidate Next.js cache tags
     (revalidateTag as any)('banners');
     (revalidateTag as any)('homepage');
+    (revalidateTag as any)('homepage_sections');
     (revalidateTag as any)('products');
 
     // 2. Purge Cloudflare homepage and shop cache
@@ -155,6 +156,7 @@ export async function revalidateSettings() {
     // 1. Revalidate Next.js cache tags
     (revalidateTag as any)('settings');
     (revalidateTag as any)('homepage');
+    (revalidateTag as any)('homepage_sections');
     (revalidateTag as any)('products');
     (revalidateTag as any)('categories');
     (revalidateTag as any)('banners');

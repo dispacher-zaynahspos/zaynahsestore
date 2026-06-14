@@ -225,6 +225,10 @@ interface SettingsRow {
   admin_notification_email?: string | null;
   email_notifications?: any | null;
   low_stock_threshold?: number | null;
+  abandoned_cart_email_enabled?: boolean | null;
+  abandoned_cart_admin_notify?: boolean | null;
+  abandoned_cart_email_subject?: string | null;
+  abandoned_cart_email_template?: string | null;
 
   updated_at: string;
 }
@@ -441,6 +445,10 @@ const mapSettings = (row: SettingsRow): StoreSettings => ({
   admin_notification_email: row.admin_notification_email ?? '',
   email_notifications: typeof row.email_notifications === 'string' ? JSON.parse(row.email_notifications) : (row.email_notifications ?? undefined),
   low_stock_threshold: row.low_stock_threshold ?? 5,
+  abandonedCartEmailEnabled: row.abandoned_cart_email_enabled ?? false,
+  abandonedCartAdminNotify: row.abandoned_cart_admin_notify ?? false,
+  abandonedCartEmailSubject: row.abandoned_cart_email_subject ?? 'You left items in your cart!',
+  abandonedCartEmailTemplate: row.abandoned_cart_email_template ?? 'Hi {{name}},\n\nYou left some items in your cart. Complete your purchase here:\n{{checkout_url}}',
 
   updatedAt: row.updated_at
 });
@@ -719,6 +727,10 @@ export const updateSettings = async (settings: Partial<StoreSettings>): Promise<
     if (settings.admin_notification_email !== undefined) updatePayload.admin_notification_email = settings.admin_notification_email;
     if (settings.email_notifications !== undefined) updatePayload.email_notifications = typeof settings.email_notifications === 'string' ? JSON.parse(settings.email_notifications) : settings.email_notifications;
     if (settings.low_stock_threshold !== undefined) updatePayload.low_stock_threshold = settings.low_stock_threshold;
+    if (settings.abandonedCartEmailEnabled !== undefined) updatePayload.abandoned_cart_email_enabled = settings.abandonedCartEmailEnabled;
+    if (settings.abandonedCartAdminNotify !== undefined) updatePayload.abandoned_cart_admin_notify = settings.abandonedCartAdminNotify;
+    if (settings.abandonedCartEmailSubject !== undefined) updatePayload.abandoned_cart_email_subject = settings.abandonedCartEmailSubject;
+    if (settings.abandonedCartEmailTemplate !== undefined) updatePayload.abandoned_cart_email_template = settings.abandonedCartEmailTemplate;
 
     const { data, error } = await supabase
       .from('store_settings')

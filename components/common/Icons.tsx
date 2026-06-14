@@ -8,6 +8,7 @@ export {
   LayoutDashboard,
   Search,
   X,
+  XCircle,
   Heart,
   ChevronDown,
   ChevronUp,

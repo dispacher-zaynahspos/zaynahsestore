@@ -17,6 +17,15 @@ interface EmailTabProps {
   setLowStockThreshold: (val: number) => void;
   emailNotifications: Record<string, boolean>;
   setEmailNotifications: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+
+  abandonedCartEmailEnabled: boolean;
+  setAbandonedCartEmailEnabled: (val: boolean) => void;
+  abandonedCartAdminNotify: boolean;
+  setAbandonedCartAdminNotify: (val: boolean) => void;
+  abandonedCartEmailSubject: string;
+  setAbandonedCartEmailSubject: (val: string) => void;
+  abandonedCartEmailTemplate: string;
+  setAbandonedCartEmailTemplate: (val: string) => void;
 }
 
 const CUSTOMER_EMAILS = [
@@ -53,6 +62,15 @@ export default function EmailTab({
   setLowStockThreshold,
   emailNotifications,
   setEmailNotifications,
+
+  abandonedCartEmailEnabled,
+  setAbandonedCartEmailEnabled,
+  abandonedCartAdminNotify,
+  setAbandonedCartAdminNotify,
+  abandonedCartEmailSubject,
+  setAbandonedCartEmailSubject,
+  abandonedCartEmailTemplate,
+  setAbandonedCartEmailTemplate,
 }: EmailTabProps) {
   const [testing, setTesting] = React.useState(false);
   
@@ -214,7 +232,71 @@ export default function EmailTab({
               </button>
             </div>
           </div>
-        </div> </div>
+        </div>
+
+        {/* Abandoned Cart Email Settings */}
+        <div className="bg-white dark:bg-[#16162a] p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm space-y-4 transition-colors">
+          <h3 className="text-base font-bold text-gray-900 dark:text-white">Abandoned Cart Recovery</h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Automatically follow up with customers who left items in their cart.
+          </p>
+
+          <div className="space-y-4 pt-2 border-t border-gray-150 dark:border-gray-800">
+            <label className="flex items-center gap-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={abandonedCartEmailEnabled}
+                onChange={(e) => setAbandonedCartEmailEnabled(e.target.checked)}
+                className="rounded border-gray-300 dark:border-gray-750 text-[#e94560] focus:ring-[#e94560] h-4 w-4"
+              />
+              <span className="text-xs font-semibold text-gray-750 dark:text-gray-350">
+                Enable Recovery Email (5 mins delay)
+              </span>
+            </label>
+
+            <label className="flex items-center gap-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={abandonedCartAdminNotify}
+                onChange={(e) => setAbandonedCartAdminNotify(e.target.checked)}
+                className="rounded border-gray-300 dark:border-gray-750 text-[#e94560] focus:ring-[#e94560] h-4 w-4"
+              />
+              <span className="text-xs font-semibold text-gray-750 dark:text-gray-350">
+                Notify Admin on Cart Abandoned
+              </span>
+            </label>
+
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                Recovery Email Subject
+              </label>
+              <input
+                type="text"
+                value={abandonedCartEmailSubject}
+                onChange={(e) => setAbandonedCartEmailSubject(e.target.value)}
+                placeholder="e.g. You left items in your cart!"
+                className="mt-1.5 w-full rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-5/50 dark:bg-[#0f0f1b]/50 px-4 py-2.5 text-sm font-medium text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-[#1a1a2e] dark:focus:border-[#e94560] focus:bg-white dark:focus:bg-[#16162a] focus:outline-none transition-all"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                Recovery Email Template
+              </label>
+              <textarea
+                value={abandonedCartEmailTemplate}
+                onChange={(e) => setAbandonedCartEmailTemplate(e.target.value)}
+                placeholder="Hi {{name}}, you left items in your cart..."
+                rows={4}
+                className="mt-1.5 w-full rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-5/50 dark:bg-[#0f0f1b]/50 px-4 py-2.5 text-sm font-medium text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-[#1a1a2e] dark:focus:border-[#e94560] focus:bg-white dark:focus:bg-[#16162a] focus:outline-none transition-all resize-none"
+              />
+              <p className="text-[10px] text-gray-450 mt-1">
+                Use <code>{"{{name}}"}</code> for customer name, and <code>{"{{checkout_url}}"}</code> for the recovery checkout URL.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Email Notification Toggles */}
       <div className="bg-white dark:bg-[#16162a] p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm space-y-4 transition-colors">

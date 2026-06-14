@@ -428,7 +428,6 @@ export default function Navbar({
   addToDesktopSlot(desktopWishlistAlign, renderAccountLink());
   addToDesktopSlot(desktopWishlistAlign, renderWishlist(false));
   addToDesktopSlot(desktopCartAlign, renderCart(false));
-  addToDesktopSlot(desktopThemeAlign, renderThemeToggle());
   addToDesktopSlot(desktopThemeAlign, renderAdminLink());
 
   // Group mobile items by alignment settings
@@ -448,7 +447,6 @@ export default function Navbar({
   addToMobileSlot(mobileWishlistAlign, renderAccountLink());
   addToMobileSlot(mobileWishlistAlign, renderWishlist(true));
   addToMobileSlot(mobileCartAlign, renderCart(true));
-  addToMobileSlot(settings?.headerMobileWishlistAlign ?? 'hidden', renderThemeToggle());
   addToMobileSlot('right', renderAdminLink());
 
   // Clear query on close
@@ -613,7 +611,7 @@ export default function Navbar({
               <div className="flex items-center justify-between mb-6">
                 <span className="font-black text-gray-900 dark:text-white uppercase tracking-wider">Menu</span>
                 <div className="flex items-center gap-2">
-                  <ThemeToggle />
+
                   <button
                     type="button"
                     onClick={() => setMobileMenuOpen(false)}

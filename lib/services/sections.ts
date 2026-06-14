@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { HomepageSection, WhatsAppSubscriber, EmailSubscriber } from '@/lib/types';
 import { revalidatePath, unstable_cache } from 'next/cache';
+import { revalidateBanner } from '@/lib/revalidate';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
@@ -57,6 +58,7 @@ export const updateHomepageSection = async (
 
     if (error) throw error;
     revalidatePath('/');
+    try { await revalidateBanner(); } catch (e) { console.error('[sections] revalidateBanner failed:', e); }
     return data;
   } catch (error) {
     console.error('[sections] updateHomepageSection failed:', error);
@@ -78,6 +80,7 @@ export const reorderHomepageSections = async (
     );
     await Promise.all(promises);
     revalidatePath('/');
+    try { await revalidateBanner(); } catch (e) { console.error('[sections] revalidateBanner failed:', e); }
   } catch (error) {
     console.error('[sections] reorderHomepageSections failed:', error);
     throw error;
@@ -132,6 +135,7 @@ export const addHomepageSection = async (
 
     if (error) throw error;
     revalidatePath('/');
+    try { await revalidateBanner(); } catch (e) { console.error('[sections] revalidateBanner failed:', e); }
     return data;
   } catch (error) {
     console.error('[sections] addHomepageSection failed:', error);
@@ -149,6 +153,7 @@ export const deleteHomepageSection = async (id: string): Promise<void> => {
 
     if (error) throw error;
     revalidatePath('/');
+    try { await revalidateBanner(); } catch (e) { console.error('[sections] revalidateBanner failed:', e); }
   } catch (error) {
     console.error('[sections] deleteHomepageSection failed:', error);
     throw error;

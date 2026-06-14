@@ -10,10 +10,10 @@ export default function ThemeStyleRegistry({ settings }: ThemeStyleRegistryProps
   // Get active preset configuration or fallback to classic_white
   const activePresetId = settings.theme_preset || 'classic_white';
   const defaultPreset = THEME_PRESETS.find(p => p.id === activePresetId) || THEME_PRESETS[0];
-  
+
   // Merge database values with default preset values
   const themeConfig = settings.theme_config || defaultPreset.config;
-  
+
   const colors = themeConfig.colors || defaultPreset.config.colors;
   const fonts = themeConfig.fonts || defaultPreset.config.fonts;
   const typography = themeConfig.typography || defaultPreset.config.typography;
@@ -97,6 +97,38 @@ export default function ThemeStyleRegistry({ settings }: ThemeStyleRegistryProps
       color: var(--color-text-primary) !important;
     }
 
+    /* Remap hardcoded dark-theme hex colors to active theme variables */
+    /* These classes appear across all components as dark mode fallbacks */
+    [class*="bg-[#16162a]"],
+    .dark [class*="bg-[#16162a]"] {
+      background-color: var(--color-surface) !important;
+    }
+    [class*="bg-[#0f0f1b]"],
+    .dark [class*="bg-[#0f0f1b]"] {
+      background-color: var(--color-background) !important;
+    }
+    /* bg-white/80 opacity variants → use surface with opacity */
+    [class^="bg-white/"]:not([class*="hover:"]), [class*=" bg-white/"]:not([class*="hover:"]) {
+      background-color: color-mix(in srgb, var(--color-surface) 80%, transparent) !important;
+    }
+    /* Navbar sticky bar: bg-white/80 dark:bg-[#0f0f1b]/85 */
+    [class^="bg-[#0f0f1b]/"]:not([class*="hover:"]), [class*=" bg-[#0f0f1b]/"]:not([class*="hover:"]) {
+      background-color: color-mix(in srgb, var(--color-background) 85%, transparent) !important;
+    }
+    [class^="bg-[#16162a]/"]:not([class*="hover:"]), [class*=" bg-[#16162a]/"]:not([class*="hover:"]) {
+      background-color: color-mix(in srgb, var(--color-surface) 80%, transparent) !important;
+    }
+    [class*="from-[#16162a]"] {
+      --tw-gradient-from: var(--color-surface) !important;
+    }
+    [class*="from-[#0f0f1b]"] {
+      --tw-gradient-from: var(--color-background) !important;
+    }
+    /* dark:text-white → follow theme text primary */
+    .dark .text-white, [class*="dark:text-white"] {
+      color: var(--color-text-primary) !important;
+    }
+
     /* Typography Overrides */
     body, p, span, a, input, select, textarea, button, td, th, li, div, .font-body {
       font-family: var(--font-body) !important;
@@ -121,23 +153,23 @@ export default function ThemeStyleRegistry({ settings }: ThemeStyleRegistryProps
     
     /* Backgrounds hardcoded to secondary navy */
     .bg-\\[\\#1a1a2e\\], .dark .bg-\\[\\#1a1a2e\\], 
-    [class*="bg-[#1a1a2e]"]:not([class*="bg-[#1a1a2e]/"]),
+    [class*="bg-[#1a1a2e]"]:not([class*="bg-[#1a1a2e]/"]):not([class*="hover:"]),
     .bg-secondary, .dark .bg-secondary {
       background-color: var(--btn-primary-bg) !important;
       color: var(--btn-primary-text) !important;
     }
     
     /* Transparent / opacity classes mapped to theme colors using color-mix */
-    .bg-\\[\\#1a1a2e\\]\\/5, [class*="bg-[#1a1a2e]/5"] {
+    .bg-\\[\\#1a1a2e\\]\\/5, [class^="bg-[#1a1a2e]/5"], [class*=" bg-[#1a1a2e]/5"] {
       background-color: color-mix(in srgb, var(--btn-primary-bg) 5%, transparent) !important;
     }
-    .bg-\\[\\#1a1a2e\\]\\/10, [class*="bg-[#1a1a2e]/10"] {
+    .bg-\\[\\#1a1a2e\\]\\/10, [class^="bg-[#1a1a2e]/10"], [class*=" bg-[#1a1a2e]/10"] {
       background-color: color-mix(in srgb, var(--btn-primary-bg) 10%, transparent) !important;
     }
-    .bg-\\[\\#e94560\\]\\/10, [class*="bg-[#e94560]/10"] {
+    .bg-\\[\\#e94560\\]\\/10, [class^="bg-[#e94560]/10"], [class*=" bg-[#e94560]/10"] {
       background-color: color-mix(in srgb, var(--color-accent) 10%, transparent) !important;
     }
-    .bg-\\[\\#e94560\\]\\/20, [class*="bg-[#e94560]/20"] {
+    .bg-\\[\\#e94560\\]\\/20, [class^="bg-[#e94560]/20"], [class*=" bg-[#e94560]/20"] {
       background-color: color-mix(in srgb, var(--color-accent) 20%, transparent) !important;
     }
     
@@ -150,7 +182,7 @@ export default function ThemeStyleRegistry({ settings }: ThemeStyleRegistryProps
 
     /* Backgrounds hardcoded to accent red */
     .bg-\\[\\#e94560\\], .dark .bg-\\[\\#e94560\\], 
-    [class*="bg-[#e94560]"]:not([class*="bg-[#e94560]/"]),
+    [class*="bg-[#e94560]"]:not([class*="bg-[#e94560]/"]):not([class*="hover:"]),
     .bg-accent, .dark .bg-accent {
       background-color: var(--color-accent) !important;
       color: #ffffff !important;

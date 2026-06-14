@@ -332,6 +332,12 @@ export interface StoreSettings {
   email_notifications?: any;
   low_stock_threshold?: number;
 
+  // Abandoned Cart Email Settings
+  abandonedCartEmailEnabled?: boolean;
+  abandonedCartAdminNotify?: boolean;
+  abandonedCartEmailSubject?: string;
+  abandonedCartEmailTemplate?: string;
+
   updatedAt: string;
 }
 

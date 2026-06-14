@@ -136,8 +136,8 @@ textarea::placeholder {
    ============================================================ */
 
 .dark {
-  background-color: #0f0f1b;
-  color: #f3f4f6;
+  background-color: var(--color-background, #0f0f1b);
+  color: var(--color-text-primary, #f3f4f6);
 }
 
 /* Form controls in dark mode */
@@ -148,17 +148,17 @@ textarea::placeholder {
 .dark input[type="tel"],
 .dark select,
 .dark textarea {
-  color: #ffffff !important;
-  border-color: #27272a !important;
-  background-color: rgba(15, 15, 27, 0.7) !important;
+  color: var(--color-text-primary, #ffffff) !important;
+  border-color: var(--color-border, #27272a) !important;
+  background-color: color-mix(in srgb, var(--color-background, #0f0f1b) 70%, transparent) !important;
 }
 
 .dark input:focus,
 .dark select:focus,
 .dark textarea:focus {
-  border-color: var(--primary) !important;
-  background-color: #16162a !important;
-  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.15) !important;
+  border-color: var(--color-primary, var(--primary)) !important;
+  background-color: var(--color-surface, #16162a) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary, var(--primary)) 15%, transparent) !important;
 }
 
 .dark input::placeholder,
@@ -168,22 +168,22 @@ textarea::placeholder {
 
 /* Force dark-mode dropdown options background */
 .dark option {
-  background-color: #16162a;
-  color: #ffffff;
+  background-color: var(--color-surface, #16162a);
+  color: var(--color-text-primary, #ffffff);
 }
 
 /* Force dark-mode backgrounds on white containers and cards */
 .dark .bg-white {
-  background-color: #16162a !important;
+  background-color: var(--color-surface, #16162a) !important;
 }
 
 /* Force dark-mode backgrounds on light page backgrounds */
 .dark .bg-gray-50 {
-  background-color: #0f0f1b !important;
+  background-color: var(--color-background, #0f0f1b) !important;
 }
 
 .dark .bg-gray-50\/50 {
-  background-color: rgba(15, 15, 27, 0.5) !important;
+  background-color: color-mix(in srgb, var(--color-background, #0f0f1b) 50%, transparent) !important;
 }
 
 .dark .bg-gray-100 {
@@ -192,38 +192,38 @@ textarea::placeholder {
 
 /* Force dark-mode border colors */
 .dark .border-gray-100 {
-  border-color: rgba(255, 255, 255, 0.05) !important;
+  border-color: var(--color-border, rgba(255, 255, 255, 0.05)) !important;
 }
 
 .dark .border-gray-200 {
-  border-color: #27272a !important;
+  border-color: var(--color-border, #27272a) !important;
 }
 
 /* Force high contrast text colors in dark mode */
 .dark .text-gray-900,
 .dark .text-gray-955,
 .dark .text-gray-950 {
-  color: #ffffff !important;
+  color: var(--color-text-primary, #ffffff) !important;
 }
 
 .dark .text-gray-800 {
-  color: #f3f4f6 !important;
+  color: var(--color-text-primary, #f3f4f6) !important;
 }
 
 .dark .text-gray-700 {
-  color: #e5e7eb !important;
+  color: var(--color-text-secondary, #e5e7eb) !important;
 }
 
 .dark .text-gray-600 {
-  color: #d1d5db !important;
+  color: var(--color-text-secondary, #d1d5db) !important;
 }
 
 .dark .text-gray-500 {
-  color: #a1a1aa !important;
+  color: var(--color-text-secondary, #a1a1aa) !important;
 }
 
 .dark .text-gray-400 {
-  color: #a1a1aa !important;
+  color: var(--color-text-secondary, #a1a1aa) !important;
 }
 
 /* Hover state overrides for dark mode */

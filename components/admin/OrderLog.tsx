@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
   Search, 
   ExternalLink, 
@@ -17,12 +18,17 @@ import {
   Package,
   ClipboardList,
   Clock,
-  Save
+  Save,
+  RefreshCw,
+  CheckCircle2,
+  DollarSign,
+  TrendingUp
 } from '@/components/common/Icons';
 import { Order, StoreSettings, StatusLogItem } from '@/lib/types';
 import { updateOrderStatus, updateOrderDetails } from '@/lib/services/orders';
 import { formatPrice, cleanWhatsAppPhone } from '@/lib/utils/whatsapp';
 import { toast } from 'sonner';
+import { createClient } from '@/lib/supabase/client';
 
 interface OrderLogProps {
   initialOrders: Order[];
@@ -30,7 +36,87 @@ interface OrderLogProps {
 }
 
 export default function OrderLog({ initialOrders, settings }: OrderLogProps) {
+  const router = useRouter();
   const [orders, setOrders] = useState<Order[]>(initialOrders);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Sync initialOrders if props change
+  useEffect(() => {
+    setOrders(initialOrders);
+  }, [initialOrders]);
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    router.refresh();
+    setTimeout(() => {
+      setIsRefreshing(false);
+      toast.success('Orders refreshed');
+    }, 1000);
+  };
+
+  const orderStats = {
+    total: orders.length,
+    pending: orders.filter(o => ['pending', 'placed'].includes(o.status)).length,
+    completed: orders.filter(o => o.status === 'delivered').length,
+    revenue: orders.filter(o => o.status !== 'cancelled' && o.status !== 'refunded').reduce((sum, o) => sum + o.total, 0),
+  };
+
+  // Realtime subscription for orders
+  useEffect(() => {
+    const supabase = createClient();
+    
+    const mapOrderRow = (row: any): Order => ({
+      id: row.id,
+      orderNumber: row.order_number,
+      customerName: row.customer_name || undefined,
+      customerPhone: row.customer_phone || undefined,
+      customerId: row.customer_id || undefined,
+      items: (row.items || []) as any[],
+      subtotal: row.subtotal ? parseFloat(row.subtotal.toString()) : 0,
+      total: row.total ? parseFloat(row.total.toString()) : 0,
+      status: row.status as Order['status'],
+      notes: row.notes || undefined,
+      staffNotes: row.staff_notes || undefined,
+      statusLogs: (row.status_logs || []) as StatusLogItem[],
+      reviewEmailPending: row.review_email_pending ?? false,
+      deliveredAt: row.delivered_at || undefined,
+      trackingNumber: row.tracking_number || undefined,
+      courierName: row.courier_name || undefined,
+      trackingUrl: row.tracking_url || undefined,
+      cancelReason: row.cancel_reason || undefined,
+      refundAmount: row.refund_amount ? parseFloat(row.refund_amount.toString()) : undefined,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    });
+
+    const channel = supabase
+      .channel('orders-log-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'orders' },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newOrder = mapOrderRow(payload.new);
+            setOrders(prev => {
+              if (prev.some(o => o.id === newOrder.id)) return prev;
+              return [newOrder, ...prev];
+            });
+            toast.info(`New Order received: ${newOrder.orderNumber}`);
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedOrder = mapOrderRow(payload.new);
+            setOrders(prev => prev.map(o => o.id === updatedOrder.id ? updatedOrder : o));
+          } else if (payload.eventType === 'DELETE') {
+            setOrders(prev => prev.filter(o => o.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dateFilter, setDateFilter] = useState<string>('all');
@@ -257,6 +343,71 @@ export default function OrderLog({ initialOrders, settings }: OrderLogProps) {
 
   return (
     <div className="space-y-6 relative">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-2.5">
+          <ClipboardList className="h-6 w-6 text-[#e94560]" />
+          <div>
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white">WhatsApp Order Log</h1>
+            <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold mt-0.5">Track and update orders clicked by customers on WhatsApp</p>
+          </div>
+        </div>
+        <button
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-[#16162a] text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 text-xs font-bold transition-all disabled:opacity-50"
+        >
+          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          <span>Refresh</span>
+        </button>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Total Orders', value: orderStats.total, icon: ClipboardList, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900/30' },
+          { label: 'Pending Orders', value: orderStats.pending, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/30' },
+          { label: 'Completed Orders', value: orderStats.completed, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/30' },
+          { label: 'Total Revenue', value: formatPrice(orderStats.revenue, settings.currencySymbol), icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/30' },
+        ].map(stat => {
+          const Icon = stat.icon;
+          return (
+            <div key={stat.label} className="bg-white dark:bg-[#16162a] rounded-2xl border border-gray-200 dark:border-gray-800 p-5 shadow-xs transition-colors">
+              <div className={`inline-flex p-2.5 rounded-xl border ${stat.bg} mb-3`}>
+                <Icon className={`h-4.5 w-4.5 ${stat.color}`} />
+              </div>
+              <div className="text-xl font-black text-gray-900 dark:text-white">{stat.value}</div>
+              <div className="text-xs text-gray-400 dark:text-gray-500 font-bold mt-1 uppercase tracking-wider">{stat.label}</div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Fulfillment Rate Bar */}
+      {orderStats.total > 0 && (
+        <div className="bg-white dark:bg-[#16162a] rounded-2xl border border-gray-200 dark:border-gray-800 p-5 shadow-xs space-y-3 transition-colors">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+              <TrendingUp className="h-4.5 w-4.5 text-emerald-500" />
+              Order Fulfillment Conversion Rate
+            </span>
+            <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">
+              {Math.round((orderStats.completed / orderStats.total) * 100)}%
+            </span>
+          </div>
+          <div className="h-2.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full transition-all"
+              style={{ width: `${Math.round((orderStats.completed / orderStats.total) * 100)}%` }}
+            />
+          </div>
+          <div className="flex justify-between text-[11px] text-gray-400 dark:text-gray-550 font-bold">
+            <span>Fulfilled Value: {formatPrice(orders.filter(o => o.status === 'delivered').reduce((s, o) => s + o.total, 0), settings.currencySymbol)}</span>
+            <span>Total Revenue (Active): {formatPrice(orderStats.revenue, settings.currencySymbol)}</span>
+          </div>
+        </div>
+      )}
+
       {/* Search & Filter Header (Shopify jesa) */}
       <div className="flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">

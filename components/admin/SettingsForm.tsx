@@ -280,6 +280,12 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
   const [adminNotificationEmail, setAdminNotificationEmail] = useState(initialSettings.admin_notification_email || '');
   const [lowStockThreshold, setLowStockThreshold] = useState(initialSettings.low_stock_threshold ?? 5);
 
+  // Abandoned Cart Settings States
+  const [abandonedCartEmailEnabled, setAbandonedCartEmailEnabled] = useState(initialSettings.abandonedCartEmailEnabled ?? false);
+  const [abandonedCartAdminNotify, setAbandonedCartAdminNotify] = useState(initialSettings.abandonedCartAdminNotify ?? false);
+  const [abandonedCartEmailSubject, setAbandonedCartEmailSubject] = useState(initialSettings.abandonedCartEmailSubject || 'You left items in your cart!');
+  const [abandonedCartEmailTemplate, setAbandonedCartEmailTemplate] = useState(initialSettings.abandonedCartEmailTemplate || 'Hi {{name}},\n\nYou left some items in your cart. Complete your purchase here:\n{{checkout_url}}');
+
   const defaultEmailNotifications = {
     welcome: true,
     password_reset: true,
@@ -994,7 +1000,12 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
         smtp_from_name: smtpFromName.trim(),
         admin_notification_email: adminNotificationEmail.trim(),
         email_notifications: emailNotifications,
-        low_stock_threshold: Number(lowStockThreshold) || 5
+        low_stock_threshold: Number(lowStockThreshold) || 5,
+
+        abandonedCartEmailEnabled: abandonedCartEmailEnabled,
+        abandonedCartAdminNotify: abandonedCartAdminNotify,
+        abandonedCartEmailSubject: abandonedCartEmailSubject.trim(),
+        abandonedCartEmailTemplate: abandonedCartEmailTemplate.trim()
       };
 
       await updateSettings(payload);
@@ -1838,6 +1849,15 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
           setLowStockThreshold={setLowStockThreshold}
           emailNotifications={emailNotifications}
           setEmailNotifications={setEmailNotifications}
+
+          abandonedCartEmailEnabled={abandonedCartEmailEnabled}
+          setAbandonedCartEmailEnabled={setAbandonedCartEmailEnabled}
+          abandonedCartAdminNotify={abandonedCartAdminNotify}
+          setAbandonedCartAdminNotify={setAbandonedCartAdminNotify}
+          abandonedCartEmailSubject={abandonedCartEmailSubject}
+          setAbandonedCartEmailSubject={setAbandonedCartEmailSubject}
+          abandonedCartEmailTemplate={abandonedCartEmailTemplate}
+          setAbandonedCartEmailTemplate={setAbandonedCartEmailTemplate}
         />
       )}
       {/* ====== TAB: META SYNC MAPPINGS ====== */}

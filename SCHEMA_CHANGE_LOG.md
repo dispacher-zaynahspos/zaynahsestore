@@ -12,6 +12,20 @@
 1. What changed and why
 ```
 
+### [2026-06-14] v3.9.6 — Real-time PWA Order Notifications, Orders Log Stats & Abandoned Cart Exclusions
+**Files Updated:** `lib/hooks/useOrderNotification.ts`, `components/admin/OrderLog.tsx`, `app/admin/orders/page.tsx`, `app/admin/abandoned-carts/page.tsx`, `SCHEMA_CHANGE_LOG.md`
+**Changes:**
+1. **PWA & Browser Audio Unlocking** — Configured first interaction (`click`/`touchstart`) events to preload and unlock browser audio playback to ensure realtime audio notifications fire successfully in standalone PWA/mobile environments.
+2. **Service Worker Push Notifications** — Intercepted push notifications using `navigator.serviceWorker.ready` to display background alerts reliably.
+3. **Orders Log Dashboard Metrics** — Added stats cards (Total, Pending, Completed, Revenue) and an interactive Fulfillment rate progress bar directly inside `OrderLog.tsx` matching the look of the Abandoned Carts page, and cleaned up `app/admin/orders/page.tsx`.
+4. **Active Abandoned Carts Table View** — Configured the Abandoned Carts list log to completely filter out recovered/placed order carts (`order_placed = true`) from the table list and dropdown, preventing completed customers from cluttering active recovery sessions while keeping stats accurate. Added realtime subscriptions to update the list instantly.
+
+### [2026-06-14] v3.9.5 — Abandoned Cart Tables, Settings Columns and Realtime Integrations
+**Files Updated:** `supabase/migrations/20260614_abandoned_carts.sql`, `supabase/migrations/20260614050000_add_abandoned_cart_settings.sql`, `supabase/schema/SUPER_MASTER_SCHEMA.sql`, `lib/types.ts`, `lib/services/settings.ts`, `SCHEMA_CHANGE_LOG.md`
+**Changes:**
+1. **Abandoned Carts Database Table** — Added a dedicated `abandoned_carts` table to store unfinished checkout sessions with contact details, line items, and email status fields.
+2. **Abandoned Cart settings fields** — Appended configuration variables (`abandoned_cart_email_enabled`, `abandoned_cart_admin_notify`, `abandoned_cart_email_subject`, `abandoned_cart_email_template`) to `store_settings` and synchronized them to the `StoreSettings` type interfaces and mapping routines.
+
 ### [2026-06-14] v3.9.4 — Advanced Theme Typography Font & Text Colors Customization
 **Files Updated:** `lib/types.ts`, `lib/themePresets.ts`, `components/admin/customizer/pages/AppearanceSettings.tsx`, `components/common/ThemeStyleRegistry.tsx`, `supabase/schema/SUPER_MASTER_SCHEMA.sql`, `supabase/migrations/20260614040900_add_text_colors_to_theme_config.sql`, `SCHEMA_CHANGE_LOG.md`
 **Changes:**

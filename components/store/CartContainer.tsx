@@ -17,6 +17,7 @@ import { trackEvent } from '@/lib/trackEvent';
 import { toast } from 'sonner';
 import PaymentBadges from '@/components/common/PaymentBadges';
 import { validateCouponCode } from '@/lib/services/coupons';
+import { useAbandonedCartTracker } from '@/lib/hooks/useAbandonedCartTracker';
 
 
 
@@ -102,6 +103,9 @@ export default function CartContainer({ settings }: CartContainerProps) {
   const [city, setCity] = useState('');
   const [postalCode, setPostalCode] = useState('');
   const [phone, setPhone] = useState('');
+
+  // Abandoned cart tracking
+  const { updateContact, markOrdered } = useAbandonedCartTracker(settings.currency || 'PKR');
   const [saveInfo, setSaveInfo] = useState(true);
   const [notes, setNotes] = useState('');
   const [placedOrder, setPlacedOrder] = useState<any>(null);
@@ -142,6 +146,25 @@ export default function CartContainer({ settings }: CartContainerProps) {
   }, []);
 
   // Load placed order if view is success
+  // Sync contact to abandoned cart whenever checkout fields change
+  useEffect(() => {
+    if (view === 'checkout') {
+      const email = emailOrPhone.includes('@') ? emailOrPhone.trim() : undefined;
+      const phoneVal = phone.trim() || (emailOrPhone.trim() && !emailOrPhone.includes('@') ? emailOrPhone.trim() : undefined);
+      const name = [firstName.trim(), lastName.trim()].filter(Boolean).join(' ');
+      
+      updateContact({
+        name: name || undefined,
+        email,
+        phone: phoneVal,
+        address: address.trim() || undefined,
+        apartment: apartment.trim() || undefined,
+        city: city.trim() || undefined,
+        postalCode: postalCode.trim() || undefined,
+      });
+    }
+  }, [view, emailOrPhone, firstName, lastName, phone, address, apartment, city, postalCode, updateContact]);
+
   useEffect(() => {
     if (view === 'success') {
       const saved = localStorage.getItem('last_placed_order');
@@ -338,6 +361,13 @@ export default function CartContainer({ settings }: CartContainerProps) {
       // Save order snapshot to localStorage and React state
       localStorage.setItem('last_placed_order', JSON.stringify(orderData));
       setPlacedOrder(orderData);
+
+      // Mark cart as ordered to suppress abandonment email
+      try { await markOrdered(order.id); } catch {}
+
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('zaynahs_cart_session');
+      }
 
       clearCart();
       router.push('/cart?step=success');
